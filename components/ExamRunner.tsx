@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
@@ -122,8 +123,19 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     let isCorrect = false;
 
     if (currentQ.type === QuestionType.MCQ) {
-      isCorrect = userAnswer.answer === currentQ.correctOptionIndex;
-      feedback = isCorrect ? "Correct!" : `Incorrect.\n${currentQ.explanation}`;
+        if (currentQ.options && currentQ.options.length > 0) {
+            isCorrect = userAnswer.answer === currentQ.correctOptionIndex;
+            feedback = isCorrect ? "Correct!" : `Incorrect.\n${currentQ.explanation}`;
+        } else {
+            // Fallback for malformed MCQ (text input)
+             // Simple string match for tracing/malformed mcq, normalized
+            const userTxt = String(userAnswer.answer).trim().toLowerCase();
+            // We can't easily check against correctOptionIndex here without options text, 
+            // but we assume if options are missing, strict grading is hard.
+            // So we rely on the explanation.
+            feedback = `**Answer Analysis:**\n${currentQ.explanation}`;
+            isCorrect = true; // Giving benefit of doubt or purely informational in this edge case
+        }
     } else if (currentQ.type === QuestionType.TRACING) {
       // Simple string match for tracing, normalized
       const userTxt = String(userAnswer.answer).trim().toLowerCase();
@@ -182,6 +194,9 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const getAnswerValue = () => answers.get(currentQ.id)?.answer ?? "";
 
   const progressPercentage = Math.round((answers.size / questions.length) * 100);
+  
+  // Determine if we show standard MCQ UI or Fallback Input
+  const isStandardMCQ = currentQ.type === QuestionType.MCQ && currentQ.options && currentQ.options.length > 0;
 
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
@@ -269,9 +284,9 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
               </div>
           )}
 
-          {currentQ.type === QuestionType.MCQ && currentQ.options && (
+          {isStandardMCQ ? (
             <div className="space-y-3">
-              {currentQ.options.map((opt, idx) => (
+              {currentQ.options!.map((opt, idx) => (
                 <label 
                   key={idx}
                   className={`flex items-center p-4 border cursor-pointer transition-colors group relative
@@ -306,14 +321,31 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                 </label>
               ))}
             </div>
-          )}
+          ) : (currentQ.type === QuestionType.MCQ && (
+            /* Fallback for Malformed MCQ */
+             <div className="space-y-2">
+                <div className="text-xs text-orange-500 font-bold mb-1 flex items-center gap-2">
+                   <span className="animate-pulse">⚠️</span> 
+                   <span>OPTIONS COULD NOT BE PARSED AUTOMATICALLY</span>
+                </div>
+                <p className="text-xs text-gray-500 mb-2">The AI identified this as an MCQ but failed to extract distinct options from the source image. Please type the answer found in the document (e.g., "A", "Option 1", or the value itself).</p>
+                <input 
+                  type="text" 
+                  value={String(getAnswerValue())} 
+                  onChange={(e) => handleAnswer(e.target.value)}
+                  placeholder="Enter answer manually..."
+                  className="w-full bg-gray-50 dark:bg-[#0c0c0c] border border-orange-300 dark:border-orange-800 p-4 font-mono focus:border-orange-500 outline-none text-lg"
+                  disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
+                />
+             </div>
+          ))}
 
           {currentQ.type === QuestionType.TRACING && (
              <div className="space-y-2">
                 <label className="text-sm font-bold opacity-70 font-mono">&gt; OUTPUT_TERMINAL:</label>
                 <input 
                   type="text" 
-                  value={getAnswerValue() as string} 
+                  value={String(getAnswerValue())} 
                   onChange={(e) => handleAnswer(e.target.value)}
                   placeholder="Type output..."
                   maxLength={200}
