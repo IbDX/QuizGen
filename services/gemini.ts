@@ -38,17 +38,37 @@ const gradingSchema = {
 
 const deduplicateQuestions = (questions: Question[]): Question[] => {
   const uniqueQuestions: Question[] = [];
-  const seenTexts = new Set<string>();
+  const seenSignatures = new Set<string>();
 
   for (const q of questions) {
-    // Create a normalized signature to check for duplicates.
-    // We use the first 100 chars of the text + type to avoid false positives on very short "What is the output?" questions.
-    const normalizedText = q.text.replace(/\s+/g, ' ').trim().toLowerCase();
-    const signature = `${q.type}|${normalizedText.substring(0, 100)}`;
+    // 1. Normalize Text: Lowercase, remove markdown flair, collapse spaces
+    const normalizedText = q.text
+      .toLowerCase()
+      .replace(/[\*\*_`~]/g, '') // Strip common markdown chars
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    if (!seenTexts.has(signature)) {
-      seenTexts.add(signature);
-      uniqueQuestions.push(q);
+    // 2. Normalize Code: Remove all whitespace (ignore formatting diffs)
+    const normalizedCode = q.codeSnippet 
+        ? q.codeSnippet.replace(/\s+/g, '').toLowerCase() 
+        : 'no_code';
+
+    // 3. Normalize Options: Sort them so order doesn't matter for uniqueness
+    const normalizedOptions = q.options 
+        ? [...q.options].sort().map(o => o.replace(/\s+/g, '').toLowerCase()).join('|') 
+        : 'no_options';
+
+    // Composite Signature: Type + Text + Code + Options
+    // This ensures questions with generic text like "What is the output?" are distinguished by their code snippet.
+    const signature = `${q.type}::${normalizedText}::${normalizedCode}::${normalizedOptions}`;
+
+    if (!seenSignatures.has(signature)) {
+      seenSignatures.add(signature);
+      // Ensure unique ID for React rendering
+      uniqueQuestions.push({
+        ...q,
+        id: `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      });
     }
   }
   return uniqueQuestions;
@@ -149,7 +169,8 @@ export const generateExamFromWrongAnswers = async (originalQuestions: Question[]
         });
     
         if (response.text) {
-          return JSON.parse(response.text) as Question[];
+          const questions = JSON.parse(response.text) as Question[];
+          return deduplicateQuestions(questions);
         }
         throw new Error("No remediation exam generated");
     } catch (error) {

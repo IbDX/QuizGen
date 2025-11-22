@@ -199,6 +199,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   // Determine if we show standard MCQ UI or Fallback Input
   const isStandardMCQ = currentQ.type === QuestionType.MCQ && currentQ.options && currentQ.options.length > 0;
 
+  // Logic to avoid duplicate code windows:
+  // If the text itself contains a markdown code block (```), we assume MarkdownRenderer handles it.
+  // Otherwise, we render the explicit CodeWindow from codeSnippet.
+  const hasCodeBlockInText = currentQ.text.includes('```');
+
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
       
@@ -274,7 +279,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
              </div>
         </div>
 
-        {currentQ.codeSnippet && (
+        {currentQ.codeSnippet && !hasCodeBlockInText && (
           <CodeWindow code={currentQ.codeSnippet} />
         )}
 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Layout } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
@@ -12,7 +13,7 @@ import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('UPLOAD');
-  const [lastAppState, setLastAppState] = useState<AppState>('UPLOAD');
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [fileData, setFileData] = useState<{base64: string; mime: string; name: string} | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [settings, setSettings] = useState<ExamSettings | null>(null);
@@ -59,6 +60,7 @@ const App: React.FC = () => {
     setQuestions([]);
     setSettings(null);
     setUserAnswers([]);
+    setIsLibraryOpen(false);
   };
 
   const handleRetake = () => {
@@ -83,68 +85,67 @@ const App: React.FC = () => {
   };
   
   const handleToggleLibrary = () => {
-      if (appState === 'LIBRARY') {
-          setAppState(lastAppState);
-      } else {
-          setLastAppState(appState);
-          setAppState('LIBRARY');
-      }
+      setIsLibraryOpen(prev => !prev);
   };
 
   return (
     <Layout 
       onHome={handleRestart} 
       onToggleLibrary={handleToggleLibrary}
-      isLibraryOpen={appState === 'LIBRARY'}
+      isLibraryOpen={isLibraryOpen}
       isFullWidth={isFullWidth} 
       onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
     >
-      {appState === 'UPLOAD' && (
-        <>
-          <FileUpload 
-            onFileAccepted={handleFileAccepted} 
-            isFullWidth={isFullWidth}
-          />
-          <Leaderboard />
-        </>
-      )}
-
-      {appState === 'LIBRARY' && (
+      {/* Overlay Library if Open */}
+      {isLibraryOpen && (
           <QuestionLibrary isFullWidth={isFullWidth} />
       )}
 
-      {appState === 'CONFIG' && fileData && (
-        <ExamConfig 
-            onStart={handleStartExam} 
-            onReplaceFile={handleReplaceFile} 
-            fileName={fileData.name} 
-            isFullWidth={isFullWidth}
-        />
-      )}
+      {/* Main App State - Hidden when Library is open to preserve state (timer, inputs) */}
+      <div className={isLibraryOpen ? 'hidden' : ''}>
+          {appState === 'UPLOAD' && (
+            <>
+              <FileUpload 
+                onFileAccepted={handleFileAccepted} 
+                isFullWidth={isFullWidth}
+              />
+              <Leaderboard />
+            </>
+          )}
 
-      {appState === 'GENERATING' && (
-        <LoadingScreen message={loadingMsg} />
-      )}
+          {appState === 'CONFIG' && fileData && (
+            <ExamConfig 
+                onStart={handleStartExam} 
+                onReplaceFile={handleReplaceFile} 
+                fileName={fileData.name} 
+                isFullWidth={isFullWidth}
+            />
+          )}
 
-      {appState === 'EXAM' && settings && (
-        <ExamRunner 
-          questions={questions} 
-          settings={settings} 
-          onComplete={handleExamComplete} 
-          isFullWidth={isFullWidth}
-        />
-      )}
+          {appState === 'GENERATING' && (
+            <LoadingScreen message={loadingMsg} />
+          )}
 
-      {appState === 'RESULTS' && (
-        <Results 
-          questions={questions} 
-          answers={userAnswers} 
-          onRestart={handleRestart}
-          onRetake={handleRetake}
-          onGenerateRemediation={handleRemediation}
-          isFullWidth={isFullWidth}
-        />
-      )}
+          {appState === 'EXAM' && settings && (
+            <ExamRunner 
+              questions={questions} 
+              settings={settings} 
+              onComplete={handleExamComplete} 
+              isFullWidth={isFullWidth}
+            />
+          )}
+
+          {appState === 'RESULTS' && (
+            <Results 
+              questions={questions} 
+              answers={userAnswers} 
+              onRestart={handleRestart}
+              onRetake={handleRetake}
+              onGenerateRemediation={handleRemediation}
+              isFullWidth={isFullWidth}
+            />
+          )}
+      </div>
     </Layout>
   );
 };
