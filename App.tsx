@@ -163,7 +163,10 @@ const App: React.FC = () => {
           )}
 
           {appState === 'GENERATING' && (
-            <LoadingScreen message={loadingMsg} />
+            <LoadingScreen 
+                message={loadingMsg} 
+                fileNames={uploadedFiles.map(f => f.name)}
+            />
           )}
 
           {appState === 'EXAM' && settings && (

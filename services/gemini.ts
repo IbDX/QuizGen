@@ -156,9 +156,22 @@ export const generateExam = async (
     } else {
         // Mixed / Default
         formatInstruction = `
-        **HANDLING MIXED TYPES**
-        - The document likely contains a **MIX** of Question Types (MCQ, Tracing, and Coding).
-        - **Evaluate EACH question individually**. Switch types dynamically as you parse the document to match the original intent.
+        **SMART TYPE DETECTION (MIXED MODE)**
+        You must analyze the content of EACH question individually to determine its correct type based on its structure in the document:
+        
+        1. **MCQ (Multiple Choice)**:
+           - DETECTOR: Does the question have a list of options (A, B, C, D) or radio buttons?
+           - ACTION: Set "type": "MCQ" and extract the options.
+           
+        2. **TRACING (Code Analysis)**:
+           - DETECTOR: Does the question present a code snippet and ask "What is the output?", "What does this print?", or "Evaluate the expression"?
+           - ACTION: Set "type": "TRACING" and put the code in "codeSnippet".
+           
+        3. **CODING (Write Code)**:
+           - DETECTOR: Does the question ask to "Write a program", "Implement a function", "Complete the code", or is there a large blank space for writing?
+           - ACTION: Set "type": "CODING". Do NOT provide options.
+           
+        **CRITICAL RULE**: Do not guess. If you see options, it is MCQ. If you see a request to write code, it is CODING. If you see code and a request for output, it is TRACING.
         `;
     }
 

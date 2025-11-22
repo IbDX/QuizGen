@@ -70,19 +70,34 @@ export const urlToBase64 = async (url: string): Promise<{ base64: string, mimeTy
     if (!response.ok) throw new Error('Failed to fetch URL');
     
     const blob = await response.blob();
-    const mimeType = blob.type;
+    let mimeType = blob.type;
     
-    // Basic validation
+    // Fallback for generic types: If MIME is generic, try to deduce from URL extension first
+    const urlLower = url.toLowerCase();
+    if (mimeType === 'application/octet-stream' || mimeType === 'binary/octet-stream' || !mimeType) {
+        if (urlLower.endsWith('.pdf')) mimeType = 'application/pdf';
+        else if (urlLower.endsWith('.png')) mimeType = 'image/png';
+        else if (urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) mimeType = 'image/jpeg';
+    }
+
+    // If MIME type is STILL invalid or generic, double check with Magic Bytes
     if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) {
-      throw new Error('URL must point to a PDF or Image');
+       const tempFile = new File([blob], "temp_check", { type: mimeType });
+       const detected = await checkMagicBytes(tempFile);
+       
+       if (detected) {
+           mimeType = detected;
+       } else {
+           throw new Error(`Invalid file type: ${mimeType || 'Unknown'}. URL must point to a PDF or Image.`);
+       }
     }
 
     const base64 = await fileToBase64(new File([blob], "downloaded_file", { type: mimeType }));
     const name = url.split('/').pop() || 'url_file';
     
     return { base64, mimeType, name };
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    throw new Error('CORS error or invalid URL. Ensure the server allows cross-origin requests.');
+    throw new Error(error.message || 'CORS error or invalid URL. Ensure the server allows cross-origin requests.');
   }
 };

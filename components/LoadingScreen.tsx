@@ -1,17 +1,79 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-const TIPS = [
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+
+const GENERAL_TIPS = [
   "Did you know? The first computer bug was an actual moth stuck in a relay.",
-  "Tip: In C++, pointers hold the memory address of another variable.",
-  "Fact: Python was named after the comedy group Monty Python, not the snake.",
-  "Tip: Recursion requires a base case to avoid stack overflow errors.",
   "Fact: The first 1GB hard drive (1980) weighed over 500 pounds.",
-  "Tip: Always check array bounds to prevent segmentation faults.",
-  "Fact: ' WiFi ' doesn't stand for anything. It's a marketing term.",
-  "Tip: Use 'const' by default in JS/TS unless you need to reassign.",
+  "Fact: 'WiFi' doesn't stand for anything. It's a marketing term.",
   "System: Neural Link bandwidth is optimized for text extraction.",
-  "Tip: Use the Question Library to save tricky problems for later review."
+  "Tip: Use the Question Library to save tricky problems for later review.",
+  "Fact: The QWERTY layout was designed to slow down typists to prevent jamming.",
+  "Tip: Regular expressions are powerful, but use them wisely.",
+  "Fact: The first domain name ever registered was Symbolics.com.",
+  "Tip: Comments in code explain the 'why', not the 'how'.",
+  "System: VirusTotal scanning ensures your documents remain secure."
 ];
+
+const CONTEXT_TIPS: Record<string, string[]> = {
+  'python': [
+    "Python Tip: List comprehensions `[x for x in list]` are faster than for-loops.",
+    "Python Tip: Use `enumerate()` instead of `range(len())` to get index and value.",
+    "Python Fact: Python is named after Monty Python, not the snake.",
+    "Python Tip: Use `set()` to quickly remove duplicates from a list."
+  ],
+  'java': [
+    "Java Tip: `String` is immutable; use `StringBuilder` for heavy modifications.",
+    "Java Tip: `==` compares object references, `.equals()` compares values.",
+    "Java Fact: Java was originally called 'Oak'.",
+    "Java Tip: Check for null before accessing object methods to avoid NPE."
+  ],
+  'js': [
+    "JS Tip: Use `===` for strict equality checking (avoids type coercion).",
+    "JS Tip: `const` prevents reassignment, but object properties can still change.",
+    "JS Tip: Arrow functions `() => {}` preserve the `this` context.",
+    "JS Tip: Use `Array.map()` to transform data without mutating the original array."
+  ],
+  'javascript': [
+    "JS Tip: Use `===` for strict equality checking (avoids type coercion).",
+    "JS Tip: `const` prevents reassignment, but object properties can still change.",
+    "JS Tip: Arrow functions `() => {}` preserve the `this` context.",
+    "JS Tip: Use `Array.map()` to transform data without mutating the original array."
+  ],
+  'cpp': [
+    "C++ Tip: Pointers store memory addresses; References are aliases.",
+    "C++ Tip: Always use `delete` after `new` to prevent memory leaks.",
+    "C++ Tip: `std::vector` manages memory automatically unlike raw arrays.",
+    "C++ Tip: Pass large objects by reference `const MyObj&` to avoid copying."
+  ],
+  'c++': [
+    "C++ Tip: Pointers store memory addresses; References are aliases.",
+    "C++ Tip: Always use `delete` after `new` to prevent memory leaks.",
+    "C++ Tip: `std::vector` manages memory automatically unlike raw arrays.",
+    "C++ Tip: Pass large objects by reference `const MyObj&` to avoid copying."
+  ],
+  'sql': [
+    "SQL Tip: Use `JOIN` instead of subqueries for better performance.",
+    "SQL Tip: Always sanitize inputs to prevent SQL Injection attacks.",
+    "SQL Tip: Indexing columns significantly speeds up `SELECT` queries.",
+    "SQL Tip: `ACID` properties ensure reliable database transactions."
+  ],
+  'html': [
+    "HTML Tip: Always use `alt` tags on images for accessibility.",
+    "HTML Tip: Semantic tags like `<article>` and `<nav>` improve SEO.",
+    "HTML Tip: Ensure you close self-closing tags like `<br />` in strict XHTML."
+  ],
+  'css': [
+    "CSS Tip: Flexbox is great for 1D layouts; Grid is for 2D layouts.",
+    "CSS Tip: Use `rem` units for better accessibility scaling than `px`.",
+    "CSS Tip: Specificity matters: ID > Class > Element."
+  ],
+  'react': [
+    "React Tip: Never mutate state directly; use the setter function.",
+    "React Tip: `useEffect` runs after render; watch your dependency arrays.",
+    "React Tip: Use `key` props in lists to help React optimize rendering.",
+    "React Tip: Custom hooks are a great way to share logic between components."
+  ]
+};
 
 // --- SNAKE GAME COMPONENT ---
 const GRID_SIZE = 15;
@@ -201,19 +263,55 @@ const XO = () => {
     );
 };
 
-export const LoadingScreen: React.FC<{ message: string }> = ({ message }) => {
+interface LoadingScreenProps {
+  message: string;
+  fileNames?: string[];
+}
+
+export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames = [] }) => {
   const [tipIndex, setTipIndex] = useState(0);
   const [GameComponent, setGameComponent] = useState<React.ReactNode>(null);
+
+  // Compute tips based on file names
+  const activeTips = useMemo(() => {
+    const relevantTips: string[] = [];
+    
+    if (fileNames.length > 0) {
+        fileNames.forEach(name => {
+            const lowerName = name.toLowerCase();
+            // Iterate through known contexts
+            Object.keys(CONTEXT_TIPS).forEach(key => {
+                // Avoid "Java" matching "Javascript" incorrectly by checking strict bounds or specific logic if needed
+                if (key === 'java' && lowerName.includes('javascript')) return;
+
+                if (lowerName.includes(key)) {
+                    relevantTips.push(...CONTEXT_TIPS[key]);
+                }
+            });
+        });
+    }
+
+    // Remove duplicates using Set
+    const uniqueRelevant = Array.from(new Set(relevantTips));
+
+    // If we found relevant tips, use them. Otherwise (or if mixed with empty), add some general ones or fall back entirely.
+    // To keep it fresh, if we have relevant tips, we prioritize them, but maybe mix in a few general ones if list is short.
+    if (uniqueRelevant.length > 0) {
+        return uniqueRelevant;
+    }
+    
+    return GENERAL_TIPS;
+  }, [fileNames]);
 
   useEffect(() => {
       // Randomly choose a game on mount
       setGameComponent(Math.random() > 0.5 ? <SnakeGame /> : <XO />);
       
       const interval = setInterval(() => {
-          setTipIndex(prev => (prev + 1) % TIPS.length);
-      }, 4000);
+          setTipIndex(prev => (prev + 1) % activeTips.length);
+      }, 5000); // Slightly longer duration to read technical tips
       return () => clearInterval(interval);
-  }, []);
+  }, [activeTips]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-xl mx-auto p-6 space-y-8 animate-fade-in">
@@ -228,9 +326,11 @@ export const LoadingScreen: React.FC<{ message: string }> = ({ message }) => {
 
       {/* Info/Tip Section */}
       <div className="w-full bg-gray-100 dark:bg-[#1a1a1a] p-4 border-l-4 border-blue-500 shadow-md transition-all duration-500">
-          <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">SYSTEM_INFO / RANDOM_FACT</div>
+          <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+              {activeTips === GENERAL_TIPS ? 'SYSTEM_INFO / RANDOM_FACT' : 'CONTEXT_AWARE_HINT'}
+          </div>
           <p className="font-mono text-sm text-gray-700 dark:text-gray-300 min-h-[3rem] flex items-center">
-              {TIPS[tipIndex]}
+              {activeTips[tipIndex]}
           </p>
       </div>
 
