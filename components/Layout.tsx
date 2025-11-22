@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 interface LayoutProps {
@@ -31,29 +32,25 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
   return (
     <div className={`min-h-screen flex flex-col font-mono selection:bg-terminal-green selection:text-terminal-black`}>
       {/* Header / Terminal Bar */}
-      <header className="border-b-2 border-gray-300 dark:border-terminal-green p-4 flex justify-between items-center bg-gray-200 dark:bg-gray-900 sticky top-0 z-40 shadow-md">
-        <div className="flex items-center gap-6">
-          {/* Z+ Logo / Home Button */}
+      <header className="border-b-2 border-gray-300 dark:border-terminal-green p-4 flex justify-between items-center bg-gray-200 dark:bg-gray-900 sticky top-0 z-40 shadow-md h-20">
+        <div className="flex items-center pl-2">
+          {/* Z+ Logo / Home Button with Enhanced Animation */}
           <button 
             onClick={onHome}
-            className="flex items-center justify-center w-10 h-10 bg-black text-white border-2 border-terminal-green hover:scale-110 transition-transform cursor-pointer shadow-[0_0_10px_rgba(0,255,65,0.5)]"
+            className="relative group outline-none focus:outline-none"
             title="Return to Main Menu"
           >
-             <span className="font-bold text-xl italic font-mono">Z+</span>
+             {/* Pulsing background glow */}
+             <div className="absolute -inset-1 bg-terminal-green rounded-full blur opacity-20 group-hover:opacity-60 transition duration-500 animate-pulse"></div>
+             
+             {/* Main Logo Container */}
+             <div className="relative flex items-center justify-center w-12 h-12 bg-black border-2 border-terminal-green group-hover:border-white transition-all duration-300 shadow-[0_0_10px_rgba(0,255,65,0.3)] group-hover:shadow-[0_0_20px_rgba(0,255,65,0.8)] group-hover:scale-110 overflow-hidden">
+                {/* Scanline effect inside logo */}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-terminal-green/10 to-transparent translate-y-[-100%] group-hover:translate-y-[100%] transition-transform duration-700"></div>
+                
+                <span className="font-bold text-2xl italic font-mono text-white group-hover:text-terminal-green transition-colors z-10">Z+</span>
+             </div>
           </button>
-
-          <div className="flex items-center gap-4">
-            <div className="flex gap-2 hidden md:flex">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            </div>
-            <h1 className="text-xl font-bold tracking-tighter hidden sm:block">
-              <span className="text-gray-500 dark:text-gray-400">~/</span>
-              <span className="text-blue-600 dark:text-blue-400">exam-gen</span>
-              <span className="animate-pulse">_</span>
-            </h1>
-          </div>
         </div>
         
         <div className="flex gap-4 items-center">
@@ -96,7 +93,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
       </main>
 
       <footer className="p-4 text-center text-xs text-gray-500 dark:text-gray-600 border-t border-gray-300 dark:border-gray-800">
-        STATUS: ONLINE | SYSTEM: READY | V1.2.0 | VIRUSTOTAL: ACTIVE
+        STATUS: ONLINE | SYSTEM: READY | V1.3.0 | VIRUSTOTAL: ACTIVE
       </footer>
 
       {/* Settings Modal */}

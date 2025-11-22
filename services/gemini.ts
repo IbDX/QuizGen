@@ -156,22 +156,36 @@ export const generateExam = async (
     } else {
         // Mixed / Default
         formatInstruction = `
-        **SMART TYPE DETECTION (MIXED MODE)**
-        You must analyze the content of EACH question individually to determine its correct type based on its structure in the document:
+        **UNIVERSAL SMART EXTRACTION (MIXED MODE)**
         
-        1. **MCQ (Multiple Choice)**:
-           - DETECTOR: Does the question have a list of options (A, B, C, D) or radio buttons?
-           - ACTION: Set "type": "MCQ" and extract the options.
+        **PHASE 1: GLOBAL CONTEXT SCAN**
+        Before extracting a single question, read the ENTIRE document(s) to understand the layout.
+        - Distinguish between "Instructions" (e.g. "Answer all questions") and actual Questions.
+        - Identify patterns: Are code blocks part of the question? Are options listed below or to the side?
+        
+        **PHASE 2: INDIVIDUAL CLASSIFICATION**
+        For EACH question found, determine its "Original Type" based strictly on visual evidence.
+        
+        1. **MCQ (Multiple Choice)**
+           - **Visual Cue**: Presence of distinct options (A, B, C, D), checkboxes, or radio buttons.
+           - **Action**: Set "type": "MCQ", extract text, and extract "options" array.
+           - **Note**: Even if the question contains a code snippet, IF IT HAS OPTIONS, IT IS AN MCQ.
+        
+        2. **TRACING (Output/Analysis)**
+           - **Visual Cue**: A code snippet is provided, and the question asks for the "output", "result", or "value of X".
+           - **Visual Cue**: NO distinct options are provided to select from (User must type the answer).
+           - **Action**: Set "type": "TRACING", extract "codeSnippet", leave "options" null.
+        
+        3. **CODING (Implementation)**
+           - **Visual Cue**: The question asks to "Write", "Implement", "Create", "Complete", or "Fix" code.
+           - **Visual Cue**: Often followed by a large blank space or an empty editor box in the original document.
+           - **Action**: Set "type": "CODING". Do not include solution code in the prompt.
            
-        2. **TRACING (Code Analysis)**:
-           - DETECTOR: Does the question present a code snippet and ask "What is the output?", "What does this print?", or "Evaluate the expression"?
-           - ACTION: Set "type": "TRACING" and put the code in "codeSnippet".
-           
-        3. **CODING (Write Code)**:
-           - DETECTOR: Does the question ask to "Write a program", "Implement a function", "Complete the code", or is there a large blank space for writing?
-           - ACTION: Set "type": "CODING". Do NOT provide options.
-           
-        **CRITICAL RULE**: Do not guess. If you see options, it is MCQ. If you see a request to write code, it is CODING. If you see code and a request for output, it is TRACING.
+        **STRICT RULES**:
+        - Do not transform questions. Extract them exactly as they are.
+        - If a question has options, it MUST be MCQ.
+        - If a question requires writing code, it MUST be CODING.
+        - If a question requires analyzing code for a specific string answer (without options), it is TRACING.
         `;
     }
 
