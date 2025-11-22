@@ -3,17 +3,20 @@ import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference } from "../types";
 
 // Helper to generate schema based on preference
-// This strictly enforces the Output Type at the JSON validation level
+// NOTE: We avoid strict 'enum' in the schema definition to prevent 500 Internal Server Errors
+// that sometimes occur with the GenAI SDK when processing complex multimodal inputs with strict enum constraints.
+// We enforce the types via the prompt description instead.
 const getExamSchema = (preference: QuestionFormatPreference): Schema => {
-  let allowedTypes = [QuestionType.MCQ, QuestionType.TRACING, QuestionType.CODING];
+  let allowedDescription = "One of: 'MCQ', 'TRACING', 'CODING'";
   
   if (preference === QuestionFormatPreference.MCQ) {
-    allowedTypes = [QuestionType.MCQ];
+    allowedDescription = "Must be 'MCQ'";
   } else if (preference === QuestionFormatPreference.TRACING) {
-    allowedTypes = [QuestionType.TRACING];
+    allowedDescription = "Must be 'TRACING'";
   } else if (preference === QuestionFormatPreference.CODING) {
-    allowedTypes = [QuestionType.CODING];
+    allowedDescription = "Must be 'CODING'";
   }
+  // ORIGINAL and MIXED allow all types
 
   return {
     type: Type.ARRAY,
@@ -21,7 +24,10 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
       type: Type.OBJECT,
       properties: {
         id: { type: Type.STRING },
-        type: { type: Type.STRING, enum: allowedTypes },
+        type: { 
+          type: Type.STRING, 
+          description: `The type of the question. ${allowedDescription}.` 
+        },
         topic: { type: Type.STRING, description: "A short topic tag for this question (e.g., 'Loops', 'Pointers', 'Recursion')" },
         text: { type: Type.STRING },
         codeSnippet: { type: Type.STRING, nullable: true },
@@ -130,7 +136,7 @@ export const generateExam = async (
             -   Provide 4 possible output values as options.
         4.  **Open Ended -> MCQ**:
             -   Create a conceptual question with 4 distinct definitions or statements.
-        5.  **REQUIREMENT**: Every single item in the output array MUST have "type": "MCQ" and "options" filled with 4 strings.
+        5.  **REQUIREMENT**: Set "type" to "MCQ".
         `;
     } else if (preference === QuestionFormatPreference.CODING) {
         formatInstruction = `
@@ -140,7 +146,7 @@ export const generateExam = async (
             -   Ignore the options. Take the core concept (e.g., "Loops") and ask the user to "Write a function that..." demonstrates that concept.
         3.  **Tracing -> Coding**:
             -   Instead of asking for the output, provide the function signature and ask the user to "Implement the logic to achieve X".
-        4.  **REQUIREMENT**: Every single item in the output array MUST have "type": "CODING". Do NOT provide options.
+        4.  **REQUIREMENT**: Set "type" to "CODING". Do NOT provide options.
         `;
     } else if (preference === QuestionFormatPreference.TRACING) {
         formatInstruction = `
@@ -151,10 +157,34 @@ export const generateExam = async (
             -   Ask "What is the output of this code?".
         3.  **Coding -> Tracing**:
             -   Take the solution code, introduce a specific logic flow (or a bug), and ask "What does this print?" or "What is the value of X at the end?".
-        4.  **REQUIREMENT**: Every single item in the output array MUST have "type": "TRACING" and a "codeSnippet".
+        4.  **REQUIREMENT**: Set "type" to "TRACING" and provide a "codeSnippet".
+        `;
+    } else if (preference === QuestionFormatPreference.ORIGINAL) {
+        formatInstruction = `
+        **STRICT FIDELITY MODE (ORIGINAL)**
+        
+        You are strictly a Parser. Do NOT create new questions. Do NOT transform question formats.
+        Extract questions EXACTLY as they appear in the document.
+        
+        **RULES:**
+        1. If the original question has options (A, B, C, D or checkboxes):
+           - Set "type" to "MCQ".
+           - Extract the options exactly.
+           
+        2. If the original question provides code and asks for the Output/Result (and has NO options):
+           - Set "type" to "TRACING".
+           
+        3. If the original question asks the user to Write, Implement, or Create code (and has NO options):
+           - Set "type" to "CODING".
+           
+        **CRITICAL:** 
+        - Do NOT try to make the exam diverse. 
+        - If the document contains 50 MCQs, return 50 "MCQ" questions. 
+        - If the document contains 10 Coding problems, return 10 "CODING" questions.
+        - Maintain the original numbering and text.
         `;
     } else {
-        // Mixed / Default
+        // Mixed / Default (Smart Extraction)
         formatInstruction = `
         **UNIVERSAL SMART EXTRACTION (MIXED MODE)**
         
@@ -165,6 +195,8 @@ export const generateExam = async (
         
         **PHASE 2: INDIVIDUAL CLASSIFICATION**
         For EACH question found, determine its "Original Type" based strictly on visual evidence.
+        
+        **CRITICAL: The output array MUST contain a mix of types ("MCQ", "TRACING", "CODING") corresponding to the actual content.**
         
         1. **MCQ (Multiple Choice)**
            - **Visual Cue**: Presence of distinct options (A, B, C, D), checkboxes, or radio buttons.
@@ -183,9 +215,9 @@ export const generateExam = async (
            
         **STRICT RULES**:
         - Do not transform questions. Extract them exactly as they are.
-        - If a question has options, it MUST be MCQ.
-        - If a question requires writing code, it MUST be CODING.
-        - If a question requires analyzing code for a specific string answer (without options), it is TRACING.
+        - If a question has options, it MUST be "MCQ".
+        - If a question requires writing code, it MUST be "CODING".
+        - If a question requires analyzing code for a specific string answer (without options), it is "TRACING".
         `;
     }
 
@@ -221,7 +253,7 @@ export const generateExam = async (
       },
       config: {
         responseMimeType: "application/json",
-        responseSchema: getExamSchema(preference), // Dynamic Schema strictly enforcing type
+        responseSchema: getExamSchema(preference), // Dynamic Schema (Relaxed Enum)
         thinkingConfig: { thinkingBudget: 0 }, 
         temperature: 0.2 
       }

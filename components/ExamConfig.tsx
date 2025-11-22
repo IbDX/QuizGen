@@ -144,12 +144,13 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
         {/* Format Selection */}
         <div>
             <label className="block text-sm font-bold mb-2">OUTPUT_FORMAT_OVERRIDE</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                 {[
                     { val: QuestionFormatPreference.MIXED, label: 'AUTO MIX', desc: 'Best Fit' },
-                    { val: QuestionFormatPreference.MCQ, label: 'MCQ ONLY', desc: 'All Multiple Choice' },
-                    { val: QuestionFormatPreference.TRACING, label: 'TRACING', desc: 'Code Output Only' },
-                    { val: QuestionFormatPreference.CODING, label: 'CODING', desc: 'Write Code Only' },
+                    { val: QuestionFormatPreference.ORIGINAL, label: 'ORIGINAL', desc: 'Source Type' },
+                    { val: QuestionFormatPreference.MCQ, label: 'MCQ ONLY', desc: 'Force MCQ' },
+                    { val: QuestionFormatPreference.TRACING, label: 'TRACING', desc: 'Code Output' },
+                    { val: QuestionFormatPreference.CODING, label: 'CODING', desc: 'Code Write' },
                 ].map((opt) => (
                     <button
                         key={opt.val}
@@ -162,8 +163,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                             }
                         `}
                     >
-                        <div className="text-xs font-bold">{opt.label}</div>
-                        <div className="text-[9px] opacity-70">{opt.desc}</div>
+                        <div className="text-[10px] md:text-xs font-bold">{opt.label}</div>
+                        <div className="text-[8px] md:text-[9px] opacity-70">{opt.desc}</div>
                         {formatPref === opt.val && (
                             <div className="absolute bottom-0 right-0 w-2 h-2 bg-terminal-green"></div>
                         )}

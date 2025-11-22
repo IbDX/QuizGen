@@ -9,7 +9,8 @@ export enum QuestionFormatPreference {
   MIXED = 'MIXED', // AI decides best format
   MCQ = 'MCQ',     // Force everything to MCQ
   TRACING = 'TRACING', // Force everything to Tracing
-  CODING = 'CODING' // Force everything to Coding
+  CODING = 'CODING', // Force everything to Coding
+  ORIGINAL = 'ORIGINAL' // Strictly follow source document format
 }
 
 export enum ExamMode {
