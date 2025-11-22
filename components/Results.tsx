@@ -313,17 +313,24 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                 )}
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                    <div className="bg-gray-100 dark:bg-black p-4 rounded border border-gray-200 dark:border-gray-800">
+                    <div className="bg-gray-100 dark:bg-black p-4 rounded border border-gray-200 dark:border-gray-800 overflow-hidden">
                         <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider">Your Input</span>
-                        <div className="font-mono break-all whitespace-pre-wrap text-gray-700 dark:text-gray-300">
-                            {item.question.type === QuestionType.MCQ 
-                                ? (item.question.options && item.answer !== null ? 
-                                    <MarkdownRenderer content={item.question.options[item.answer as number]} /> : 'None')
-                                : String(item.answer || 'No Answer')
-                            }
-                        </div>
+                        {item.question.type === QuestionType.CODING ? (
+                             <div className="mt-2">
+                                 {/* Strip markdown block symbols if user typed them, to avoid double-rendering or raw backticks in prism */}
+                                 <CodeWindow code={String(item.answer || '').replace(/^```[a-z]*\n?|```$/g, '')} title="User Submission" />
+                             </div>
+                        ) : (
+                            <div className="font-mono break-words whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+                                {item.question.type === QuestionType.MCQ 
+                                    ? (item.question.options && item.answer !== null ? 
+                                        <MarkdownRenderer content={item.question.options[item.answer as number]} /> : 'None')
+                                    : String(item.answer || 'No Answer')
+                                }
+                            </div>
+                        )}
                     </div>
-                    <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded border border-blue-100 dark:border-gray-800">
+                    <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded border border-blue-100 dark:border-gray-800 overflow-hidden">
                         <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider text-blue-800 dark:text-blue-400">Analysis / Solution</span>
                         <MarkdownRenderer content={item.feedback} />
                     </div>
