@@ -291,7 +291,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         )}
 
         {/* Inputs based on type */}
-        <div className="mt-8 mb-8">
+        {/* Key prop ensures components are re-mounted when question changes, preventing stale state/values */}
+        <div className="mt-8 mb-8" key={currentQ.id}>
           {inputError && (
               <div className="mb-4 p-2 border border-red-500 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2 animate-bounce">
                   <span>⚠️ SECURITY ALERT:</span>

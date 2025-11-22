@@ -163,8 +163,13 @@ export const generateExam = async (
         formatInstruction = `
         **STRICT FIDELITY MODE (ORIGINAL)**
         
-        You are strictly a Parser. Do NOT create new questions. Do NOT transform question formats.
-        Extract questions EXACTLY as they appear in the document.
+        **PHASE 1: GLOBAL CONTEXT SCAN**
+        Before extracting a single question, read the ENTIRE document(s) to understand the layout.
+        - Distinguish between "Instructions" (e.g. "Answer all questions") and actual Questions.
+        - Identify patterns: Are code blocks part of the question? Are options listed below or to the side?
+        
+        **PHASE 2: EXACT EXTRACTION**
+        Extract questions EXACTLY as they appear in the document. Do NOT transform question formats.
         
         **RULES:**
         1. If the original question has options (A, B, C, D or checkboxes):
