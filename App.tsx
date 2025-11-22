@@ -11,6 +11,7 @@ import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('UPLOAD');
+  const [lastAppState, setLastAppState] = useState<AppState>('UPLOAD');
   const [fileData, setFileData] = useState<{base64: string; mime: string; name: string} | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [settings, setSettings] = useState<ExamSettings | null>(null);
@@ -80,14 +81,20 @@ const App: React.FC = () => {
     }
   };
   
-  const handleOpenLibrary = () => {
-      setAppState('LIBRARY');
+  const handleToggleLibrary = () => {
+      if (appState === 'LIBRARY') {
+          setAppState(lastAppState);
+      } else {
+          setLastAppState(appState);
+          setAppState('LIBRARY');
+      }
   };
 
   return (
     <Layout 
       onHome={handleRestart} 
-      onOpenLibrary={handleOpenLibrary}
+      onToggleLibrary={handleToggleLibrary}
+      isLibraryOpen={appState === 'LIBRARY'}
       isFullWidth={isFullWidth} 
       onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
     >

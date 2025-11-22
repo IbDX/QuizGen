@@ -35,6 +35,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const [currentFeedback, setCurrentFeedback] = useState<string>("");
 
   const currentQ = questions[currentIndex];
+  const isOneWay = settings.mode === ExamMode.ONE_WAY;
 
   // Check if saved on mount or index change
   useEffect(() => {
@@ -226,14 +227,16 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                     <button
                         key={idx}
                         onClick={() => jumpToQuestion(idx)}
+                        disabled={isOneWay}
                         className={`
                             w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border transition-all
                             ${isCurrent 
                                 ? 'bg-blue-600 text-white border-blue-600 scale-110 shadow-lg' 
                                 : isAnswered 
-                                    ? 'bg-gray-200 dark:bg-terminal-dimGreen text-gray-700 dark:text-black border-gray-300 dark:border-terminal-green' 
-                                    : 'bg-transparent text-gray-400 border-gray-300 dark:border-gray-700 hover:border-blue-400'
+                                    ? `bg-gray-200 dark:bg-terminal-dimGreen text-gray-700 dark:text-black border-gray-300 dark:border-terminal-green ${isOneWay ? 'opacity-50 cursor-not-allowed' : ''}` 
+                                    : `bg-transparent text-gray-400 border-gray-300 dark:border-gray-700 ${!isOneWay && 'hover:border-blue-400'}`
                             }
+                            ${isOneWay ? 'cursor-not-allowed' : ''}
                         `}
                     >
                         {idx + 1}
@@ -395,8 +398,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       <div className="mt-6 flex justify-between gap-4">
         <button 
           onClick={prevQuestion} 
-          disabled={currentIndex === 0}
-          className="px-6 py-3 border border-gray-300 dark:border-gray-600 disabled:opacity-30 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold text-sm"
+          disabled={currentIndex === 0 || isOneWay}
+          className={`px-6 py-3 border border-gray-300 dark:border-gray-600 font-bold text-sm transition-all ${currentIndex === 0 || isOneWay ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}`}
         >
           &lt; PREV
         </button>

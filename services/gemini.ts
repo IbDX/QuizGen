@@ -47,49 +47,36 @@ export const generateExam = async (base64Data: string, mimeType: string, instruc
     const cleanBase64 = base64Data.replace(/\s/g, '');
 
     const prompt = `
-      Analyze the attached document content thoroughly. 
-      NOTE: The document may be an image or PDF containing slides, screenshots, or scanned text. 
+      Analyze the provided document (image/PDF) and extract the exam questions contained within it.
       
-      **CRITICAL INSTRUCTION FOR PARSING OPTIONS:**
-      - **Identification**: Look for questions followed by a list of choices (A, B, C, D or 1, 2, 3, 4 or bullets).
-      - **Symbolic Answers**: Be extremely careful with C/C++ pointer questions. An option might be literally "*", "**", or "***". 
-        - Do NOT treat these as bullet points. 
-        - If you see "A) *", the option is "*". 
-        - If you see "B) **", the option is "**".
-      - **Extraction**: You MUST extract ALL available options into the 'options' array exactly as they appear in the source. Capture every choice provided.
-      - **Handwritten Marks**: Ignore handwritten circles, ticks, or strikethroughs when extracting text. Do not let a circle around "A" prevent you from reading "A".
+      **1. STRICT EXTRACTION MODE - NO FORCED TYPES**: 
+      - **DO NOT** try to create a "balanced" exam with specific counts of MCQ, Tracing, or Coding questions. 
+      - **Reflect the Source**: If the document contains 5 MCQs, return exactly those 5 MCQs. If it contains 1 Coding problem, return 1 Coding problem.
+      - Do NOT generate new questions unless the document is purely informational text (like a summary slide). If it looks like an exam paper or quiz, digitize it exactly.
+
+      **2. HANDLING MULTIPLE CHOICE (MCQ) - CRITICAL**:
+      - **EXTRACT ALL OPTIONS**: You MUST extract every single option visible (A, B, C, D, etc.).
+      - **Check for Columns**: Options are often arranged in grids or columns (e.g., A and C on left, B and D on right). Scan the entire area to find all choices.
+      - **Symbolic Answers**: Be extremely precise with symbols (e.g., pointer syntax in C++). 
+        - If Option A is "*", extract "*". 
+        - If Option B is "**", extract "**".
+      - **DO NOT TRUNCATE**: If the original question has 4 options, your output 'options' array **MUST** have 4 items.
       
-      **ADAPTIVE EXAM GENERATION**:
-      - **Do NOT force a mix of question types (MCQ, TRACING, CODING).** 
-      - Generate questions strictly based on what is found in the document. 
-      - If the document contains only multiple choice questions, return only MCQs.
-      - If the document contains only code snippets asking for output, return only TRACING questions.
-      - If the document is a coding assignment, return CODING questions.
-      - If the document is mixed, return a mixed set.
-      - If the document is informational (slides/text), generate relevant MCQs to test understanding.
+      **3. QUESTION CLASSIFICATION**:
+      - Type = **MCQ**: If the question has options listed (A, B, C, D).
+      - Type = **TRACING**: If the question asks for output/result but has **NO** options listed.
+      - Type = **CODING**: If the question asks the user to write/implement code.
 
-      **STRICT CLASSIFICATION**:
-      - If a question has options, type MUST be 'MCQ'.
-      - If a question asks for output and has NO options, type is 'TRACING'.
-      - If a question asks to write/implement code, type is 'CODING'.
-      - Do NOT return 'TRACING' or 'CODING' just because the options are symbols.
-
-      **MCQ REQUIREMENTS**: 
-      - **Options**: Populate the 'options' array with the full text of every choice. 
-      - **Correct Answer**: You MUST determine the 'correctOptionIndex' (0-based index). Verify the logic yourself to ensure accuracy.
+      **4. ACCURACY**:
+      - **Ignore Handwritten Marks**: The document might have grading marks (circles, checks, crosses). Ignore them. Read the printed text only.
+      - **Solve It**: Determine the 'correctOptionIndex' (0-based) by solving the question yourself. 
 
       **FORMATTING RULES**:
-      - For 'codeSnippet' and 'explanation', ensure code is PROPERLY FORMATTED with newlines and indentation. Do not return single-line minified code.
-      - Use markdown (\`\`\`) in 'explanation' for code blocks.
-      - Assign a specific 'topic' tag to each question (e.g., 'Memory Management', 'Syntax', 'Logic').
+      - **Code Snippets**: Ensure code is PROPERLY FORMATTED with newlines and indentation in the JSON string.
+      - **Explanation**: Provide a clear, step-by-step explanation for the correct answer.
       
-      For Coding Challenges:
-      - The 'text' should describe the problem clearly.
-      - The 'explanation' should contain the correct code solution and why it works.
+      ${instructions ? `User Instructions: ${instructions}` : ''}
       
-      ${instructions ? `Additional Instructions: ${instructions}` : ''}
-      
-      Ensure the questions assess understanding, not just recall.
       Return the response strictly as a JSON array adhering to the schema.
     `;
 

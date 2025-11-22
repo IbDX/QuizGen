@@ -33,24 +33,30 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
     if (!files || files.length === 0) return;
     
     setStatus('SCANNING');
-    setScanMessage('Initializing VirusTotal Threat Scan...');
+    setScanMessage('Initializing Parallel Processing Protocols...');
     setError(null);
     setThreatDetails(null);
     const file = files[0];
 
     try {
-      // 1. Basic Validation & Mime Detection
-      const validation = await validateFile(file);
-      if (!validation.valid || !validation.mimeType) {
-        setError(validation.error || 'Unknown error');
-        setStatus('ERROR');
-        return;
+      // 1. Pre-Check Validation (Fast Sync Check)
+      const validationCheck = await validateFile(file);
+      if (!validationCheck.valid || !validationCheck.mimeType) {
+          setError(validationCheck.error || 'Unknown error');
+          setStatus('ERROR');
+          return;
       }
 
-      // 2. VirusTotal Scan
-      setScanMessage('Checking file hash against VirusTotal database...');
-      const scanResult = await scanFileWithVirusTotal(file);
+      // 2. PARALLEL EXECUTION: Run VirusTotal Scan and Base64 Conversion simultaneously
+      // This optimizes wait time significantly as they are independent operations.
+      setScanMessage('Running Security Scan & Data Conversion in Parallel...');
       
+      const [scanResult, base64] = await Promise.all([
+          scanFileWithVirusTotal(file),
+          fileToBase64(file)
+      ]);
+
+      // 3. Check Security Result
       if (!scanResult.safe) {
           setError(scanResult.message);
           if (scanResult.threatLabel) {
@@ -63,16 +69,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
       setScanMessage(scanResult.message); // "Safe" message
 
       // Short delay to show success message
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise(r => setTimeout(r, 500));
       
       setStatus('PROCESSING');
       
-      // 3. Convert and Submit
-      const base64 = await fileToBase64(file);
-      // Use detected mimeType, NOT file.type
-      onFileAccepted(base64, validation.mimeType, file.name);
-    } catch (e) {
-      setError("Failed to read or verify file.");
+      // 4. Submit
+      onFileAccepted(base64, validationCheck.mimeType, file.name);
+
+    } catch (e: any) {
+      console.error(e);
+      setError(`Processing Failed: ${e.message || 'Unknown Error'}`);
       setStatus('ERROR');
     }
   };

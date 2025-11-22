@@ -3,12 +3,13 @@ import React, { useState, useEffect } from 'react';
 interface LayoutProps {
   children: React.ReactNode;
   onHome: () => void;
-  onOpenLibrary: () => void;
+  onToggleLibrary: () => void;
+  isLibraryOpen: boolean;
   isFullWidth: boolean;
   onToggleFullWidth: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, onHome, onOpenLibrary, isFullWidth, onToggleFullWidth }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrary, isLibraryOpen, isFullWidth, onToggleFullWidth }) => {
   const [darkMode, setDarkMode] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [fontSize, setFontSize] = useState(16);
@@ -58,11 +59,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onOpenLibrary,
         <div className="flex gap-4 items-center">
            {/* Library Button */}
            <button
-            onClick={onOpenLibrary}
-            className="p-2 border border-gray-400 dark:border-terminal-green hover:bg-gray-300 dark:hover:bg-terminal-green dark:hover:text-black transition-colors text-gray-700 dark:text-terminal-green group"
-            title="Question Library"
+            onClick={onToggleLibrary}
+            className={`p-2 border transition-colors group ${isLibraryOpen ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-400 dark:border-terminal-green hover:bg-gray-300 dark:hover:bg-terminal-green dark:hover:text-black text-gray-700 dark:text-terminal-green'}`}
+            title={isLibraryOpen ? "Close Library" : "Open Question Library"}
            >
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${!isLibraryOpen && 'group-hover:scale-110 transition-transform'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
              </svg>
            </button>
