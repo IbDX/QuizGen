@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
@@ -184,7 +185,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
       {/* HUD */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 p-4 border border-gray-300 dark:border-palette-accent bg-white dark:bg-palette-header shadow-sm gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 p-4 border border-gray-300 dark:border-terminal-dimGreen bg-white dark:bg-gray-900 shadow-sm gap-4">
          {/* Question Navigation Bar */}
          <div className="flex flex-wrap gap-2 justify-center">
             {questions.map((_, idx) => {
@@ -199,8 +200,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                             ${isCurrent 
                                 ? 'bg-blue-600 text-white border-blue-600 scale-110 shadow-lg' 
                                 : isAnswered 
-                                    ? 'bg-gray-200 dark:bg-palette-deep text-gray-700 dark:text-palette-text border-gray-300 dark:border-palette-accent' 
-                                    : 'bg-transparent text-gray-400 dark:text-palette-accent border-gray-300 dark:border-palette-accent hover:border-blue-400'
+                                    ? 'bg-gray-200 dark:bg-terminal-dimGreen text-gray-700 dark:text-black border-gray-300 dark:border-terminal-green' 
+                                    : 'bg-transparent text-gray-400 border-gray-300 dark:border-gray-700 hover:border-blue-400'
                             }
                         `}
                     >
@@ -210,31 +211,31 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             })}
          </div>
 
-        <div className={`text-xl font-mono whitespace-nowrap text-gray-900 dark:text-palette-text ${settings.timeLimitMinutes > 0 && timeLeft < 60 ? 'text-red-500 animate-pulse' : ''}`}>
+        <div className={`text-xl font-mono whitespace-nowrap ${settings.timeLimitMinutes > 0 && timeLeft < 60 ? 'text-red-500 animate-pulse' : ''}`}>
            TIME: {settings.timeLimitMinutes > 0 ? formatTime(timeLeft) : "UNLIMITED"}
         </div>
       </div>
 
       {/* Question Card */}
-      <div className="flex-grow border border-gray-300 dark:border-palette-accent p-6 md:p-8 bg-white dark:bg-palette-header relative overflow-hidden shadow-xl">
+      <div className="flex-grow border border-gray-300 dark:border-terminal-green p-6 md:p-8 bg-white dark:bg-black relative overflow-hidden shadow-xl">
         <div className="absolute top-0 right-0 flex">
             <button 
                 onClick={handleToggleSave}
-                className={`p-2 mr-2 mt-2 transition-colors hover:scale-110 ${savedState ? 'text-red-500' : 'text-gray-300 dark:text-palette-accent hover:text-red-400'}`}
+                className={`p-2 mr-2 mt-2 transition-colors hover:scale-110 ${savedState ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
                 title={savedState ? "Remove from Library" : "Save to Library"}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                 </svg>
             </button>
-            <span className="text-[10px] font-bold uppercase tracking-widest bg-gray-200 dark:bg-palette-deep text-black dark:text-palette-text px-3 py-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest bg-gray-200 dark:bg-terminal-dimGreen text-black px-3 py-2">
                 {currentQ.type}
             </span>
         </div>
         
         <div className="mb-6">
-             <span className="text-sm text-gray-500 dark:text-palette-accent font-mono block mb-2">QUESTION {currentIndex + 1}</span>
-             <div className="text-xl md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-palette-text">
+             <span className="text-sm text-gray-500 dark:text-gray-400 font-mono block mb-2">QUESTION {currentIndex + 1}</span>
+             <div className="text-xl md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-gray-100">
                <MarkdownRenderer content={currentQ.text} className="inline-block" />
              </div>
         </div>
@@ -244,7 +245,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         )}
 
         {/* Inputs based on type */}
-        <div className="mt-8 mb-8 text-gray-900 dark:text-palette-text">
+        <div className="mt-8 mb-8">
           {inputError && (
               <div className="mb-4 p-2 border border-red-500 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2 animate-bounce">
                   <span>⚠️ SECURITY ALERT:</span>
@@ -259,8 +260,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                   key={idx}
                   className={`flex items-center p-4 border cursor-pointer transition-colors group relative
                     ${getAnswerValue() === idx 
-                        ? 'border-blue-500 bg-blue-50 dark:bg-palette-deep/50 dark:border-palette-text shadow-md' 
-                        : 'border-gray-300 dark:border-palette-accent hover:bg-gray-50 dark:hover:bg-palette-deep'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md' 
+                        : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900'
                     }
                   `}
                 >
@@ -268,11 +269,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                   <div className={`
                         w-5 h-5 rounded-full border-2 mr-4 flex items-center justify-center flex-shrink-0 transition-colors
                         ${getAnswerValue() === idx 
-                            ? 'border-blue-500 dark:border-palette-text' 
+                            ? 'border-blue-500' 
                             : 'border-gray-400 dark:border-gray-600 group-hover:border-blue-400'
                         }
                   `}>
-                        {getAnswerValue() === idx && <div className="w-2.5 h-2.5 rounded-full bg-blue-500 dark:bg-palette-text"></div>}
+                        {getAnswerValue() === idx && <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>}
                   </div>
 
                   <input 
@@ -300,15 +301,15 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                   onChange={(e) => handleAnswer(e.target.value)}
                   placeholder="Type output..."
                   maxLength={200}
-                  className="w-full bg-gray-50 dark:bg-palette-deep border border-gray-300 dark:border-palette-accent p-4 font-mono focus:border-blue-500 dark:focus:border-palette-text outline-none text-lg"
+                  className="w-full bg-gray-50 dark:bg-[#0c0c0c] border border-gray-300 dark:border-gray-600 p-4 font-mono focus:border-blue-500 outline-none text-lg"
                   disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
                 />
              </div>
           )}
 
           {currentQ.type === QuestionType.CODING && (
-            <div className="space-y-2 border border-gray-300 dark:border-palette-accent">
-               <div className="bg-gray-200 dark:bg-palette-deep px-2 py-1 text-xs font-bold flex justify-between">
+            <div className="space-y-2 border border-gray-300 dark:border-gray-700">
+               <div className="bg-gray-200 dark:bg-gray-800 px-2 py-1 text-xs font-bold flex justify-between">
                    <span>EDITOR</span>
                    <span className="text-[10px] opacity-70">MAX 5000 CHARS</span>
                </div>
@@ -347,7 +348,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         <button 
           onClick={prevQuestion} 
           disabled={currentIndex === 0}
-          className="px-6 py-3 border border-gray-300 dark:border-palette-accent disabled:opacity-30 hover:bg-gray-200 dark:hover:bg-palette-header dark:text-palette-text font-bold text-sm"
+          className="px-6 py-3 border border-gray-300 dark:border-gray-600 disabled:opacity-30 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold text-sm"
         >
           &lt; PREV
         </button>
@@ -374,7 +375,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             ) : (
             <button 
                 onClick={nextQuestion}
-                className="px-6 py-3 border border-gray-300 dark:border-palette-accent hover:bg-gray-200 dark:hover:bg-palette-header dark:text-palette-text font-bold text-sm"
+                className="px-6 py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold text-sm"
             >
                 NEXT &gt;
             </button>
