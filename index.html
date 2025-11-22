@@ -14,6 +14,12 @@
               mono: ['"Fira Code"', '"Courier New"', 'Courier', 'monospace'],
             },
             colors: {
+              palette: {
+                deep: '#1B3C53',    // Main Background
+                header: '#234C6A',  // Card/Surface Background
+                accent: '#456882',  // Borders/Secondary
+                text: '#D2C1B6'     // Primary Text
+              },
               terminal: {
                 black: '#0c0c0c',
                 green: '#00ff41',
@@ -39,14 +45,14 @@
         width: 10px;
       }
       ::-webkit-scrollbar-track {
-        background: #0c0c0c;
+        background: #1B3C53;
       }
       ::-webkit-scrollbar-thumb {
-        background: #333;
-        border: 1px solid #00ff41;
+        background: #456882;
+        border: 1px solid #234C6A;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #00ff41;
+        background: #D2C1B6;
       }
     </style>
   <script type="importmap">
@@ -65,7 +71,7 @@
 }
 </script>
 </head>
-  <body class="bg-gray-100 dark:bg-terminal-black text-gray-900 dark:text-terminal-green transition-colors duration-200 min-h-screen">
+  <body class="bg-gray-100 dark:bg-palette-deep text-gray-900 dark:text-palette-text transition-colors duration-200 min-h-screen">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>

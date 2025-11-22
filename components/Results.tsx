@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -134,24 +133,24 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
   return (
     <div className={`pb-28 transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl mx-auto'}`}>
-      <div className="text-center mb-12 border-b border-gray-300 dark:border-gray-800 pb-8">
-        <h2 className="text-4xl font-bold mb-6">ASSESSMENT COMPLETE</h2>
+      <div className="text-center mb-12 border-b border-gray-300 dark:border-palette-accent pb-8">
+        <h2 className="text-4xl font-bold mb-6 dark:text-palette-text">ASSESSMENT COMPLETE</h2>
         <div className="flex items-center justify-center gap-6 mb-6">
             <div className="text-center">
                 <div className="text-6xl font-mono mb-1">
                     <span className={score >= 70 ? "text-green-500" : "text-red-500"}>{score}%</span>
                 </div>
-                <div className="text-sm text-gray-500">FINAL SCORE</div>
+                <div className="text-sm text-gray-500 dark:text-palette-accent">FINAL SCORE</div>
             </div>
-            <div className="h-16 w-px bg-gray-300 dark:bg-gray-700"></div>
+            <div className="h-16 w-px bg-gray-300 dark:bg-palette-accent"></div>
             <div className="text-center">
                 <div className={`text-6xl font-mono font-bold mb-1 ${['A+','A','A-','B+','B'].includes(grade) ? 'text-blue-500' : ['C+','C','C-'].includes(grade) ? 'text-yellow-500' : 'text-red-600'}`}>
                     {grade}
                 </div>
-                <div className="text-sm text-gray-500">GRADE</div>
+                <div className="text-sm text-gray-500 dark:text-palette-accent">GRADE</div>
             </div>
         </div>
-        <p className="text-gray-500 dark:text-gray-400 mb-4">
+        <p className="text-gray-500 dark:text-palette-text mb-4">
             {correctCount} / {questions.length} CORRECT
         </p>
         
@@ -167,7 +166,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         {showWeakPoints && wrongIds.length > 0 && (
             <div className="mt-6 max-w-md mx-auto bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 p-4 rounded">
                 <h4 className="font-bold text-red-600 dark:text-red-400 mb-2 text-sm uppercase">Areas for Improvement</h4>
-                <ul className="text-sm space-y-1">
+                <ul className="text-sm space-y-1 dark:text-palette-text">
                     {Object.entries(wrongTopics).map(([topic, count]) => (
                         <li key={topic} className="flex justify-between">
                             <span>{topic}</span>
@@ -181,10 +180,10 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
       <div className="space-y-8 mb-12">
         {processedAnswers.map((item, idx) => (
-          <div key={item.question.id} className={`p-6 border-l-4 ${item.isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'} bg-white dark:bg-gray-900 shadow-md rounded-r-lg relative`}>
+          <div key={item.question.id} className={`p-6 border-l-4 ${item.isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'} bg-white dark:bg-palette-header shadow-md rounded-r-lg relative`}>
              <button 
                 onClick={() => toggleSave(item.question)}
-                className={`absolute top-4 right-4 p-1 transition-colors hover:scale-110 ${savedQuestions[item.question.id] ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
+                className={`absolute top-4 right-4 p-1 transition-colors hover:scale-110 ${savedQuestions[item.question.id] ? 'text-red-500' : 'text-gray-300 dark:text-palette-accent hover:text-red-400'}`}
                 title={savedQuestions[item.question.id] ? "Remove from Library" : "Save to Library"}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -192,17 +191,17 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                 </svg>
             </button>
 
-            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-gray-800 pr-8">
+            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-palette-accent pr-8">
               <div className="flex flex-col">
-                 <h3 className="font-bold text-lg">Question {idx + 1}</h3>
-                 <span className="text-xs opacity-50 uppercase text-gray-500">{item.question.type} • {item.question.topic}</span>
+                 <h3 className="font-bold text-lg dark:text-palette-text">Question {idx + 1}</h3>
+                 <span className="text-xs opacity-50 uppercase text-gray-500 dark:text-palette-text">{item.question.type} • {item.question.topic}</span>
               </div>
               <span className={`text-xs font-bold px-3 py-1 rounded-full ${item.isCorrect ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
                 {item.isCorrect ? 'PASSED' : 'FAILED'}
               </span>
             </div>
             
-            <div className="mb-6 text-lg font-medium text-gray-800 dark:text-gray-200">
+            <div className="mb-6 text-lg font-medium text-gray-800 dark:text-palette-text">
                 <MarkdownRenderer content={item.question.text} />
             </div>
 
@@ -214,9 +213,9 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
             )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                <div className="bg-gray-100 dark:bg-black p-4 rounded border border-gray-200 dark:border-gray-800">
-                    <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider">Your Input</span>
-                    <div className="font-mono break-all whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+                <div className="bg-gray-100 dark:bg-palette-deep p-4 rounded border border-gray-200 dark:border-palette-accent">
+                    <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider dark:text-palette-text">Your Input</span>
+                    <div className="font-mono break-all whitespace-pre-wrap text-gray-700 dark:text-palette-text">
                         {item.question.type === QuestionType.MCQ 
                             ? (item.question.options && item.answer !== null ? 
                                 <MarkdownRenderer content={item.question.options[item.answer as number]} /> : 'None')
@@ -224,8 +223,8 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                         }
                     </div>
                 </div>
-                <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded border border-blue-100 dark:border-gray-800">
-                    <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider text-blue-800 dark:text-blue-400">Analysis / Solution</span>
+                <div className="bg-blue-50 dark:bg-palette-deep p-4 rounded border border-blue-100 dark:border-palette-accent">
+                    <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider text-blue-800 dark:text-palette-text">Analysis / Solution</span>
                     <MarkdownRenderer content={item.feedback} />
                 </div>
             </div>
@@ -233,7 +232,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         ))}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-black border-t border-gray-300 dark:border-terminal-green flex flex-col xl:flex-row gap-4 justify-center items-center shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-50">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-palette-header border-t border-gray-300 dark:border-palette-accent flex flex-col xl:flex-row gap-4 justify-center items-center shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-50">
         
         {!isPublished ? (
              <div className="flex flex-col w-full xl:w-auto">
@@ -244,7 +243,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                         value={userName}
                         onChange={handleNameChange}
                         maxLength={20}
-                        className={`bg-gray-100 dark:bg-gray-900 border ${nameError ? 'border-red-500' : 'border-gray-400'} p-2 font-mono outline-none focus:border-blue-500 flex-grow xl:w-48`}
+                        className={`bg-gray-100 dark:bg-palette-deep border ${nameError ? 'border-red-500' : 'border-gray-400 dark:border-palette-accent'} p-2 font-mono outline-none focus:border-blue-500 dark:text-palette-text flex-grow xl:w-48`}
                     />
                     <button 
                         onClick={handlePublish}
@@ -279,7 +278,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
             <button 
                 onClick={onRestart}
-                className="px-4 py-2 border border-gray-400 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold transition-colors"
+                className="px-4 py-2 border border-gray-400 dark:border-palette-accent hover:bg-gray-200 dark:hover:bg-palette-deep dark:text-palette-text font-bold transition-colors"
             >
                 RESTART SYSTEM
             </button>

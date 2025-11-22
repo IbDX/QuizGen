@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -132,12 +131,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
     <div className={`w-full mx-auto mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none' : 'max-w-2xl'}`}>
       <div 
         className={`
-          border-2 border-dashed transition-all p-10 text-center cursor-pointer relative overflow-hidden
+          border-2 border-dashed transition-all p-10 text-center cursor-pointer relative overflow-hidden rounded-lg
           ${isDragging 
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
             : status === 'ERROR'
                 ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
-                : 'border-gray-400 dark:border-terminal-green hover:border-blue-400 dark:hover:border-white'
+                : 'border-gray-400 dark:border-palette-accent dark:bg-palette-header/30 hover:border-blue-400 dark:hover:border-palette-text'
           }
         `}
         onDragOver={onDragOver}
@@ -167,21 +166,21 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
              )}
           </div>
 
-          <h3 className="text-xl font-bold uppercase">
+          <h3 className="text-xl font-bold uppercase dark:text-palette-text">
             {status === 'SCANNING' ? 'SECURITY SCAN IN PROGRESS' 
              : status === 'PROCESSING' ? 'PROCESSING PAYLOAD'
              : status === 'ERROR' ? 'UPLOAD REJECTED'
              : 'SECURE FILE UPLOAD'}
           </h3>
           
-          <p className="text-sm opacity-70 font-mono">
+          <p className="text-sm opacity-70 font-mono dark:text-palette-text">
             {status === 'SCANNING' ? scanMessage 
              : status === 'PROCESSING' ? 'Converting data streams...'
              : 'Drag & Drop PDF/IMG (VirusTotal Integrated)'}
           </p>
           
           {status === 'IDLE' && (
-            <div className="text-xs text-gray-400 mt-4">
+            <div className="text-xs text-gray-400 dark:text-palette-accent mt-4">
                 [ MAX: 15MB ] • [ PROTECTED BY VIRUSTOTAL ]
             </div>
           )}
@@ -194,16 +193,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
       </div>
 
       <div className="flex items-center my-6">
-          <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
-          <span className="px-4 text-xs text-gray-500 font-mono uppercase">OR VIA NETWORK</span>
-          <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
+          <div className="h-px bg-gray-300 dark:bg-palette-accent flex-grow"></div>
+          <span className="px-4 text-xs text-gray-500 dark:text-palette-accent font-mono uppercase">OR VIA NETWORK</span>
+          <div className="h-px bg-gray-300 dark:bg-palette-accent flex-grow"></div>
       </div>
 
       <form onSubmit={handleUrlSubmit} className="flex gap-2">
           <input 
             type="url" 
             placeholder="https://example.com/document.pdf" 
-            className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-3 font-mono text-sm outline-none focus:border-terminal-green"
+            className="flex-grow bg-gray-100 dark:bg-palette-header border border-gray-400 dark:border-palette-accent p-3 font-mono text-sm outline-none focus:border-blue-500 dark:focus:border-palette-text dark:text-palette-text placeholder-gray-500 dark:placeholder-palette-accent"
             value={urlInput}
             onChange={handleUrlChange}
             disabled={status !== 'IDLE'}
@@ -211,7 +210,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
           <button 
              type="submit"
              disabled={!urlInput || status !== 'IDLE'}
-             className="px-4 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50"
+             className="px-4 bg-gray-200 dark:bg-palette-accent hover:bg-gray-300 dark:hover:bg-palette-header border border-gray-400 dark:border-palette-accent font-bold text-sm disabled:opacity-50 dark:text-palette-deep"
           >
             FETCH
           </button>
