@@ -39,9 +39,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
     const file = files[0];
 
     try {
-      // 1. Basic Validation
+      // 1. Basic Validation & Mime Detection
       const validation = await validateFile(file);
-      if (!validation.valid) {
+      if (!validation.valid || !validation.mimeType) {
         setError(validation.error || 'Unknown error');
         setStatus('ERROR');
         return;
@@ -69,7 +69,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
       
       // 3. Convert and Submit
       const base64 = await fileToBase64(file);
-      onFileAccepted(base64, file.type, file.name);
+      // Use detected mimeType, NOT file.type
+      onFileAccepted(base64, validation.mimeType, file.name);
     } catch (e) {
       setError("Failed to read or verify file.");
       setStatus('ERROR');

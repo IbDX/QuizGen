@@ -1,33 +1,34 @@
+
 /**
  * Validates file size and magic bytes to ensure it is PDF, JPG, or PNG.
  */
-export const validateFile = async (file: File): Promise<{ valid: boolean; error?: string }> => {
+export const validateFile = async (file: File): Promise<{ valid: boolean; error?: string; mimeType?: string }> => {
   const MAX_SIZE_MB = 15;
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
     return { valid: false, error: `File size exceeds ${MAX_SIZE_MB}MB limit.` };
   }
 
-  const magicByteValid = await checkMagicBytes(file);
-  if (!magicByteValid) {
+  const detectedMime = await checkMagicBytes(file);
+  if (!detectedMime) {
     return { valid: false, error: 'Invalid file format. Only PDF, JPG, and PNG are allowed based on file signature.' };
   }
 
-  return { valid: true };
+  return { valid: true, mimeType: detectedMime };
 };
 
-const checkMagicBytes = async (file: File): Promise<boolean> => {
+const checkMagicBytes = async (file: File): Promise<string | null> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onloadend = (e) => {
       if (!e.target || !e.target.result) {
-        resolve(false);
+        resolve(null);
         return;
       }
       
       const arr = (new Uint8Array(e.target.result as ArrayBuffer)).subarray(0, 4);
       let header = "";
       for (let i = 0; i < arr.length; i++) {
-        header += arr[i].toString(16);
+        header += arr[i].toString(16).padStart(2, '0');
       }
       
       // Magic Numbers
@@ -35,14 +36,14 @@ const checkMagicBytes = async (file: File): Promise<boolean> => {
       // JPG: FF D8 FF
       // PNG: 89 50 4E 47
       
-      if (header.startsWith('25504446')) { // PDF
-        resolve(true);
-      } else if (header.startsWith('ffd8ff')) { // JPG
-        resolve(true);
-      } else if (header.startsWith('89504e47')) { // PNG
-        resolve(true);
+      if (header.startsWith('25504446')) { 
+        resolve('application/pdf');
+      } else if (header.startsWith('ffd8ff')) { 
+        resolve('image/jpeg');
+      } else if (header.startsWith('89504e47')) { 
+        resolve('image/png');
       } else {
-        resolve(false);
+        resolve(null);
       }
     };
     reader.readAsArrayBuffer(file.slice(0, 4));

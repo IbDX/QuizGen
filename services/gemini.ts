@@ -42,6 +42,9 @@ export const generateExam = async (base64Data: string, mimeType: string, instruc
     
     // We select a model capable of multimodal understanding (images/pdf)
     const modelId = 'gemini-2.5-flash'; 
+    
+    // Ensure base64 data is clean (no newlines, no headers)
+    const cleanBase64 = base64Data.replace(/\s/g, '');
 
     const prompt = `
       Analyze the attached document content thoroughly.
@@ -71,7 +74,7 @@ export const generateExam = async (base64Data: string, mimeType: string, instruc
       model: modelId,
       contents: {
         parts: [
-          { inlineData: { mimeType, data: base64Data } },
+          { inlineData: { mimeType, data: cleanBase64 } },
           { text: prompt }
         ]
       },
