@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
@@ -182,8 +181,25 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
   const getAnswerValue = () => answers.get(currentQ.id)?.answer ?? "";
 
+  const progressPercentage = Math.round((answers.size / questions.length) * 100);
+
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
+      
+      {/* Progress Bar */}
+      <div className="mb-4">
+        <div className="flex justify-between text-[10px] font-bold font-mono mb-1 text-gray-500 dark:text-gray-400 tracking-widest">
+          <span>EXECUTION_PROGRESS</span>
+          <span>{progressPercentage}% [{answers.size}/{questions.length}]</span>
+        </div>
+        <div className="w-full bg-gray-200 dark:bg-[#1a1a1a] h-1.5 border border-gray-300 dark:border-gray-700 overflow-hidden">
+          <div 
+            className="bg-blue-600 dark:bg-terminal-green h-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(59,130,246,0.5)] dark:shadow-[0_0_8px_rgba(0,255,65,0.5)]"
+            style={{ width: `${progressPercentage}%` }}
+          ></div>
+        </div>
+      </div>
+
       {/* HUD */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 p-4 border border-gray-300 dark:border-terminal-dimGreen bg-white dark:bg-gray-900 shadow-sm gap-4">
          {/* Question Navigation Bar */}
