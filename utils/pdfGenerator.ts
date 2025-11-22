@@ -1,4 +1,3 @@
-
 import { jsPDF } from "jspdf";
 import { Question, QuestionType } from "../types";
 
@@ -49,35 +48,14 @@ export const generateExamPDF = (questions: Question[], score: number, grade: str
     doc.setFont("courier", "normal");
     doc.setFontSize(10);
     
-    // --- DEDUPLICATION LOGIC START ---
-    // We want to render code in the specialized gray box, so we must remove it from the text
-    // to prevent it from appearing twice (once as raw text, once as box).
-    
-    let displayText = q.text;
-
-    // 1. Remove markdown code blocks (```...```) from text
-    //    PDF cannot render inline markdown blocks nicely, so we rely on the codeSnippet box.
-    displayText = displayText.replace(/```[\s\S]*?```/g, '');
-
-    // 2. Remove raw code string if present in text (plain text duplication)
-    if (q.codeSnippet && displayText.includes(q.codeSnippet)) {
-        displayText = displayText.replace(q.codeSnippet, '');
-    }
-
-    // 3. Strip remaining markdown flair (*, `) for plain text PDF rendering
-    const plainText = displayText
-        .replace(/\*\*/g, '') 
-        .replace(/`/g, '')
-        .replace(/\n\s*\n/g, '\n') // Collapse excessive newlines
-        .trim();
-    // --- DEDUPLICATION LOGIC END ---
-
+    // Strip markdown for PDF readability
+    const plainText = q.text.replace(/\*\*/g, '').replace(/`/g, '');
     const lines = doc.splitTextToSize(plainText, maxLineWidth);
     checkPageBreak(lines.length * 5);
     doc.text(lines, margin, y);
     y += (lines.length * 5) + 5;
 
-    // Code Snippet Box
+    // Code Snippet
     if (q.codeSnippet) {
         const codeLines = doc.splitTextToSize(q.codeSnippet, maxLineWidth - 10);
         const boxHeight = (codeLines.length * 4) + 6;
