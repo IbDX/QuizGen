@@ -74,7 +74,9 @@ const App: React.FC = () => {
     try {
       // Map uploadedFiles to the format expected by generateExam
       const filePayloads = uploadedFiles.map(f => ({ base64: f.base64, mimeType: f.mime }));
-      const generatedQuestions = await generateExam(filePayloads);
+      
+      // Pass the format preference to the generator
+      const generatedQuestions = await generateExam(filePayloads, examSettings.formatPreference);
       
       if (generatedQuestions.length === 0) throw new Error("No questions generated");
       setQuestions(generatedQuestions);

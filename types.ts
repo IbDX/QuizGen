@@ -1,7 +1,15 @@
+
 export enum QuestionType {
   MCQ = 'MCQ',
   TRACING = 'TRACING',
   CODING = 'CODING'
+}
+
+export enum QuestionFormatPreference {
+  MIXED = 'MIXED', // AI decides best format
+  MCQ = 'MCQ',     // Force everything to MCQ
+  TRACING = 'TRACING', // Force everything to Tracing
+  CODING = 'CODING' // Force everything to Coding
 }
 
 export enum ExamMode {
@@ -31,6 +39,7 @@ export interface UserAnswer {
 export interface ExamSettings {
   timeLimitMinutes: number;
   mode: ExamMode;
+  formatPreference: QuestionFormatPreference;
 }
 
 export interface LeaderboardEntry {

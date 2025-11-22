@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Question, QuestionType } from "../types";
+import { Question, QuestionType, QuestionFormatPreference } from "../types";
 
 // Schema definition for the exam generation
 // Using implicit type inference for schema structure
@@ -74,31 +74,63 @@ const deduplicateQuestions = (questions: Question[]): Question[] => {
   return uniqueQuestions;
 };
 
-export const generateExam = async (files: { base64: string, mimeType: string }[], instructions?: string): Promise<Question[]> => {
+export const generateExam = async (
+    files: { base64: string, mimeType: string }[], 
+    preference: QuestionFormatPreference = QuestionFormatPreference.MIXED,
+    instructions?: string
+): Promise<Question[]> => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     // We select a model capable of multimodal understanding (images/pdf)
     const modelId = 'gemini-2.5-flash'; 
 
-    const prompt = `
-      Analyze the provided document(s) (images/PDFs) and extract the exam questions contained within them.
-      
-      **CRITICAL: HANDLING MIXED TYPES**
-      - The document likely contains a **MIX** of Question Types (MCQ, Tracing, and Coding) on the same page or across pages.
-      - **Evaluate EACH question individually**. Do not assume that because the first question is an MCQ, the rest are too.
-      - Switch types dynamically as you parse the document.
+    // Construct Format Logic based on Preference
+    let formatInstruction = "";
+    
+    if (preference === QuestionFormatPreference.MCQ) {
+        formatInstruction = `
+        **CRITICAL FORMAT OVERRIDE: ALL QUESTIONS MUST BE MULTIPLE CHOICE (MCQ)**
+        - If you find a coding problem: Convert it into a conceptual MCQ or provide 4 potential code solutions as options.
+        - If you find a tracing problem: Provide 4 possible output strings as options.
+        - DO NOT output TRACING or CODING types. ONLY output MCQ.
+        `;
+    } else if (preference === QuestionFormatPreference.CODING) {
+        formatInstruction = `
+        **CRITICAL FORMAT OVERRIDE: ALL QUESTIONS MUST BE CODING CHALLENGES**
+        - If you find an MCQ or Tracing problem: Rephrase it into a task where the user must write code to solve it.
+        - Example: Instead of "What does this loop do?", ask "Write a loop that iterates X times...".
+        - DO NOT output MCQ or TRACING types. ONLY output CODING.
+        `;
+    } else if (preference === QuestionFormatPreference.TRACING) {
+        formatInstruction = `
+        **CRITICAL FORMAT OVERRIDE: ALL QUESTIONS MUST BE CODE TRACING**
+        - Provide a code snippet for EVERY question.
+        - Ask "What is the output of this code?".
+        - DO NOT output MCQ options.
+        `;
+    } else {
+        // Mixed / Default
+        formatInstruction = `
+        **CRITICAL: HANDLING MIXED TYPES**
+        - The document likely contains a **MIX** of Question Types (MCQ, Tracing, and Coding).
+        - **Evaluate EACH question individually**. Switch types dynamically as you parse the document to match the original intent.
+        `;
+    }
 
-      **1. CLASSIFICATION RULES (STRICT)**:
+    const prompt = `
+      Analyze the provided document(s) (images/PDFs) and extract the exam questions.
+      
+      ${formatInstruction}
+
+      **1. CLASSIFICATION RULES (Unless Overridden Above)**:
       - **MCQ**: Has explicit options (A, B, C, D) visible in the source.
-      - **TRACING**: Asks "What is the output?", "What does this print?", or shows code and asks for the result. **NO** explicit A/B/C/D options provided in the image.
+      - **TRACING**: Asks "What is the output?", "What does this print?", or shows code and asks for the result.
       - **CODING**: Asks to "Write a program", "Implement a function", "Complete the code", or "Fix the bug".
 
       **2. MULTIPLE CHOICE (MCQ) - PRECISION REQUIRED**:
-      - **EXTRACT ALL OPTIONS**: You MUST extract every single option visible (A, B, C, D). Check for multi-column layouts (e.g., A/C on left, B/D on right).
-      - **SYMBOL PRESERVATION**: Pay extreme attention to special characters in C++ or code options.
-        - **DO NOT** treat "*" as a Markdown bullet point.
-        - If Option A is "*", return "*".
+      - **EXTRACT ALL OPTIONS**: You MUST extract every single option visible (A, B, C, D). Check for multi-column layouts.
+      - **SYMBOL PRESERVATION**: Pay extreme attention to special characters (pointers, math).
       - **EMPTY OPTIONS**: If an option looks empty, check if it's a whitespace character, a symbol, or "Nothing to Print".
 
       **3. CONTENT EXTRACTION**:
@@ -129,9 +161,8 @@ export const generateExam = async (files: { base64: string, mimeType: string }[]
       config: {
         responseMimeType: "application/json",
         responseSchema: examSchema,
-        // OPTIMIZATION: Disable thinking for lower latency to speed up parsing
         thinkingConfig: { thinkingBudget: 0 }, 
-        temperature: 0.2 // Lower temperature for more deterministic extraction
+        temperature: 0.2 
       }
     });
 

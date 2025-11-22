@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { ExamMode, ExamSettings } from '../types';
+import { ExamMode, ExamSettings, QuestionFormatPreference } from '../types';
 import { validateFile, fileToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
 
@@ -16,6 +16,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   const [timeLimit, setTimeLimit] = useState<number>(30);
   const [isTimed, setIsTimed] = useState<boolean>(true);
   const [mode, setMode] = useState<ExamMode>(ExamMode.ONE_WAY);
+  const [formatPref, setFormatPref] = useState<QuestionFormatPreference>(QuestionFormatPreference.MIXED);
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -23,7 +24,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   const handleStart = () => {
       onStart({
           timeLimitMinutes: isTimed ? timeLimit : 0,
-          mode
+          mode,
+          formatPreference: formatPref
       });
   };
 
@@ -138,6 +140,38 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       </div>
 
       <div className="mb-6 space-y-6">
+        
+        {/* Format Selection */}
+        <div>
+            <label className="block text-sm font-bold mb-2">OUTPUT_FORMAT_OVERRIDE</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {[
+                    { val: QuestionFormatPreference.MIXED, label: 'AUTO MIX', desc: 'Best Fit' },
+                    { val: QuestionFormatPreference.MCQ, label: 'MCQ ONLY', desc: 'All Multiple Choice' },
+                    { val: QuestionFormatPreference.TRACING, label: 'TRACING', desc: 'Code Output Only' },
+                    { val: QuestionFormatPreference.CODING, label: 'CODING', desc: 'Write Code Only' },
+                ].map((opt) => (
+                    <button
+                        key={opt.val}
+                        onClick={() => setFormatPref(opt.val)}
+                        className={`
+                            p-2 border text-left transition-all relative overflow-hidden
+                            ${formatPref === opt.val 
+                                ? 'border-terminal-green bg-terminal-green/10 text-terminal-green' 
+                                : 'border-gray-300 dark:border-gray-700 opacity-60 hover:opacity-100'
+                            }
+                        `}
+                    >
+                        <div className="text-xs font-bold">{opt.label}</div>
+                        <div className="text-[9px] opacity-70">{opt.desc}</div>
+                        {formatPref === opt.val && (
+                            <div className="absolute bottom-0 right-0 w-2 h-2 bg-terminal-green"></div>
+                        )}
+                    </button>
+                ))}
+            </div>
+        </div>
+
         {/* Mode Selection */}
         <div>
           <label className="block text-sm font-bold mb-2">MODE_SELECT</label>
