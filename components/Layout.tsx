@@ -1,5 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { BackgroundEffect } from './BackgroundEffect';
+
+export interface MobileAction {
+    label: string;
+    onClick: () => void;
+    variant?: 'default' | 'primary' | 'success' | 'warning' | 'purple';
+    disabled?: boolean;
+}
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,6 +18,7 @@ interface LayoutProps {
   onToggleFullWidth: () => void;
   autoHideFooter?: boolean;
   onToggleAutoHideFooter?: () => void;
+  mobileActions?: MobileAction[];
 }
 
 // --- CURSOR ASSETS ---
@@ -103,7 +112,7 @@ const FONT_OPTIONS = [
 
 export const Layout: React.FC<LayoutProps> = ({ 
     children, onHome, onToggleLibrary, isLibraryOpen, isFullWidth, onToggleFullWidth,
-    autoHideFooter = true, onToggleAutoHideFooter
+    autoHideFooter = true, onToggleAutoHideFooter, mobileActions
 }) => {
   const [darkMode, setDarkMode] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -157,6 +166,16 @@ export const Layout: React.FC<LayoutProps> = ({
   const handleMouseLeaveHeader = () => {
       if (autoHideHeader && !isMobileMenuOpen && !showSettings) {
           setIsHeaderVisible(false);
+      }
+  };
+
+  const getActionColor = (variant?: string) => {
+      switch(variant) {
+          case 'primary': return 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700';
+          case 'success': return 'bg-green-600 text-white border-green-600 hover:bg-green-700';
+          case 'warning': return 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600';
+          case 'purple': return 'bg-purple-600 text-white border-purple-600 hover:bg-purple-700';
+          default: return 'border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-black text-gray-700 dark:text-terminal-green';
       }
   };
 
@@ -317,7 +336,7 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
 
         {/* MOBILE MENU DROPDOWN */}
-        <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out bg-gray-100 dark:bg-black border-b border-gray-300 dark:border-terminal-green ${isMobileMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out bg-gray-100 dark:bg-black border-b border-gray-300 dark:border-terminal-green ${isMobileMenuOpen ? 'max-h-[75vh] opacity-100 shadow-2xl overflow-y-auto' : 'max-h-0 opacity-0'}`}>
             <div className="flex flex-col p-4 gap-2">
                  <button 
                     onClick={() => { onHome(); setIsMobileMenuOpen(false); }}
@@ -337,6 +356,26 @@ export const Layout: React.FC<LayoutProps> = ({
                  >
                     SETTINGS
                  </button>
+
+                 {/* CONTEXTUAL MOBILE ACTIONS */}
+                 {mobileActions && mobileActions.length > 0 && (
+                     <>
+                        <div className="border-t border-gray-300 dark:border-gray-800 my-2"></div>
+                        <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 px-4 py-1 uppercase tracking-wider">
+                            Current Actions
+                        </div>
+                        {mobileActions.map((action, i) => (
+                             <button
+                                key={i}
+                                onClick={() => { if(!action.disabled) { action.onClick(); setIsMobileMenuOpen(false); } }}
+                                disabled={action.disabled}
+                                className={`p-4 text-left font-bold text-sm border transition-colors ${getActionColor(action.variant)} ${action.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                             >
+                                {action.label}
+                             </button>
+                        ))}
+                     </>
+                 )}
             </div>
         </div>
       </header>
@@ -351,7 +390,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </main>
 
       <footer className="p-4 text-center text-xs text-gray-500 dark:text-gray-600 border-t border-gray-300 dark:border-gray-800 z-10 relative bg-gray-100/50 dark:bg-black/50 backdrop-blur-sm">
-        STATUS: ONLINE | SYSTEM: READY | V1.4.0 | VIRUSTOTAL: ACTIVE
+        STATUS: ONLINE | SYSTEM: READY | V1.4.5 | VIRUSTOTAL: ACTIVE
       </footer>
 
       {/* Settings Modal */}

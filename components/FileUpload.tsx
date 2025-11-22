@@ -6,6 +6,7 @@ import { sanitizeInput } from '../utils/security';
 
 interface FileUploadProps {
   onFilesAccepted: (files: Array<{base64: string, mime: string, name: string, hash: string}>) => void;
+  onLoadDemo: () => void;
   isFullWidth: boolean;
 }
 
@@ -15,7 +16,7 @@ interface ProcessingLog {
     error?: string;
 }
 
-export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, isFullWidth }) => {
+export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadDemo, isFullWidth }) => {
   const [logs, setLogs] = useState<ProcessingLog[]>([]);
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -117,52 +118,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, isFullW
         setLogs([{ name: urlInput, status: 'FAILED', error: err.message }]);
     }
     setGlobalStatus('IDLE');
-  };
-
-  const handleDemoLoad = () => {
-      // Sample C++ content for the demo
-      const content = `
-#include <iostream>
-using namespace std;
-
-// DEMO DIAGNOSTIC EXAM
-// Topic: Pointers, References, and Logic
-
-void mystery(int *a, int &b) {
-    *a = *a + b;
-    b = *a - b;
-    *a = *a - b;
-}
-
-int main() {
-    int x = 10, y = 5;
-    mystery(&x, y);
-    cout << "X: " << x << ", Y: " << y << endl;
-    
-    // What happens here?
-    int arr[3] = {1, 2, 3};
-    int *ptr = arr;
-    cout << *(ptr + 1) << endl;
-    
-    return 0;
-}
-
-// Q1: What is the exact output of the main function?
-// Q2: Explain line-by-line how the 'mystery' function swaps values.
-// Q3: Write a generic template version of the swap function.
-      `;
-      
-      // Simple base64 encoding for text
-      const base64 = btoa(content);
-      
-      const demoFile = {
-          base64: base64,
-          mime: 'text/plain',
-          name: 'diagnostic_demo.cpp',
-          hash: 'DEMO_HASH_PRESET_001'
-      };
-      
-      onFilesAccepted([demoFile]);
   };
 
   const onDragOver = (e: React.DragEvent) => {
@@ -301,7 +256,7 @@ int main() {
                       Run an instant simulation using a sample C++ pointer analysis document. No upload required.
                   </p>
                   <button 
-                     onClick={handleDemoLoad}
+                     onClick={onLoadDemo}
                      disabled={globalStatus !== 'IDLE'}
                      className="px-6 py-2 bg-terminal-green text-black font-bold text-sm hover:bg-green-400 transition-colors w-full md:w-auto uppercase tracking-wider disabled:opacity-50"
                   >

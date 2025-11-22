@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Layout } from './components/Layout';
+import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
 import { ExamConfig } from './components/ExamConfig';
 import { ExamRunner } from './components/ExamRunner';
@@ -7,8 +8,9 @@ import { Results } from './components/Results';
 import { Leaderboard } from './components/Leaderboard';
 import { QuestionLibrary } from './components/QuestionLibrary';
 import { LoadingScreen } from './components/LoadingScreen';
-import { AppState, Question, ExamSettings, UserAnswer } from './types';
+import { AppState, Question, ExamSettings, UserAnswer, QuestionType } from './types';
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
+import { generateExamPDF } from './utils/pdfGenerator';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('UPLOAD');
@@ -88,6 +90,51 @@ const App: React.FC = () => {
     setAppState('UPLOAD');
   };
 
+  // --- DEMO LOGIC LIFTED TO APP LEVEL ---
+  const handleDemoLoad = () => {
+      const content = `
+#include <iostream>
+using namespace std;
+
+// DEMO DIAGNOSTIC EXAM
+// Topic: Pointers, References, and Logic
+
+void mystery(int *a, int &b) {
+    *a = *a + b;
+    b = *a - b;
+    *a = *a - b;
+}
+
+int main() {
+    int x = 10, y = 5;
+    mystery(&x, y);
+    cout << "X: " << x << ", Y: " << y << endl;
+    
+    // What happens here?
+    int arr[3] = {1, 2, 3};
+    int *ptr = arr;
+    cout << *(ptr + 1) << endl;
+    
+    return 0;
+}
+
+// Q1: What is the exact output of the main function?
+// Q2: Explain line-by-line how the 'mystery' function swaps values.
+// Q3: Write a generic template version of the swap function.
+      `;
+      
+      const base64 = btoa(content);
+      
+      const demoFile = {
+          base64: base64,
+          mime: 'text/plain',
+          name: 'diagnostic_demo.cpp',
+          hash: 'DEMO_HASH_PRESET_001'
+      };
+      
+      handleFilesAccepted([demoFile]);
+  };
+
   const handleStartExam = async (examSettings: ExamSettings) => {
     if (uploadedFiles.length === 0) return;
     setSettings(examSettings);
@@ -145,9 +192,68 @@ const App: React.FC = () => {
        setAppState('RESULTS');
     }
   };
+
+  const handleDownloadPDF = () => {
+     // Need to calculate stats locally since we are outside Results component
+     let correctCount = 0;
+     const calculatedAnswers = questions.map(q => {
+        const ua = userAnswers.find(a => a.questionId === q.id);
+        let isCorrect = false;
+        if (ua) {
+            if (q.type === QuestionType.MCQ) isCorrect = ua.answer === q.correctOptionIndex;
+            else if (q.type === QuestionType.TRACING) isCorrect = String(ua.answer).trim().toLowerCase() === String(q.tracingOutput || "").trim().toLowerCase();
+            else if (q.type === QuestionType.CODING) isCorrect = !!ua.isCorrect;
+        }
+        if(isCorrect) correctCount++;
+        return isCorrect;
+     });
+     
+     const score = Math.round((correctCount / questions.length) * 100);
+     const getGrade = (s: number) => s >= 97 ? 'A+' : s >= 93 ? 'A' : s >= 90 ? 'A-' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 60 ? 'D' : 'F';
+     
+     generateExamPDF(questions, score, getGrade(score), "User");
+  };
   
   const handleToggleLibrary = () => {
       setIsLibraryOpen(prev => !prev);
+  };
+
+  // --- CALCULATE MOBILE MENU ACTIONS ---
+  const getMobileActions = (): MobileAction[] => {
+      if (appState === 'UPLOAD') {
+          return [
+              { label: 'LOAD DEMO EXAM', onClick: handleDemoLoad, variant: 'primary' }
+          ];
+      }
+
+      if (appState === 'RESULTS') {
+          // Calculate failures to see if remediation is needed
+          const wrongIds = questions.filter(q => {
+             const ua = userAnswers.find(a => a.questionId === q.id);
+             if (!ua) return true;
+             if (q.type === QuestionType.MCQ) return ua.answer !== q.correctOptionIndex;
+             if (q.type === QuestionType.TRACING) return String(ua.answer).trim().toLowerCase() !== String(q.tracingOutput || "").trim().toLowerCase();
+             if (q.type === QuestionType.CODING) return !ua.isCorrect;
+             return true;
+          }).map(q => q.id);
+
+          const actions: MobileAction[] = [
+             { label: 'DOWNLOAD PDF REPORT', onClick: handleDownloadPDF, variant: 'warning' },
+             { label: 'RETAKE EXAM', onClick: handleRetake, variant: 'primary' },
+             { label: 'RESTART SYSTEM', onClick: handleRestart, variant: 'default' }
+          ];
+
+          if (wrongIds.length > 0) {
+              actions.unshift({ 
+                  label: `REMEDIATE WEAKNESS (${wrongIds.length})`, 
+                  onClick: () => handleRemediation(wrongIds),
+                  variant: 'purple'
+              });
+          }
+          return actions;
+      }
+
+      return [];
   };
 
   return (
@@ -159,6 +265,7 @@ const App: React.FC = () => {
       onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
       autoHideFooter={autoHideFooter}
       onToggleAutoHideFooter={() => setAutoHideFooter(!autoHideFooter)}
+      mobileActions={getMobileActions()}
     >
       {/* Duplicate Warning Modal */}
       {duplicateFiles.length > 0 && (
@@ -207,6 +314,7 @@ const App: React.FC = () => {
             <>
               <FileUpload 
                 onFilesAccepted={handleFilesAccepted} 
+                onLoadDemo={handleDemoLoad}
                 isFullWidth={isFullWidth}
               />
               <Leaderboard />

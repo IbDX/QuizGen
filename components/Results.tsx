@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -273,6 +274,39 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                 )}
             </div>
         </div>
+
+        {/* Mobile-Only Publishing Section (Since Footer is hidden on mobile) */}
+        <div className="md:hidden mb-6 flex flex-col items-center gap-3">
+             {!isPublished && !isFailure && (
+                 <div className="flex gap-2 w-full max-w-xs">
+                    <input 
+                        type="text" 
+                        placeholder="AGENT_NAME" 
+                        value={userName}
+                        onChange={handleNameChange}
+                        maxLength={20}
+                        className={`bg-gray-100 dark:bg-gray-900 border ${nameError ? 'border-red-500' : 'border-gray-400'} p-2 text-sm font-mono outline-none focus:border-blue-500 flex-grow`}
+                    />
+                    <button 
+                        onClick={handlePublish}
+                        disabled={!userName || !!nameError}
+                        className="px-4 py-2 bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs"
+                    >
+                        SAVE
+                    </button>
+                </div>
+             )}
+             {isPublished && (
+                 <div className="text-green-600 dark:text-green-400 font-bold text-xs uppercase tracking-wider">
+                     ✓ Result Archived: {userName}
+                 </div>
+             )}
+             {isFailure && (
+                 <div className="text-red-500 font-bold text-xs uppercase tracking-wider">
+                     Publishing Locked (Failure)
+                 </div>
+             )}
+        </div>
         
         <p className="text-gray-500 dark:text-gray-400 mb-4">
             {correctCount} / {questions.length} CORRECT
@@ -429,10 +463,11 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         className={`
             fixed bottom-0 left-0 right-0 
             p-4 bg-white dark:bg-black border-t border-gray-300 dark:border-terminal-green 
-            flex flex-col xl:flex-row gap-4 justify-center items-center 
+            gap-4 justify-center items-center 
             shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-50 
             transition-transform duration-500 ease-in-out
             translate-y-0
+            hidden md:flex xl:flex-row
             ${autoHideFooter ? (isFooterVisible ? 'md:translate-y-0' : 'md:translate-y-full') : ''}
         `}
         onMouseLeave={handleMouseLeaveFooter}
