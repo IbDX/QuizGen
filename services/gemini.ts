@@ -64,9 +64,17 @@ const deduplicateQuestions = (questions: Question[]): Question[] => {
 
     if (!seenSignatures.has(signature)) {
       seenSignatures.add(signature);
+      
+      // CLEANUP: Check if text contains the codeSnippet. If so, remove it from text to prevent display duplication.
+      let cleanText = q.text;
+      if (q.codeSnippet && q.codeSnippet.length > 10 && cleanText.includes(q.codeSnippet)) {
+          cleanText = cleanText.replace(q.codeSnippet, '').trim();
+      }
+
       // Ensure unique ID for React rendering
       uniqueQuestions.push({
         ...q,
+        text: cleanText,
         id: `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
       });
     }
@@ -134,7 +142,8 @@ export const generateExam = async (
       - **EMPTY OPTIONS**: If an option looks empty, check if it's a whitespace character, a symbol, or "Nothing to Print".
 
       **3. CONTENT EXTRACTION**:
-      - **Code Snippets**: Preserve newlines, indentation, and headers (#include).
+      - **Code Snippets**: Preserve newlines, indentation, and headers (#include). Put code in 'codeSnippet' field ONLY.
+      - **Text Separation**: The 'text' field must ONLY contain the question prompt (e.g., "What is the output?"). **DO NOT include the code in the 'text' field.**
       - **Explanation**: Provide a step-by-step solution derivation.
       - **Correct Answer**: Solve the problem yourself to determine the 'correctOptionIndex' or 'tracingOutput'.
 

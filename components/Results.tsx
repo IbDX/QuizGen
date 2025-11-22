@@ -273,6 +273,11 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       <div className="space-y-8 mb-12">
         {processedAnswers.map((item, idx) => {
           const hasCodeBlockInText = item.question.text.includes('```');
+          let displayText = item.question.text;
+          // Remove duplicate code from text if it's not in a markdown block
+          if (item.question.codeSnippet && !hasCodeBlockInText && displayText.includes(item.question.codeSnippet)) {
+              displayText = displayText.replace(item.question.codeSnippet, '').trim();
+          }
 
           return (
             <div key={item.question.id} className={`p-6 border-l-4 ${item.isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'} bg-white dark:bg-gray-900 shadow-md rounded-r-lg relative`}>
@@ -297,7 +302,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                 </div>
                 
                 <div className="mb-6 text-lg font-medium text-gray-800 dark:text-gray-200">
-                    <MarkdownRenderer content={item.question.text} />
+                    <MarkdownRenderer content={displayText} />
                 </div>
 
                 {/* RENDER CODE SNIPPET ONLY IF NOT ALREADY IN TEXT */}

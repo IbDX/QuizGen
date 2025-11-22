@@ -201,8 +201,15 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
   // Logic to avoid duplicate code windows:
   // If the text itself contains a markdown code block (```), we assume MarkdownRenderer handles it.
-  // Otherwise, we render the explicit CodeWindow from codeSnippet.
+  // If NOT, and we have a codeSnippet, we show the explicit CodeWindow.
+  // ADDITIONALLY: If !hasCodeBlockInText but the text contains the code snippet string (plain text duplication),
+  // we clean the text to avoid showing it twice (once as plain text, once as canvas).
   const hasCodeBlockInText = currentQ.text.includes('```');
+  
+  let displayText = currentQ.text;
+  if (currentQ.codeSnippet && !hasCodeBlockInText && displayText.includes(currentQ.codeSnippet)) {
+     displayText = displayText.replace(currentQ.codeSnippet, '').trim();
+  }
 
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
@@ -275,7 +282,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         <div className="mb-6">
              <span className="text-sm text-gray-500 dark:text-gray-400 font-mono block mb-2">QUESTION {currentIndex + 1}</span>
              <div className="text-xl md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-gray-100">
-               <MarkdownRenderer content={currentQ.text} className="inline-block" />
+               <MarkdownRenderer content={displayText} className="inline-block" />
              </div>
         </div>
 

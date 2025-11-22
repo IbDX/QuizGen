@@ -61,6 +61,11 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth })
                 <div className="space-y-8 pb-20">
                     {filteredQuestions.map((q, idx) => {
                         const hasCodeBlockInText = q.text.includes('```');
+                        let displayText = q.text;
+                        // Remove duplicate code from text if it's not in a markdown block
+                        if (q.codeSnippet && !hasCodeBlockInText && displayText.includes(q.codeSnippet)) {
+                            displayText = displayText.replace(q.codeSnippet, '').trim();
+                        }
                         
                         return (
                             <div key={q.id} className="p-6 border-l-4 border-blue-500 bg-white dark:bg-gray-900 shadow-lg relative group">
@@ -81,7 +86,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth })
                                  </div>
     
                                  <div className="mb-6 text-lg">
-                                    <MarkdownRenderer content={q.text} />
+                                    <MarkdownRenderer content={displayText} />
                                  </div>
     
                                  {q.codeSnippet && !hasCodeBlockInText && (
