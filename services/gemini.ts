@@ -3,9 +3,6 @@ import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference } from "../types";
 
 // Helper to generate schema based on preference
-// NOTE: We avoid strict 'enum' in the schema definition to prevent 500 Internal Server Errors
-// that sometimes occur with the GenAI SDK when processing complex multimodal inputs with strict enum constraints.
-// We enforce the types via the prompt description instead.
 const getExamSchema = (preference: QuestionFormatPreference): Schema => {
   let allowedDescription = "One of: 'MCQ', 'TRACING', 'CODING'";
   
@@ -29,16 +26,17 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
           description: `The type of the question. ${allowedDescription}.` 
         },
         topic: { type: Type.STRING, description: "A short topic tag for this question (e.g., 'Loops', 'Pointers', 'Recursion')" },
-        text: { type: Type.STRING },
-        codeSnippet: { type: Type.STRING, nullable: true },
+        text: { type: Type.STRING, description: "The question text. Do NOT include the code snippet here." },
+        codeSnippet: { type: Type.STRING, nullable: true, description: "Code block if applicable. REQUIRED for TRACING." },
         options: { 
           type: Type.ARRAY, 
           items: { type: Type.STRING },
-          nullable: true 
+          nullable: true,
+          description: "List of choices. REQUIRED for MCQ type." 
         },
-        correctOptionIndex: { type: Type.INTEGER, nullable: true },
-        tracingOutput: { type: Type.STRING, nullable: true },
-        explanation: { type: Type.STRING }
+        correctOptionIndex: { type: Type.INTEGER, nullable: true, description: "Index of correct option. REQUIRED for MCQ." },
+        tracingOutput: { type: Type.STRING, nullable: true, description: "The expected output string. REQUIRED for TRACING." },
+        explanation: { type: Type.STRING, description: "Detailed step-by-step solution." }
       },
       required: ["id", "type", "topic", "text", "explanation"]
     }
@@ -77,30 +75,23 @@ const deduplicateQuestions = (questions: Question[]): Question[] => {
         : 'no_options';
 
     // Composite Signature: Type + Text + Code + Options
-    // This ensures questions with generic text like "What is the output?" are distinguished by their code snippet.
     const signature = `${q.type}::${normalizedText}::${normalizedCode}::${normalizedOptions}`;
 
     if (!seenSignatures.has(signature)) {
       seenSignatures.add(signature);
       
-      // CLEANUP: Check if text contains the codeSnippet. If so, remove it from text to prevent display duplication.
-      // Also check if the code snippet is accidentally embedded as a markdown block inside text
       let cleanText = q.text;
 
-      // Remove raw code string if present
+      // Remove raw code string if present in text
       if (q.codeSnippet && q.codeSnippet.length > 10 && cleanText.includes(q.codeSnippet)) {
           cleanText = cleanText.replace(q.codeSnippet, '').trim();
       }
 
       // Remove markdown code blocks from text if they contain the logic
-      // This cleans up cases where the AI puts the code in 'codeSnippet' AND in 'text' as ```code```
       cleanText = cleanText.replace(/```[\s\S]*?```/g, (match) => {
-         // If the block is very similar to the codeSnippet, remove it. 
-         // For safety, we generally remove large code blocks from text if a separate snippet exists.
          return q.codeSnippet ? "[See Code Window Below]" : match;
       });
 
-      // Ensure unique ID for React rendering
       uniqueQuestions.push({
         ...q,
         text: cleanText,
@@ -109,6 +100,118 @@ const deduplicateQuestions = (questions: Question[]): Question[] => {
     }
   }
   return uniqueQuestions;
+};
+
+const getSystemInstruction = (preference: QuestionFormatPreference): string => {
+    const BASE_INSTRUCTION = `
+    **PHASE 1: GLOBAL CONTEXT SCAN**
+    - First, analyze ALL attached files from start to finish.
+    - Understand the document layout, question numbering, and answer keys (if present).
+    - Identify EVERY question in the document. Do not skip any.
+    - Preserve C++ syntax like pointers (*ptr) and references (&ref). Do not interpret them as Markdown italics.
+    `;
+
+    switch (preference) {
+        case QuestionFormatPreference.MCQ:
+            return `
+            ${BASE_INSTRUCTION}
+            
+            **PHASE 2: FORCED MCQ TRANSFORMATION**
+            You MUST output EVERY question as "type": "MCQ". 
+            If a question is NOT originally an MCQ, you must creatively transform it.
+
+            **TRANSFORMATION RULES:**
+            1. **Source: Coding Challenge (Write code...)**
+               - *Transformation:* Generate 4 code snippets as options.
+               - *Option A:* The Correct Code.
+               - *Options B, C, D:* Plausible code with syntax errors or logic bugs.
+               - *Prompt:* "Which of the following implementations correctly solves: [Problem]?"
+
+            2. **Source: Tracing (What is output?)**
+               - *Transformation:* Keep the code snippet.
+               - *Options:* Generate 4 possible outputs (1 correct, 3 distractors).
+               - *Prompt:* "What is the output of the following code?"
+
+            3. **Source: Open Ended (Define X...)**
+               - *Transformation:* Create 4 definition statements.
+               - *Prompt:* "Which statement best describes [Concept]?"
+
+            **CONSTRAINT:** Output JSON must ONLY contain "type": "MCQ". All other fields (tracingOutput) are ignored.
+            `;
+
+        case QuestionFormatPreference.CODING:
+            return `
+            ${BASE_INSTRUCTION}
+            
+            **PHASE 2: FORCED CODING TRANSFORMATION**
+            You MUST output EVERY question as "type": "CODING".
+            
+            **TRANSFORMATION RULES:**
+            1. **Source: MCQ (Choose the correct code...)**
+               - *Transformation:* Strip the options. Extract the problem statement.
+               - *Prompt:* "Write a function/program that [Original Goal]."
+               - *Action:* Set 'options' to null.
+
+            2. **Source: Tracing (What is the output of this code?)**
+               - *Transformation:* Reverse engineering.
+               - *Prompt:* "Write a program that produces exactly the following output: [Output Value]."
+               
+            3. **Source: Theory (What is recursion?)**
+               - *Prompt:* "Write a simple code example that demonstrates the concept of Recursion."
+
+            **CONSTRAINT:** Output JSON must ONLY contain "type": "CODING". 'options' and 'tracingOutput' must be null.
+            `;
+
+        case QuestionFormatPreference.TRACING:
+            return `
+            ${BASE_INSTRUCTION}
+            
+            **PHASE 2: FORCED TRACING TRANSFORMATION**
+            You MUST output EVERY question as "type": "TRACING".
+            
+            **TRANSFORMATION RULES:**
+            1. **Source: Theory / MCQ**
+               - *Transformation:* Create a code snippet that demonstrates the concept being asked.
+               - *Prompt:* "What is the output of this code?"
+               - *Result:* Put the result in 'tracingOutput'.
+
+            2. **Source: Coding (Write a function...)**
+               - *Transformation:* Take the solution code. Hardcode specific inputs (e.g., func(5)).
+               - *Prompt:* "What does this function return when called with input 5?"
+
+            **CONSTRAINT:** Output JSON must ONLY contain "type": "TRACING". 'tracingOutput' field is REQUIRED.
+            `;
+
+        case QuestionFormatPreference.ORIGINAL:
+            return `
+            ${BASE_INSTRUCTION}
+            
+            **PHASE 2: STRICT FIDELITY EXTRACTION**
+            Extract questions exactly as they appear. Do NOT change their type.
+
+            1. **MCQ**: If visual options (A,B,C,D) or True/False exist -> Type: "MCQ".
+            2. **TRACING**: If code exists and asks for output (No options) -> Type: "TRACING".
+            3. **CODING**: If prompt asks to Write/Implement code (No options) -> Type: "CODING".
+            4. **SHORT ANSWER**: If prompt is text-based (No options) -> Type: "MCQ" (Leave options empty).
+
+            **PRIORITY:** Always check for Options first. If options exist, it IS an MCQ, even if it contains code.
+            `;
+
+        default: // MIXED / AUTO
+            return `
+            ${BASE_INSTRUCTION}
+            
+            **PHASE 2: SMART CLASSIFICATION**
+            Analyze each question and assign the most appropriate type for learning.
+
+            1. **MCQ**: Use if options are present. (Priority #1)
+            2. **CODING**: Use if the question asks to "Write" or "Implement".
+            3. **TRACING**: Use if the question asks for "Output" or "Result".
+            4. **FALLBACK**: Use "MCQ" with empty options for fill-in-the-blank or short answer.
+
+            **GOAL:** Provide a diverse mix of question types if the document supports it.
+            `;
+    }
 };
 
 export const generateExam = async (
@@ -121,156 +224,17 @@ export const generateExam = async (
     
     const modelId = 'gemini-2.5-flash'; 
 
-    // Construct Format Logic based on Preference
-    let formatInstruction = "";
-    
-    if (preference === QuestionFormatPreference.MCQ) {
-        formatInstruction = `
-        **STRICT MODE: FORCED MCQ TRANSFORMATION**
-        You MUST convert EVERY question in the document into a Multiple Choice Question (MCQ), regardless of its original format.
-        
-        **TRANSFORMATION RULES:**
-        1.  **IF Source is Coding/Writing (e.g., "Write a function to...")**:
-            -   **ACTION**: Create a scenario: "Which of the following implementations correctly [solves the problem]?"
-            -   **OPTIONS**: Generate 4 code snippets: 1 Correct, 3 with subtle logic/syntax errors.
-            -   **TYPE**: Set to 'MCQ'.
-        
-        2.  **IF Source is Tracing (e.g., "What is the output?")**:
-            -   **ACTION**: Use the existing code.
-            -   **OPTIONS**: Generate 4 possible output values (1 correct, 3 distractors).
-            -   **TYPE**: Set to 'MCQ'.
-            
-        3.  **IF Source is Open Ended / Short Answer**:
-            -   **ACTION**: Frame it as "Which statement best defines [concept]?".
-            -   **OPTIONS**: Generate 4 distinct textual definitions.
-            
-        **CONSTRAINT**: The output array must ONLY contain questions with "type": "MCQ". Do not output CODING or TRACING types.
-        `;
-    } else if (preference === QuestionFormatPreference.CODING) {
-        formatInstruction = `
-        **STRICT MODE: FORCED CODING TRANSFORMATION**
-        You MUST convert EVERY question in the document into a Coding Challenge, regardless of its original format.
-        
-        **TRANSFORMATION RULES:**
-        1.  **IF Source is MCQ**:
-            -   **ACTION**: Strip the options. Extract the core problem.
-            -   **PROMPT**: Rewrite as "Write a program/function that [solves the problem described in the MCQ]".
-            -   **TYPE**: Set to 'CODING'. leave 'options' null.
-            
-        2.  **IF Source is Tracing**:
-            -   **ACTION**: Reverse the problem.
-            -   **PROMPT**: Provide the target output and ask: "Write the code that produces this output: [Output Value]".
-            -   **TYPE**: Set to 'CODING'.
-            
-        3.  **IF Source is Theory/Open**:
-            -   **PROMPT**: "Write a code example that demonstrates [Concept]".
-            
-        **CONSTRAINT**: The output array must ONLY contain questions with "type": "CODING". Do not output MCQ or TRACING types.
-        `;
-    } else if (preference === QuestionFormatPreference.TRACING) {
-        formatInstruction = `
-        **STRICT MODE: FORCED TRACING TRANSFORMATION**
-        You MUST convert EVERY question in the document into a Code Tracing problem.
-        
-        **TRANSFORMATION RULES:**
-        1.  **IF Source is MCQ/Theory**:
-            -   **ACTION**: Create a code snippet that demonstrates the concept.
-            -   **PROMPT**: "What is the output of this code?"
-            -   **TYPE**: Set to 'TRACING'.
-            
-        2.  **IF Source is Coding**:
-            -   **ACTION**: Take the solution code, hardcode specific input variables.
-            -   **PROMPT**: "What is the return value/output of this function?"
-            -   **TYPE**: Set to 'TRACING'.
-            
-        **CONSTRAINT**: The output array must ONLY contain questions with "type": "TRACING". Do not output MCQ or CODING types.
-        `;
-    } else if (preference === QuestionFormatPreference.ORIGINAL) {
-        formatInstruction = `
-        **STRICT FIDELITY MODE (ORIGINAL)**
-        
-        **PHASE 1: GLOBAL CONTEXT SCAN**
-        Scan the ENTIRE document layout. Identify questions, their numbering, and where options are located (below, side, or separate key).
-        
-        **PHASE 2: CLASSIFICATION & EXTRACTION**
-        For EACH question, determine its type based on visual evidence and map to the closest category:
-        
-        1. **MCQ (Multiple Choice / True-False)**
-           - **IF** the question has choices (A, B, C, D), checkboxes, or "True/False":
-           - **SET** "type": "MCQ".
-           - **ACTION**: Extract options exactly. If "True/False", options are ["True", "False"].
-           
-        2. **TRACING (Output Prediction)**
-           - **IF** the question provides code and asks for the output/result (and has NO options):
-           - **SET** "type": "TRACING".
-           - **ACTION**: Extract code to 'codeSnippet'.
-           
-        3. **CODING (Writing Code)**
-           - **IF** the question asks to write/implement code (and has NO options):
-           - **SET** "type": "CODING".
-           
-        4. **SHORT ANSWER / OPEN ENDED (Fallback)**
-           - **IF** the question asks for a definition, explanation, or short text answer (and has NO options):
-           - **SET** "type": "MCQ" (We use this as a container for text answers).
-           - **ACTION**: Leave 'options' field empty/null.
-           
-        **CRITICAL RULES**:
-        - **ALWAYS check for options first.** Even if it looks like a coding question, if it has options A/B/C/D, it IS an MCQ.
-        - Do not skip questions. Extract every question found.
-        - Preserve C++ pointers (*ptr) and references (&ref).
-        `;
-    } else {
-        // Mixed / Default (Smart Extraction)
-        formatInstruction = `
-        **UNIVERSAL SMART EXTRACTION (MIXED MODE)**
-        
-        **PHASE 1: GLOBAL CONTEXT SCAN**
-        Understand the document structure. Group options with their questions.
-        
-        **PHASE 2: BEST-FIT CLASSIFICATION**
-        Classify each question into the best fitting category.
-        
-        1. **MCQ (Priority 1)**
-           - **Condition**: Presence of Options (A-D), True/False, Yes/No.
-           - **Type**: "MCQ".
-           - **Note**: This overrides other types. Code + Options = MCQ.
-           
-        2. **CODING (Priority 2)**
-           - **Condition**: "Write", "Implement", "Create" code.
-           - **Type**: "CODING".
-           
-        3. **TRACING (Priority 3)**
-           - **Condition**: "What is the output?", "Calculate result" of code.
-           - **Type**: "TRACING".
-           
-        4. **TEXT / THEORY (Fallback)**
-           - **Condition**: Any question not fitting above (e.g. "Define X", "Fill in the blank").
-           - **Type**: "MCQ" (with empty options).
-           
-        **STRICT RULES**:
-        - Extract questions exactly.
-        - Ensure 'options' array is populated if choices exist.
-        - Ensure 'codeSnippet' is populated if code exists.
-        - Preserve C++ pointers (*ptr) and references (&ref).
-        `;
-    }
+    const systemPrompt = getSystemInstruction(preference);
 
-    const prompt = `
-      Analyze the provided document(s) (images/PDFs) and extract the exam questions.
+    const userPrompt = `
+      Analyze the attached **${files.length} file(s)**.
       
-      **GLOBAL CONTEXT SCAN**: First, read the entire document to understand the layout, question numbering, and answer key location (if any).
+      **INSTRUCTION**: 
+      Process EVERY file from start to finish. Extract ALL questions found.
       
-      ${formatInstruction}
-
-      **GENERAL RULES**:
-      - **Code Snippets**: Preserve newlines, indentation, and headers (#include). Put code in 'codeSnippet' field ONLY.
-      - **Text Separation**: The 'text' field must ONLY contain the question prompt. **DO NOT include the code in the 'text' field.**
-      - **Explanation**: Provide a step-by-step solution derivation.
-      - **C++ Syntax**: Do NOT strip asterisks (*) used for pointers or ampersands (&) used for references. Treat them as code syntax, not markdown.
+      ${instructions ? `Additional User Instructions: ${instructions}` : ''}
       
-      ${instructions ? `User Instructions: ${instructions}` : ''}
-      
-      Return the response strictly as a JSON array adhering to the schema.
+      Return a JSON array adhering to the schema.
     `;
 
     // Construct multi-part content
@@ -281,7 +245,7 @@ export const generateExam = async (
         }
     }));
     
-    parts.push({ text: prompt });
+    parts.push({ text: userPrompt });
 
     const response = await ai.models.generateContent({
       model: modelId,
@@ -289,8 +253,9 @@ export const generateExam = async (
         parts: parts
       },
       config: {
+        systemInstruction: systemPrompt,
         responseMimeType: "application/json",
-        responseSchema: getExamSchema(preference), // Dynamic Schema (Relaxed Enum but Strict Desc)
+        responseSchema: getExamSchema(preference), 
         thinkingConfig: { thinkingBudget: 0 }, 
         temperature: 0.2 
       }

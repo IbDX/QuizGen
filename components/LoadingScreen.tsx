@@ -576,6 +576,18 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
       return () => clearInterval(interval);
   }, [activeTips]);
 
+  // Helper to style code snippets in tips (enclosed in backticks)
+  const formatTip = (text: string) => {
+      const parts = text.split('`');
+      return parts.map((part, i) => {
+          if (i % 2 === 1) {
+              // It's code (inside backticks)
+              return <span key={i} className="bg-gray-300 dark:bg-gray-700 text-red-600 dark:text-terminal-green font-bold px-1 rounded mx-0.5">{part}</span>;
+          }
+          return <span key={i}>{part}</span>;
+      });
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-xl mx-auto p-6 space-y-8 animate-fade-in">
       {/* Status Section */}
@@ -592,8 +604,8 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
           <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">
               {activeTips === GENERAL_TIPS ? 'SYSTEM_INFO / RANDOM_FACT' : 'CONTEXT_AWARE_HINT'}
           </div>
-          <p className="font-mono text-sm text-gray-700 dark:text-gray-300 min-h-[3rem] flex items-center">
-              {activeTips[tipIndex]}
+          <p className="font-mono text-sm text-gray-700 dark:text-gray-300 min-h-[3rem] flex items-center flex-wrap">
+              {formatTip(activeTips[tipIndex])}
           </p>
       </div>
 

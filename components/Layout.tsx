@@ -14,7 +14,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
   const [darkMode, setDarkMode] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [fontSize, setFontSize] = useState(16);
-  const [crtEnabled, setCrtEnabled] = useState(true);
 
   useEffect(() => {
     if (darkMode) {
@@ -82,10 +81,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
       {/* Main Content Area */}
       <main className={`flex-grow p-4 md:p-8 w-full transition-all duration-300 ${isFullWidth ? 'px-4' : 'max-w-5xl mx-auto'}`}>
         <div className="relative">
-          {/* CRT Scanline Effect (Optional visual flair) */}
-          {crtEnabled && (
-             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent to-[rgba(0,255,65,0.03)] opacity-0 dark:opacity-100 h-full w-full z-0" style={{backgroundSize: '100% 4px'}}></div>
-          )}
           <div className="relative z-10">
              {children}
           </div>
@@ -143,17 +138,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
                             className={`w-12 h-6 rounded-full p-1 transition-colors ${isFullWidth ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}
                         >
                             <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isFullWidth ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                        </button>
-                    </div>
-
-                    {/* CRT Toggle */}
-                    <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">
-                        <span className="font-bold text-sm">CRT Scanlines</span>
-                        <button 
-                            onClick={() => setCrtEnabled(!crtEnabled)}
-                            className={`w-12 h-6 rounded-full p-1 transition-colors ${crtEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`}
-                        >
-                            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${crtEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
                         </button>
                     </div>
 
