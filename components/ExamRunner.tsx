@@ -338,19 +338,17 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
               ))}
             </div>
           ) : (currentQ.type === QuestionType.MCQ && (
-            /* Fallback for Malformed MCQ */
+            /* Fallback for Open Ended / Short Answer or Malformed MCQ */
              <div className="space-y-2">
-                <div className="text-xs text-orange-500 font-bold mb-1 flex items-center gap-2">
-                   <span className="animate-pulse">⚠️</span> 
-                   <span>OPTIONS COULD NOT BE PARSED AUTOMATICALLY</span>
+                <div className="text-xs text-gray-500 font-bold mb-1 flex items-center gap-2 uppercase tracking-wider">
+                   <span>✎ SHORT ANSWER / OPEN RESPONSE</span>
                 </div>
-                <p className="text-xs text-gray-500 mb-2">The AI identified this as an MCQ but failed to extract distinct options from the source image. Please type the answer found in the document (e.g., "A", "Option 1", or the value itself).</p>
                 <input 
                   type="text" 
                   value={String(getAnswerValue())} 
                   onChange={(e) => handleAnswer(e.target.value)}
-                  placeholder="Enter answer manually..."
-                  className="w-full bg-gray-50 dark:bg-[#0c0c0c] border border-orange-300 dark:border-orange-800 p-4 font-mono focus:border-orange-500 outline-none text-lg"
+                  placeholder="Type your answer here..."
+                  className="w-full bg-gray-50 dark:bg-[#0c0c0c] border border-gray-300 dark:border-gray-600 p-4 font-mono focus:border-blue-500 outline-none text-lg rounded"
                   disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
                 />
              </div>
