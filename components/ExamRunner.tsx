@@ -241,7 +241,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                         onClick={() => jumpToQuestion(idx)}
                         disabled={isOneWay}
                         className={`
-                            w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border transition-all
+                            w-10 h-10 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs font-bold border transition-all
                             ${isCurrent 
                                 ? 'bg-blue-600 text-white border-blue-600 scale-110 shadow-lg' 
                                 : isAnswered 
@@ -263,14 +263,14 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       </div>
 
       {/* Question Card */}
-      <div className="flex-grow border border-gray-300 dark:border-terminal-green p-6 md:p-8 bg-white dark:bg-black relative overflow-hidden shadow-xl">
+      <div className="flex-grow border border-gray-300 dark:border-terminal-green p-4 md:p-8 bg-white dark:bg-black relative overflow-hidden shadow-xl">
         <div className="absolute top-0 right-0 flex">
             <button 
                 onClick={handleToggleSave}
-                className={`p-2 mr-2 mt-2 transition-colors hover:scale-110 ${savedState ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
+                className={`p-3 md:p-2 mr-2 mt-2 transition-colors hover:scale-110 ${savedState ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
                 title={savedState ? "Remove from Library" : "Save to Library"}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-6 md:w-6" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                 </svg>
             </button>
@@ -281,7 +281,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         
         <div className="mb-6">
              <span className="text-sm text-gray-500 dark:text-gray-400 font-mono block mb-2">QUESTION {currentIndex + 1}</span>
-             <div className="text-xl md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-gray-100">
+             <div className="text-lg md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-gray-100">
                <MarkdownRenderer content={displayText} className="inline-block" />
              </div>
         </div>
@@ -305,7 +305,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
               {currentQ.options!.map((opt, idx) => (
                 <label 
                   key={idx}
-                  className={`flex items-center p-4 border cursor-pointer transition-colors group relative
+                  className={`flex items-center p-4 md:p-4 border cursor-pointer transition-colors group relative min-h-[3.5rem]
                     ${getAnswerValue() === idx 
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md' 
                         : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900'
@@ -314,13 +314,13 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                 >
                    {/* Custom Radio UI */}
                   <div className={`
-                        w-5 h-5 rounded-full border-2 mr-4 flex items-center justify-center flex-shrink-0 transition-colors
+                        w-6 h-6 md:w-5 md:h-5 rounded-full border-2 mr-4 flex items-center justify-center flex-shrink-0 transition-colors
                         ${getAnswerValue() === idx 
                             ? 'border-blue-500' 
                             : 'border-gray-400 dark:border-gray-600 group-hover:border-blue-400'
                         }
                   `}>
-                        {getAnswerValue() === idx && <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>}
+                        {getAnswerValue() === idx && <div className="w-3 h-3 md:w-2.5 md:h-2.5 rounded-full bg-blue-500"></div>}
                   </div>
 
                   <input 
@@ -331,7 +331,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                     className="hidden"
                     disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
                   />
-                  <span className="text-sm md:text-base">
+                  <span className="text-base md:text-base">
                       <MarkdownRenderer content={opt} />
                   </span>
                 </label>
@@ -406,21 +406,21 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       </div>
 
       {/* Navigation Footer */}
-      <div className="mt-6 flex justify-between gap-4">
+      <div className="mt-6 flex flex-col md:flex-row justify-between gap-4">
         <button 
           onClick={prevQuestion} 
           disabled={currentIndex === 0 || isOneWay}
-          className={`px-6 py-3 border border-gray-300 dark:border-gray-600 font-bold text-sm transition-all ${currentIndex === 0 || isOneWay ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}`}
+          className={`px-6 py-4 md:py-3 border border-gray-300 dark:border-gray-600 font-bold text-sm transition-all w-full md:w-auto ${currentIndex === 0 || isOneWay ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}`}
         >
           &lt; PREV
         </button>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
             {settings.mode === ExamMode.TWO_WAY && !showFeedback && (
                 <button
                     onClick={checkAnswerTwoWay}
                     disabled={isGrading || !!inputError}
-                    className="px-6 py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 shadow-lg shadow-blue-500/30 text-sm"
+                    className="px-6 py-4 md:py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 shadow-lg shadow-blue-500/30 text-sm w-full md:w-auto"
                 >
                     {isGrading ? 'VALIDATING...' : 'CHECK ANSWER'}
                 </button>
@@ -430,14 +430,14 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             <button 
                 onClick={handleFinish}
                 disabled={!!inputError}
-                className="px-8 py-3 bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg shadow-green-500/30 text-sm tracking-wider disabled:opacity-50"
+                className="px-8 py-4 md:py-3 bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg shadow-green-500/30 text-sm tracking-wider disabled:opacity-50 w-full md:w-auto"
             >
                 SUBMIT EXAM
             </button>
             ) : (
             <button 
                 onClick={nextQuestion}
-                className="px-6 py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold text-sm"
+                className="px-6 py-4 md:py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold text-sm w-full md:w-auto"
             >
                 NEXT &gt;
             </button>

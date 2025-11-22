@@ -351,7 +351,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                         value={userName}
                         onChange={handleNameChange}
                         maxLength={20}
-                        className={`bg-gray-100 dark:bg-gray-900 border ${nameError ? 'border-red-500' : 'border-gray-400'} p-2 font-mono outline-none focus:border-blue-500 flex-grow xl:w-48`}
+                        className={`bg-gray-100 dark:bg-gray-900 border ${nameError ? 'border-red-500' : 'border-gray-400'} p-3 md:p-2 font-mono outline-none focus:border-blue-500 flex-grow xl:w-48`}
                     />
                     <button 
                         onClick={handlePublish}
@@ -364,29 +364,29 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                 {nameError && <span className="text-[10px] text-red-500 mt-1 font-bold">{nameError}</span>}
              </div>
         ) : (
-            <div className="text-green-600 dark:text-green-400 font-bold px-4 py-2 border border-green-500 bg-green-50 dark:bg-green-900/20 rounded">
+            <div className="text-green-600 dark:text-green-400 font-bold px-4 py-2 border border-green-500 bg-green-50 dark:bg-green-900/20 rounded w-full xl:w-auto text-center">
                 ✓ PUBLISHED: {userName}
             </div>
         )}
 
-        <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-center">
+        <div className="flex flex-col md:flex-row flex-wrap gap-2 w-full xl:w-auto justify-center">
             <button 
                 onClick={handleDownloadPDF}
-                className="px-4 py-2 border border-orange-400 dark:border-orange-600 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 font-bold transition-colors flex items-center gap-2"
+                className="px-4 py-4 md:py-2 border border-orange-400 dark:border-orange-600 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 font-bold transition-colors flex items-center justify-center gap-2 w-full md:w-auto"
             >
                 <span>PDF REPORT</span>
             </button>
 
             <button 
                 onClick={onRetake}
-                className="px-4 py-2 border border-blue-400 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-bold transition-colors"
+                className="px-4 py-4 md:py-2 border border-blue-400 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-bold transition-colors w-full md:w-auto"
             >
                 RETAKE EXAM
             </button>
 
             <button 
                 onClick={onRestart}
-                className="px-4 py-2 border border-gray-400 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold transition-colors"
+                className="px-4 py-4 md:py-2 border border-gray-400 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold transition-colors w-full md:w-auto"
             >
                 RESTART SYSTEM
             </button>
@@ -394,7 +394,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
             {wrongIds.length > 0 && (
                 <button 
                     onClick={() => onGenerateRemediation(wrongIds)}
-                    className="px-6 py-2 bg-purple-600 text-white font-bold hover:bg-purple-700 flex items-center gap-2 shadow-lg shadow-purple-500/30 transition-all hover:-translate-y-0.5"
+                    className="px-6 py-4 md:py-2 bg-purple-600 text-white font-bold hover:bg-purple-700 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30 transition-all hover:-translate-y-0.5 w-full md:w-auto"
                 >
                     <span>REMEDIATE WEAKNESS</span>
                     <span className="bg-white text-purple-600 text-xs font-bold px-1.5 py-0.5 rounded-full">{wrongIds.length}</span>

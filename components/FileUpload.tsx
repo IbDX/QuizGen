@@ -220,7 +220,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, isFullW
           <input 
             type="url" 
             placeholder="https://example.com/document.pdf" 
-            className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-3 font-mono text-sm outline-none focus:border-terminal-green"
+            className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-4 md:p-3 font-mono text-base md:text-sm outline-none focus:border-terminal-green"
             value={urlInput}
             onChange={handleUrlChange}
             disabled={globalStatus !== 'IDLE'}
@@ -228,7 +228,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, isFullW
           <button 
              type="submit"
              disabled={!urlInput || globalStatus !== 'IDLE'}
-             className="px-4 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50"
+             className="px-6 md:px-4 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50"
           >
             FETCH
           </button>
