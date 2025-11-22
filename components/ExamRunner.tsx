@@ -294,7 +294,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
           {currentQ.type === QuestionType.TRACING && (
              <div className="space-y-2">
-                <label className="text-sm font-bold opacity-70 font-mono">> OUTPUT_TERMINAL:</label>
+                <label className="text-sm font-bold opacity-70 font-mono">&gt; OUTPUT_TERMINAL:</label>
                 <input 
                   type="text" 
                   value={getAnswerValue() as string} 
