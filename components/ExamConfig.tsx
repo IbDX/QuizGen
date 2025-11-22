@@ -1,24 +1,75 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ExamMode, ExamSettings } from '../types';
+import { validateFile, fileToBase64 } from '../utils/fileValidation';
+import { scanFileWithVirusTotal } from '../utils/virusTotal';
 
 interface ExamConfigProps {
   onStart: (settings: ExamSettings) => void;
-  onReplaceFile: () => void;
+  onRemoveFile: (index: number) => void;
+  onAppendFiles: (files: Array<{base64: string, mime: string, name: string}>) => void;
   files: Array<{ name: string }>;
   isFullWidth: boolean;
 }
 
-export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onReplaceFile, files, isFullWidth }) => {
+export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, onAppendFiles, files, isFullWidth }) => {
   const [timeLimit, setTimeLimit] = useState<number>(30);
   const [isTimed, setIsTimed] = useState<boolean>(true);
   const [mode, setMode] = useState<ExamMode>(ExamMode.ONE_WAY);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleStart = () => {
       onStart({
           timeLimitMinutes: isTimed ? timeLimit : 0,
           mode
       });
+  };
+
+  const handleAddFileClick = () => {
+      fileInputRef.current?.click();
+  };
+
+  const processNewFiles = async (fileList: FileList | null) => {
+      if (!fileList || fileList.length === 0) return;
+      
+      setIsScanning(true);
+      setScanError(null);
+      const newFiles = Array.from(fileList);
+      const successfulFiles: Array<{base64: string, mime: string, name: string}> = [];
+
+      for (let i = 0; i < newFiles.length; i++) {
+          const file = newFiles[i];
+          try {
+              // 1. Validation
+              const validationCheck = await validateFile(file);
+              if (!validationCheck.valid || !validationCheck.mimeType) {
+                  throw new Error(`File ${file.name}: ${validationCheck.error || 'Invalid type'}`);
+              }
+
+              // 2. Security Scan & Conversion
+              const [scanResult, base64] = await Promise.all([
+                  scanFileWithVirusTotal(file),
+                  fileToBase64(file)
+              ]);
+
+              if (!scanResult.safe) {
+                  throw new Error(`File ${file.name}: ${scanResult.message}`);
+              }
+
+              successfulFiles.push({ base64, mime: validationCheck.mimeType, name: file.name });
+
+          } catch (e: any) {
+              setScanError(e.message);
+              // Stop processing batch on error or continue? Let's stop to warn user.
+              setIsScanning(false);
+              return;
+          }
+      }
+
+      onAppendFiles(successfulFiles);
+      setIsScanning(false);
   };
 
   return (
@@ -28,22 +79,61 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onReplaceFile, 
       </h2>
 
       <div className="mb-6 bg-gray-100 dark:bg-black p-4 border border-gray-300 dark:border-gray-700">
-        <div className="flex justify-between items-center mb-2">
-            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Target Sources ({files.length})</p>
-            <button 
-                onClick={onReplaceFile}
-                className="text-xs text-blue-500 underline hover:text-blue-400 font-mono"
-            >
-                [RESET_SOURCES]
-            </button>
+        <div className="flex justify-between items-center mb-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Target Sources ({files.length})</p>
         </div>
-        <ul className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+        
+        {/* File List with Remove Option */}
+        <ul className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar mb-4">
             {files.map((f, i) => (
-                <li key={i} className="font-mono text-sm truncate text-terminal-green flex items-center gap-2">
-                    <span className="opacity-50 text-xs">FILE_{i+1}:</span> {f.name}
+                <li key={i} className="font-mono text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-2 flex items-center justify-between group">
+                    <div className="flex items-center gap-2 truncate">
+                        <span className="opacity-50 text-xs text-gray-500">[{i+1}]</span>
+                        <span className="truncate text-terminal-green">{f.name}</span>
+                    </div>
+                    <button 
+                        onClick={() => onRemoveFile(i)}
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                        title="Remove File"
+                    >
+                        ✕
+                    </button>
                 </li>
             ))}
         </ul>
+
+        {/* Add More Files Area */}
+        <div 
+            onClick={!isScanning ? handleAddFileClick : undefined}
+            className={`border-2 border-dashed border-gray-300 dark:border-gray-700 p-3 text-center cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors ${isScanning ? 'opacity-50 cursor-wait' : ''}`}
+        >
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept=".pdf,.jpg,.jpeg,.png"
+                multiple 
+                onChange={(e) => processNewFiles(e.target.files)}
+                disabled={isScanning}
+            />
+            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase flex items-center justify-center gap-2">
+                {isScanning ? (
+                    <>
+                        <span className="animate-spin">↻</span> SCANNING & ANALYZING...
+                    </>
+                ) : (
+                    <>
+                        <span>+</span> ADD MORE FILES
+                    </>
+                )}
+            </div>
+        </div>
+        
+        {scanError && (
+            <div className="mt-2 text-[10px] text-red-500 font-bold bg-red-100 dark:bg-red-900/20 p-2 border border-red-200 dark:border-red-900">
+                ERROR: {scanError}
+            </div>
+        )}
       </div>
 
       <div className="mb-6 space-y-6">
@@ -123,7 +213,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onReplaceFile, 
 
       <button 
         onClick={handleStart}
-        className="w-full py-3 bg-gray-900 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold uppercase tracking-widest transition-all"
+        disabled={isScanning}
+        className="w-full py-3 bg-gray-900 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         [ INITIATE_EXAM ]
       </button>

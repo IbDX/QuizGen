@@ -27,6 +27,21 @@ const App: React.FC = () => {
     setAppState('CONFIG');
   };
 
+  const handleAppendFiles = (newFiles: Array<{base64: string; mime: string; name: string}>) => {
+    setUploadedFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const handleRemoveFile = (indexToRemove: number) => {
+    setUploadedFiles(prev => {
+      const updated = prev.filter((_, index) => index !== indexToRemove);
+      // If all files are removed, go back to upload screen
+      if (updated.length === 0) {
+        setAppState('UPLOAD');
+      }
+      return updated;
+    });
+  };
+
   const handleReplaceFiles = () => {
     setUploadedFiles([]);
     setAppState('UPLOAD');
@@ -120,7 +135,8 @@ const App: React.FC = () => {
           {appState === 'CONFIG' && uploadedFiles.length > 0 && (
             <ExamConfig 
                 onStart={handleStartExam} 
-                onReplaceFile={handleReplaceFiles} 
+                onRemoveFile={handleRemoveFile}
+                onAppendFiles={handleAppendFiles}
                 files={uploadedFiles}
                 isFullWidth={isFullWidth}
             />
