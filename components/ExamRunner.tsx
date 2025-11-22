@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
+import { saveQuestion, isQuestionSaved, removeQuestion } from '../services/library';
 import { CodeWindow } from './CodeWindow';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import Editor from 'react-simple-code-editor';
@@ -20,6 +21,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const [answers, setAnswers] = useState<Map<string, UserAnswer>>(new Map());
   const [timeLeft, setTimeLeft] = useState(settings.timeLimitMinutes * 60);
   const [isGrading, setIsGrading] = useState(false);
+  const [savedState, setSavedState] = useState<boolean>(false);
   
   // Ref to track answers for timer closure
   const answersRef = useRef(answers);
@@ -28,6 +30,13 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   // For Two Way Mode
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [currentFeedback, setCurrentFeedback] = useState<string>("");
+
+  const currentQ = questions[currentIndex];
+
+  // Check if saved on mount or index change
+  useEffect(() => {
+      setSavedState(isQuestionSaved(currentQ.id));
+  }, [currentQ.id]);
 
   useEffect(() => {
     if (settings.timeLimitMinutes > 0) {
@@ -50,7 +59,15 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     onComplete(Array.from(answers.values()));
   };
 
-  const currentQ = questions[currentIndex];
+  const handleToggleSave = () => {
+      if (savedState) {
+          removeQuestion(currentQ.id);
+          setSavedState(false);
+      } else {
+          saveQuestion(currentQ);
+          setSavedState(true);
+      }
+  };
 
   const handleAnswer = (value: string | number) => {
     setAnswers(prev => {
@@ -171,9 +188,20 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
       {/* Question Card */}
       <div className="flex-grow border border-gray-300 dark:border-terminal-green p-6 md:p-8 bg-white dark:bg-black relative overflow-hidden shadow-xl">
-        <span className="absolute top-0 right-0 text-[10px] font-bold uppercase tracking-widest bg-gray-200 dark:bg-terminal-dimGreen text-black px-3 py-1">
-            {currentQ.type}
-        </span>
+        <div className="absolute top-0 right-0 flex">
+            <button 
+                onClick={handleToggleSave}
+                className={`p-2 mr-2 mt-2 transition-colors hover:scale-110 ${savedState ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
+                title={savedState ? "Remove from Library" : "Save to Library"}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                </svg>
+            </button>
+            <span className="text-[10px] font-bold uppercase tracking-widest bg-gray-200 dark:bg-terminal-dimGreen text-black px-3 py-2">
+                {currentQ.type}
+            </span>
+        </div>
         
         <div className="mb-6">
              <span className="text-sm text-gray-500 dark:text-gray-400 font-mono block mb-2">QUESTION {currentIndex + 1}</span>

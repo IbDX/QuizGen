@@ -5,6 +5,7 @@ import { ExamConfig } from './components/ExamConfig';
 import { ExamRunner } from './components/ExamRunner';
 import { Results } from './components/Results';
 import { Leaderboard } from './components/Leaderboard';
+import { QuestionLibrary } from './components/QuestionLibrary';
 import { AppState, Question, ExamSettings, UserAnswer } from './types';
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 
@@ -78,10 +79,15 @@ const App: React.FC = () => {
        setAppState('RESULTS');
     }
   };
+  
+  const handleOpenLibrary = () => {
+      setAppState('LIBRARY');
+  };
 
   return (
     <Layout 
       onHome={handleRestart} 
+      onOpenLibrary={handleOpenLibrary}
       isFullWidth={isFullWidth} 
       onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
     >
@@ -93,6 +99,10 @@ const App: React.FC = () => {
           />
           <Leaderboard />
         </>
+      )}
+
+      {appState === 'LIBRARY' && (
+          <QuestionLibrary isFullWidth={isFullWidth} />
       )}
 
       {appState === 'CONFIG' && fileData && (

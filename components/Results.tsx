@@ -3,6 +3,7 @@ import { Question, UserAnswer, QuestionType, LeaderboardEntry } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
 import { generateExamPDF } from '../utils/pdfGenerator';
+import { saveQuestion, removeQuestion, isQuestionSaved } from '../services/library';
 
 interface ResultsProps {
   questions: Question[];
@@ -17,6 +18,11 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   const [userName, setUserName] = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [showWeakPoints, setShowWeakPoints] = useState(false);
+  const [savedQuestions, setSavedQuestions] = useState<Record<string, boolean>>(() => {
+      const initial: Record<string, boolean> = {};
+      questions.forEach(q => { initial[q.id] = isQuestionSaved(q.id); });
+      return initial;
+  });
   
   // Helper to calculate score
   let correctCount = 0;
@@ -101,6 +107,16 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       generateExamPDF(questions, score, grade, userName);
   };
 
+  const toggleSave = (q: Question) => {
+      if (savedQuestions[q.id]) {
+          removeQuestion(q.id);
+          setSavedQuestions(prev => ({...prev, [q.id]: false}));
+      } else {
+          saveQuestion(q);
+          setSavedQuestions(prev => ({...prev, [q.id]: true}));
+      }
+  };
+
   return (
     <div className={`pb-28 transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl mx-auto'}`}>
       <div className="text-center mb-12 border-b border-gray-300 dark:border-gray-800 pb-8">
@@ -150,8 +166,18 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
       <div className="space-y-8 mb-12">
         {processedAnswers.map((item, idx) => (
-          <div key={item.question.id} className={`p-6 border-l-4 ${item.isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'} bg-white dark:bg-gray-900 shadow-md rounded-r-lg`}>
-            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-gray-800">
+          <div key={item.question.id} className={`p-6 border-l-4 ${item.isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'} bg-white dark:bg-gray-900 shadow-md rounded-r-lg relative`}>
+             <button 
+                onClick={() => toggleSave(item.question)}
+                className={`absolute top-4 right-4 p-1 transition-colors hover:scale-110 ${savedQuestions[item.question.id] ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
+                title={savedQuestions[item.question.id] ? "Remove from Library" : "Save to Library"}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                </svg>
+            </button>
+
+            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-gray-800 pr-8">
               <div className="flex flex-col">
                  <h3 className="font-bold text-lg">Question {idx + 1}</h3>
                  <span className="text-xs opacity-50 uppercase text-gray-500">{item.question.type} • {item.question.topic}</span>

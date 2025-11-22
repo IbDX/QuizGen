@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
+import { scanFileWithVirusTotal } from '../utils/virusTotal';
 
 interface FileUploadProps {
   onFileAccepted: (base64: string, mimeType: string, fileName: string) => void;
@@ -10,40 +11,61 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
   const [error, setError] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [status, setStatus] = useState<'IDLE' | 'SCANNING' | 'PROCESSING' | 'ERROR'>('IDLE');
+  const [scanMessage, setScanMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
-      if (e.clipboardData && e.clipboardData.files.length > 0) {
+      if (e.clipboardData && e.clipboardData.files.length > 0 && status === 'IDLE') {
         e.preventDefault();
         handleFiles(e.clipboardData.files);
       }
     };
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, []);
+  }, [status]);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     
-    setIsProcessing(true);
+    setStatus('SCANNING');
+    setScanMessage('Initializing VirusTotal Threat Scan...');
     setError(null);
     const file = files[0];
 
     try {
+      // 1. Basic Validation
       const validation = await validateFile(file);
       if (!validation.valid) {
         setError(validation.error || 'Unknown error');
-        setIsProcessing(false);
+        setStatus('ERROR');
         return;
       }
 
+      // 2. VirusTotal Scan
+      setScanMessage('Checking file hash against VirusTotal database...');
+      const scanResult = await scanFileWithVirusTotal(file);
+      
+      if (!scanResult.safe) {
+          setError(scanResult.message);
+          setStatus('ERROR');
+          return;
+      }
+
+      setScanMessage(scanResult.message); // "Safe" message
+
+      // Short delay to show success message
+      await new Promise(r => setTimeout(r, 800));
+      
+      setStatus('PROCESSING');
+      
+      // 3. Convert and Submit
       const base64 = await fileToBase64(file);
       onFileAccepted(base64, file.type, file.name);
     } catch (e) {
-      setError("Failed to read file.");
-      setIsProcessing(false);
+      setError("Failed to read or verify file.");
+      setStatus('ERROR');
     }
   };
 
@@ -51,7 +73,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
     e.preventDefault();
     if (!urlInput) return;
     
-    setIsProcessing(true);
+    setStatus('PROCESSING');
     setError(null);
     
     try {
@@ -59,7 +81,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
        onFileAccepted(base64, mimeType, name);
     } catch (err: any) {
         setError(err.message || "Failed to load URL. Check CORS or format.");
-        setIsProcessing(false);
+        setStatus('ERROR');
     }
   };
 
@@ -75,23 +97,27 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    handleFiles(e.dataTransfer.files);
+    if (status === 'IDLE') {
+        handleFiles(e.dataTransfer.files);
+    }
   };
 
   return (
     <div className={`w-full mx-auto mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none' : 'max-w-2xl'}`}>
       <div 
         className={`
-          border-2 border-dashed transition-all p-10 text-center cursor-pointer relative
+          border-2 border-dashed transition-all p-10 text-center cursor-pointer relative overflow-hidden
           ${isDragging 
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-            : 'border-gray-400 dark:border-terminal-green hover:border-blue-400 dark:hover:border-white'
+            : status === 'ERROR'
+                ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+                : 'border-gray-400 dark:border-terminal-green hover:border-blue-400 dark:hover:border-white'
           }
         `}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => status === 'IDLE' && fileInputRef.current?.click()}
       >
         <input 
           type="file" 
@@ -99,22 +125,46 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
           className="hidden" 
           accept=".pdf,.jpg,.jpeg,.png"
           onChange={(e) => handleFiles(e.target.files)}
+          disabled={status !== 'IDLE'}
         />
         
-        <div className="space-y-4">
-          <div className="text-4xl animate-bounce-slow">
-             {isProcessing ? '⏳' : '📥'}
+        <div className="space-y-4 relative z-10">
+          <div className="text-4xl">
+             {status === 'SCANNING' ? (
+                 <span className="inline-block animate-spin">🛡️</span>
+             ) : status === 'PROCESSING' ? (
+                 <span className="inline-block animate-bounce">📥</span>
+             ) : status === 'ERROR' ? (
+                 <span>⚠️</span>
+             ) : (
+                 <span>🛡️</span>
+             )}
           </div>
+
           <h3 className="text-xl font-bold uppercase">
-            {isProcessing ? 'Analyzing payload...' : 'Drop File / Paste Image'}
+            {status === 'SCANNING' ? 'SECURITY SCAN IN PROGRESS' 
+             : status === 'PROCESSING' ? 'PROCESSING PAYLOAD'
+             : status === 'ERROR' ? 'UPLOAD REJECTED'
+             : 'SECURE FILE UPLOAD'}
           </h3>
-          <p className="text-sm opacity-70">
-            Drag & Drop PDF/IMG or Ctrl+V
+          
+          <p className="text-sm opacity-70 font-mono">
+            {status === 'SCANNING' ? scanMessage 
+             : status === 'PROCESSING' ? 'Converting data streams...'
+             : 'Drag & Drop PDF/IMG (VirusTotal Integrated)'}
           </p>
-          <div className="text-xs text-gray-400 mt-4">
-             [ MAX: 15MB ]
-          </div>
+          
+          {status === 'IDLE' && (
+            <div className="text-xs text-gray-400 mt-4">
+                [ MAX: 15MB ] • [ PROTECTED BY VIRUSTOTAL ]
+            </div>
+          )}
         </div>
+
+        {/* Scanning overlay effect */}
+        {status === 'SCANNING' && (
+            <div className="absolute inset-0 bg-green-500/10 animate-pulse z-0"></div>
+        )}
       </div>
 
       <div className="flex items-center my-6">
@@ -130,18 +180,19 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
             className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-3 font-mono text-sm outline-none focus:border-terminal-green"
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
+            disabled={status !== 'IDLE'}
           />
           <button 
              type="submit"
-             disabled={!urlInput || isProcessing}
-             className="px-4 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm"
+             disabled={!urlInput || status !== 'IDLE'}
+             className="px-4 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50"
           >
             FETCH
           </button>
       </form>
       
       {error && (
-        <div className="mt-4 p-3 border border-red-500 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-mono flex items-center gap-2">
+        <div className="mt-4 p-3 border border-red-500 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-mono flex items-center gap-2 animate-fade-in">
           <span>[ERROR]</span>
           <span>{error}</span>
         </div>

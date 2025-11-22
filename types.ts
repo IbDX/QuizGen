@@ -44,4 +44,5 @@ export type AppState =
   | 'CONFIG'
   | 'GENERATING'
   | 'EXAM'
-  | 'RESULTS';
+  | 'RESULTS'
+  | 'LIBRARY';
