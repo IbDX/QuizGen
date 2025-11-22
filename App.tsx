@@ -31,18 +31,19 @@ const App: React.FC = () => {
   const handleAppendFiles = (newFiles: Array<{base64: string; mime: string; name: string; hash: string}>) => {
     setUploadedFiles(prev => {
       const existingHashes = new Set(prev.map(f => f.hash));
+      const duplicateNames: string[] = [];
       
       // Filter out files that already exist
       const uniqueNewFiles = newFiles.filter(f => {
         if (existingHashes.has(f.hash)) {
-          console.warn(`Duplicate file detected and ignored: ${f.name}`);
+          duplicateNames.push(f.name);
           return false;
         }
         return true;
       });
 
-      if (uniqueNewFiles.length < newFiles.length) {
-        alert(`Skipped ${newFiles.length - uniqueNewFiles.length} duplicate file(s). Only unique files were added.`);
+      if (duplicateNames.length > 0) {
+        alert(`The following files are already uploaded and were skipped:\n- ${duplicateNames.join('\n- ')}`);
       }
 
       return [...prev, ...uniqueNewFiles];

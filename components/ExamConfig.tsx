@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ExamMode, ExamSettings, QuestionFormatPreference } from '../types';
 import { validateFile, fileToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -26,6 +26,54 @@ const FORMAT_OPTIONS = [
     { val: QuestionFormatPreference.TRACING, label: 'TRACING', desc: 'Code Output', fullLabel: 'TRACING (Code Output)' },
     { val: QuestionFormatPreference.CODING, label: 'CODING', desc: 'Code Write', fullLabel: 'CODING (Code Write)' },
 ];
+
+// --- INTERNAL COMPONENT: PDF PREVIEW ---
+// Converts Base64 to Blob URL for stable Iframe rendering
+const PdfPreview: React.FC<{ base64: string }> = ({ base64 }) => {
+    const [blobUrl, setBlobUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!base64) return;
+
+        try {
+            // Convert Base64 to Blob
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            
+            // Create Object URL
+            const url = URL.createObjectURL(blob);
+            setBlobUrl(url);
+
+            // Cleanup
+            return () => {
+                URL.revokeObjectURL(url);
+            };
+        } catch (e) {
+            console.error("Failed to create PDF blob", e);
+        }
+    }, [base64]);
+
+    if (!blobUrl) {
+        return (
+            <div className="w-[280px] h-[300px] bg-gray-100 flex items-center justify-center text-xs">
+                <span className="animate-pulse">LOADING PDF...</span>
+            </div>
+        );
+    }
+
+    return (
+        <iframe 
+            src={`${blobUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`} 
+            className="w-[280px] h-[300px] border border-gray-700 bg-white"
+            title="PDF Preview"
+        />
+    );
+};
 
 export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, onAppendFiles, files, isFullWidth }) => {
   const [timeLimit, setTimeLimit] = useState<number>(30);
@@ -153,10 +201,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                     className="w-full h-auto max-h-[300px] object-contain border border-gray-700"
                   />
               ) : hoveredFile.file.mime === 'application/pdf' ? (
-                   /* Removed Embed for mobile stability, kept simpler structure */
-                  <div className="w-[280px] h-[300px] bg-white relative overflow-hidden border border-gray-700 flex items-center justify-center">
-                       <span className="text-black font-bold">PDF PREVIEW</span>
-                  </div>
+                  <PdfPreview base64={hoveredFile.file.base64} />
               ) : (
                   <div className="p-4 text-center text-gray-500 text-xs font-mono">
                       NO PREVIEW AVAILABLE
@@ -166,8 +211,6 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
           </div>
       )}
 
-      {/* PDF Preview Component Logic - Using IFrame with Blob URL for better compatibility if we were to restore it fully here */}
-      
       <h2 className="text-xl md:text-2xl font-bold mb-6 border-b border-gray-300 dark:border-gray-700 pb-2">
         <span className="text-blue-600 dark:text-blue-400">&gt;</span> CONFIGURATION
       </h2>
