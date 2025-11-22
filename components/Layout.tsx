@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { BackgroundEffect } from './BackgroundEffect';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -54,6 +55,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
   // New Settings
   const [fontFamily, setFontFamily] = useState(FONT_OPTIONS[0].value);
   const [autoHideHeader, setAutoHideHeader] = useState(true);
+  const [enableBackgroundAnim, setEnableBackgroundAnim] = useState(false);
 
   // Header Visibility State
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -101,8 +103,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
   };
 
   return (
-    <div className={`min-h-screen flex flex-col font-mono selection:bg-terminal-green selection:text-terminal-black ${useCustomCursor ? 'custom-cursor' : ''}`}>
+    <div className={`min-h-screen flex flex-col font-mono selection:bg-terminal-green selection:text-terminal-black ${useCustomCursor ? 'custom-cursor' : ''} relative overflow-x-hidden`}>
       
+      {/* Background Animation */}
+      {enableBackgroundAnim && <BackgroundEffect isDarkMode={darkMode} />}
+
       {/* Inject Custom Cursor Styles */}
       {useCustomCursor && (
         <style>{`
@@ -248,7 +253,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
       </header>
 
       {/* Main Content Area - Adjusted padding for fixed header */}
-      <main className={`flex-grow p-4 md:p-8 w-full transition-all duration-300 pt-20 md:pt-28 ${isFullWidth ? 'px-4' : 'max-w-5xl mx-auto'}`}>
+      <main className={`flex-grow p-4 md:p-8 w-full transition-all duration-300 pt-20 md:pt-28 z-10 ${isFullWidth ? 'px-4' : 'max-w-5xl mx-auto'}`}>
         <div className="relative">
           <div className="relative z-10">
              {children}
@@ -256,7 +261,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
         </div>
       </main>
 
-      <footer className="p-4 text-center text-xs text-gray-500 dark:text-gray-600 border-t border-gray-300 dark:border-gray-800">
+      <footer className="p-4 text-center text-xs text-gray-500 dark:text-gray-600 border-t border-gray-300 dark:border-gray-800 z-10 relative bg-gray-100/50 dark:bg-black/50 backdrop-blur-sm">
         STATUS: ONLINE | SYSTEM: READY | V1.4.0 | VIRUSTOTAL: ACTIVE
       </footer>
 
@@ -311,6 +316,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
                             <span className="text-xl font-bold">A</span>
                         </div>
                         <div className="text-center font-mono text-xs mt-1 opacity-70">{fontSize}px</div>
+                    </div>
+
+                    {/* Background Animation Toggle */}
+                    <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">
+                        <div>
+                            <span className="font-bold text-sm block">Digital Background</span>
+                            <span className="text-[10px] text-gray-500 uppercase">Matrix Rain Animation</span>
+                        </div>
+                        <button 
+                            onClick={() => setEnableBackgroundAnim(!enableBackgroundAnim)}
+                            className={`w-12 h-6 rounded-full p-1 transition-colors ${enableBackgroundAnim ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                        >
+                            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${enableBackgroundAnim ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                        </button>
                     </div>
 
                     {/* Full Width Toggle */}

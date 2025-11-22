@@ -1,3 +1,4 @@
+
 # Z+ Terminal Exam Gen 🖥️
 
 An AI-powered, terminal-themed examination platform that generates technical assessments from uploaded documents (PDF/Images). Built with React, Tailwind CSS, and Google Gemini 2.5.
@@ -5,35 +6,38 @@ An AI-powered, terminal-themed examination platform that generates technical ass
 ## ✨ Features
 
 ### 1. Intelligent Exam Generation
--   **Multi-Format Support:** Parses **PDF**, **JPG**, and **PNG** files (Max 15MB).
--   **Magic Byte Validation:** Ensures strict file type security beyond simple extension checks.
--   **VirusTotal Integration:** Hashes files locally and verifies them against the VirusTotal database before processing.
--   **URL Fetching:** Supports fetching documents directly from public URLs.
+-   **Multi-File Batching:** Upload and process multiple PDFs or Images simultaneously.
+-   **Global Context Scanning:** The AI analyzes the entire document stack to understand context before generating questions.
+-   **VirusTotal Integration:** Files are hashed and verified securely against the VirusTotal database.
+-   **Smart Deduplication:** Prevents duplicate file uploads and duplicate questions in the exam output.
 
-### 2. Question Types
-The AI generates a mix of questions to test deep understanding:
--   **MCQ (Multiple Choice):** Standard knowledge checks.
--   **Code Tracing:** Displays a code snippet and asks for the output. Includes a specialized Code Window renderer.
--   **Coding Challenges:** Asks the user to write code in an embedded editor. The AI validates the user's code submission and provides feedback.
+### 2. Exam Modes & Formats
+-   **Mixed Mode (Default):** Automatically selects the best question type (MCQ, Coding, Tracing) based on content.
+-   **Original Mode:** Strictly adheres to the source document's format (e.g., keeps True/False as is).
+-   **Format Overrides:** Force the entire exam into a specific format:
+    -   **MCQ Only:** Converts coding challenges into multiple-choice questions.
+    -   **Coding Only:** Converts theory into practical coding tasks.
+    -   **Tracing Only:** Focuses purely on code output analysis.
 
-### 3. Exam Modes
--   **One-Way (Standard):** Users complete the entire exam before submitting. Feedback is given at the end.
--   **Two-Way (Interactive):** Users can check their answer for immediate feedback on every question. Ideal for practice.
--   **Optional Timer:** Set a time limit (5m - 120m) or disable it for untimed practice.
+### 3. Interactive Exam Experience
+-   **One-Way Mode:** Standard exam style; submit all answers at the end.
+-   **Two-Way Mode:** Instant feedback after every question.
+-   **Rich Code Editor:** Integrated syntax highlighting (PrismJS) for coding questions.
+-   **Code Window:** Dedicated, syntax-highlighted canvas for reading code snippets.
+-   **Mini-Games:** Play Snake, Tic-Tac-Toe, Sokoban, or Memory Match while the AI generates your exam.
 
 ### 4. Grading & Analytics
--   **AI Grading:** Automatically grades code submissions for correctness and logic.
--   **Weak Point Analysis:** Identifies specific topics (e.g., "Recursion", "Pointers") where the user failed and highlights them.
--   **Remediation:** Generates a *new* exam focused specifically on the user's weak points.
--   **Leaderboard:** Local-storage based leaderboard to track high scores.
+-   **AI Grading:** Automated analysis of custom code submissions.
+-   **Weak Point Analysis:** Identifies specific topics where you struggled and provides curated learning resources (Video + Reading).
+-   **Remediation:** One-click generation of a *new* makeup exam focusing only on your weak points.
+-   **Leaderboard:** Track your high scores locally.
 
-### 5. Tools & Utilities
--   **Question Library:** Save specific questions to a favorites library for later review.
--   **PDF Report Export:** Download a professionally formatted PDF containing questions, user answers, and the full answer key/explanations.
--   **Settings:**
-    -   **Font Scaling:** Adjust global font size.
-    -   **Visual Effects:** Toggle CRT scanlines and Dark/Light mode.
-    -   **Layout:** Toggle between boxed container and full-width view.
+### 5. Advanced UI/UX
+-   **Cyberpunk / Terminal Theme:** Immersive dark mode with optional matrix rain background.
+-   **Responsive Design:** Optimized for both Desktop and Mobile (touch-friendly controls).
+-   **Custom Cursor:** Terminal-themed pointer options.
+-   **PDF Export:** Download comprehensive reports including questions, your answers, and detailed explanations.
+-   **Question Library:** Save specific questions for later review.
 
 ## 🚀 How to Run
 
@@ -59,7 +63,6 @@ The AI generates a mix of questions to test deep understanding:
     ```
     API_KEY=your_google_gemini_api_key
     ```
-    *Note: In the provided code, `process.env.API_KEY` is used. Ensure your build tool (Vite/Webpack) exposes this.*
 
 4.  **Run the Development Server:**
     ```bash
@@ -71,29 +74,14 @@ The AI generates a mix of questions to test deep understanding:
     npm run build
     ```
 
-## 📖 Usage Guide
-
-1.  **Upload Source:** Drag and drop a lecture slide (PDF) or code screenshot (PNG) onto the landing zone. The app scans it for threats.
-2.  **Configure Exam:**
-    -   Select **Mode** (One-Way or Two-Way).
-    -   Set **Time Limit** or toggle "Enable Timer" off.
-3.  **Take Exam:**
-    -   Use the code editor for coding questions.
-    -   Use the "Save" (Heart icon) to add interesting questions to your library.
-4.  **Review Results:**
-    -   See your score and letter grade (A+ to F).
-    -   Click **"View Weak Points"** to see topic breakdown.
-    -   Click **"Remediate Weakness"** to generate a makeup exam.
-    -   Click **"PDF Report"** to save a copy of the exam.
-
 ## 🛠️ Tech Stack
 
 -   **Frontend:** React 18+, TypeScript
--   **Styling:** Tailwind CSS (Terminal Theme)
+-   **Styling:** Tailwind CSS
 -   **AI Model:** Google Gemini 2.5 Flash
--   **Syntax Highlighting:** PrismJS
+-   **Editor:** React Simple Code Editor + PrismJS
 -   **PDF Generation:** jsPDF
--   **Security:** VirusTotal API (Hash-based scanning)
+-   **Security:** VirusTotal API, Input Sanitization
 
 ---
 *Built with <3 by Z+ Team*

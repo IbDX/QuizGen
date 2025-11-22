@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { generateLoadingTips } from '../services/gemini';
 
 const GENERAL_TIPS = [
   "Did you know? The first computer bug was an actual moth stuck in a relay.",
@@ -289,25 +290,6 @@ const SokobanGame = () => {
         setWon(false);
     };
 
-    const checkWin = (currentGrid: number[][]) => {
-        // Win if no boxes (2) are on non-target spots.
-        // Actually easier: Win if all targets (3) are covered by boxes.
-        // In this simple grid rep: 
-        // 0: Floor
-        // 1: Wall
-        // 2: Box
-        // 3: Target
-        // 4: Player
-        // 5: Box on Target
-        // 6: Player on Target
-        
-        // Let's refine the state representation for easier logic
-        // Static Map vs Dynamic Objects is usually better, but for a mini game, we'll mix.
-        // Simple check: Are there any '3' (Empty Targets) left?
-        // Wait, if a box is on a target, it should be a distinct state.
-        return !currentGrid.some(row => row.some(cell => cell === 3 || cell === 6));
-    };
-
     useEffect(() => {
         const handleKey = (e: KeyboardEvent) => {
             if(won) return;
@@ -366,11 +348,6 @@ const SokobanGame = () => {
                          
                          setPlayerPos({x: nx, y: ny});
                          
-                         // Check Win condition after move
-                         // We do this by checking if any '2' exists? No, because 2 is Box on Floor.
-                         // Win is when NO '3' (Empty Target) and NO '6' (Player on Target - wait, player on target doesn't prevent win).
-                         // Basically, win if all boxes are 5s.
-                         // Let's assume win if no '2's exist (all boxes are on targets -> 5).
                          if (!nextGrid.some(r => r.includes(2))) {
                              setWon(true);
                          }
@@ -535,6 +512,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
   const [tipIndex, setTipIndex] = useState(0);
   const [gameIndex, setGameIndex] = useState(0);
   
+  // State for active tips - initialize with standard list first to avoid empty flash
+  const [activeTips, setActiveTips] = useState<string[]>([]);
+  const [isFetchingTips, setIsFetchingTips] = useState(false);
+
   // Game Registry
   const GAMES = [
       <SnakeGame key="snake" />, 
@@ -543,27 +524,44 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
       <MemoryGame key="memory" />
   ];
 
-  const activeTips = useMemo(() => {
-    const relevantTips: string[] = [];
+  // Calculate initial static tips synchronously on mount
+  useEffect(() => {
+      const relevantTips: string[] = [];
     
-    if (fileNames.length > 0) {
-        fileNames.forEach(name => {
-            const lowerName = name.toLowerCase();
-            Object.keys(CONTEXT_TIPS).forEach(key => {
-                if (key === 'java' && lowerName.includes('javascript')) return;
-                if (lowerName.includes(key)) {
-                    relevantTips.push(...CONTEXT_TIPS[key]);
-                }
-            });
-        });
-    }
+      if (fileNames.length > 0) {
+          fileNames.forEach(name => {
+              const lowerName = name.toLowerCase();
+              Object.keys(CONTEXT_TIPS).forEach(key => {
+                  if (key === 'java' && lowerName.includes('javascript')) return;
+                  if (lowerName.includes(key)) {
+                      relevantTips.push(...CONTEXT_TIPS[key]);
+                  }
+              });
+          });
+      }
 
-    const uniqueRelevant = Array.from(new Set(relevantTips));
-    if (uniqueRelevant.length > 0) {
-        return uniqueRelevant;
-    }
-    
-    return GENERAL_TIPS;
+      const uniqueRelevant = Array.from(new Set(relevantTips));
+      // Fallback to general if no context matched
+      const initialSet = uniqueRelevant.length > 0 ? uniqueRelevant : GENERAL_TIPS;
+      setActiveTips(initialSet);
+
+      // Trigger AI Fetch to get new tips
+      const fetchNewTips = async () => {
+          setIsFetchingTips(true);
+          const newAiTips = await generateLoadingTips(fileNames);
+          if (newAiTips && newAiTips.length > 0) {
+              // Append new AI tips to the rotation immediately
+              setActiveTips(prev => {
+                  // Combine unique tips
+                  const combined = Array.from(new Set([...newAiTips, ...prev]));
+                  // Shuffle slightly
+                  return combined.sort(() => Math.random() - 0.5);
+              });
+          }
+          setIsFetchingTips(false);
+      };
+      
+      fetchNewTips();
   }, [fileNames]);
 
   useEffect(() => {
@@ -601,11 +599,14 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
 
       {/* Info/Tip Section */}
       <div className="w-full bg-gray-100 dark:bg-[#1a1a1a] p-4 border-l-4 border-blue-500 shadow-md transition-all duration-500">
-          <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">
-              {activeTips === GENERAL_TIPS ? 'SYSTEM_INFO / RANDOM_FACT' : 'CONTEXT_AWARE_HINT'}
+          <div className="flex justify-between items-center mb-1">
+             <div className="text-[10px] font-bold text-gray-400 uppercase">
+                {isFetchingTips ? 'GENERATING_FRESH_TIPS...' : 'CONTEXT_AWARE_HINT'}
+             </div>
+             {isFetchingTips && <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>}
           </div>
           <p className="font-mono text-sm text-gray-700 dark:text-gray-300 min-h-[3rem] flex items-center flex-wrap">
-              {formatTip(activeTips[tipIndex])}
+              {activeTips.length > 0 && formatTip(activeTips[tipIndex])}
           </p>
       </div>
 

@@ -52,6 +52,12 @@ const gradingSchema = {
   required: ["isCorrect", "feedback"]
 };
 
+const tipsSchema = {
+    type: Type.ARRAY,
+    items: { type: Type.STRING },
+    description: "A list of short, interesting technical facts or tips."
+};
+
 const deduplicateQuestions = (questions: Question[]): Question[] => {
   const uniqueQuestions: Question[] = [];
   const seenSignatures = new Set<string>();
@@ -344,4 +350,41 @@ export const gradeCodingAnswer = async (question: Question, code: string): Promi
   } catch (error) {
     return { isCorrect: false, feedback: "Error connecting to AI grading service." };
   }
+};
+
+// --- NEW FEATURE: DYNAMIC TIP GENERATION ---
+export const generateLoadingTips = async (fileNames: string[]): Promise<string[]> => {
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        
+        const context = fileNames.length > 0 ? fileNames.join(', ') : "Programming, Computer Science, and Technology";
+        
+        const prompt = `
+            Generate 3 unique, obscure, and interesting technical facts or tips related to: ${context}.
+            
+            Rules:
+            1. Keep each tip short (under 25 words).
+            2. If including code, wrap it in backticks.
+            3. Do not use generic "Hello World" advice. Make it sound like a system log or advanced hint.
+            4. Randomize the topics slightly within the domain.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [{ text: prompt }] },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: tipsSchema,
+                temperature: 1.0 // High temperature for maximum randomness
+            }
+        });
+
+        if (response.text) {
+            return JSON.parse(response.text) as string[];
+        }
+        return [];
+    } catch (e) {
+        console.warn("Failed to generate AI tips", e);
+        return [];
+    }
 };

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
@@ -21,10 +20,30 @@ const App: React.FC = () => {
   const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
   const [loadingMsg, setLoadingMsg] = useState('');
   const [isFullWidth, setIsFullWidth] = useState(true); 
+  
+  // State for Duplicate File Modal
+  const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
 
   const handleFilesAccepted = (files: Array<{base64: string; mime: string; name: string; hash: string}>) => {
-    // Initial upload - just set the files (assuming batch from FileUpload doesn't have internal duplicates)
-    setUploadedFiles(files);
+    // Deduplicate within the incoming batch itself
+    const uniqueBatch: typeof files = [];
+    const seenHashes = new Set<string>();
+    const duplicates: string[] = [];
+
+    files.forEach(f => {
+        if (seenHashes.has(f.hash)) {
+            duplicates.push(f.name);
+        } else {
+            seenHashes.add(f.hash);
+            uniqueBatch.push(f);
+        }
+    });
+
+    if (duplicates.length > 0) {
+        setDuplicateFiles(duplicates);
+    }
+
+    setUploadedFiles(uniqueBatch);
     setAppState('CONFIG');
   };
 
@@ -43,7 +62,7 @@ const App: React.FC = () => {
       });
 
       if (duplicateNames.length > 0) {
-        alert(`The following files are already uploaded and were skipped:\n- ${duplicateNames.join('\n- ')}`);
+        setDuplicateFiles(duplicateNames);
       }
 
       return [...prev, ...uniqueNewFiles];
@@ -136,6 +155,42 @@ const App: React.FC = () => {
       isFullWidth={isFullWidth} 
       onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
     >
+      {/* Duplicate Warning Modal */}
+      {duplicateFiles.length > 0 && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+              <div className="bg-white dark:bg-gray-900 border-2 border-red-500 p-6 max-w-md w-full shadow-[0_0_30px_rgba(239,68,68,0.4)] relative">
+                  <div className="flex items-center gap-3 mb-4 text-red-600 dark:text-red-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <h3 className="font-bold text-xl uppercase tracking-wider">File Conflict</h3>
+                  </div>
+                  
+                  <p className="text-gray-700 dark:text-gray-300 mb-4 font-mono text-sm leading-relaxed">
+                      The following files are already present in the system or were duplicated in your selection and have been skipped:
+                  </p>
+                  
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 mb-6 max-h-40 overflow-y-auto custom-scrollbar">
+                      <ul className="space-y-1">
+                          {duplicateFiles.map((name, i) => (
+                              <li key={i} className="text-red-600 dark:text-red-400 text-xs font-mono font-bold flex items-center gap-2">
+                                  <span>•</span>
+                                  <span className="truncate">{name}</span>
+                              </li>
+                          ))}
+                      </ul>
+                  </div>
+                  
+                  <button 
+                      onClick={() => setDuplicateFiles([])} 
+                      className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest transition-colors"
+                  >
+                      ACKNOWLEDGE
+                  </button>
+              </div>
+          </div>
+      )}
+
       {/* Overlay Library if Open */}
       {isLibraryOpen && (
           <QuestionLibrary isFullWidth={isFullWidth} />
