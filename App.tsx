@@ -15,7 +15,7 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<ExamSettings | null>(null);
   const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
   const [loadingMsg, setLoadingMsg] = useState('');
-  const [isFullWidth, setIsFullWidth] = useState(false);
+  const [isFullWidth, setIsFullWidth] = useState(true); // Default to true
 
   const handleFileAccepted = (base64: string, mime: string, name: string) => {
     setFileData({ base64, mime, name });

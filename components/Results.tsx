@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { CodeWindow } from './CodeWindow';
+import { generateExamPDF } from '../utils/pdfGenerator';
 
 interface ResultsProps {
   questions: Question[];
@@ -95,6 +97,10 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
     setIsPublished(true);
   };
 
+  const handleDownloadPDF = () => {
+      generateExamPDF(questions, score, grade, userName);
+  };
+
   return (
     <div className={`pb-28 transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl mx-auto'}`}>
       <div className="text-center mb-12 border-b border-gray-300 dark:border-gray-800 pb-8">
@@ -158,6 +164,13 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
             <div className="mb-6 text-lg font-medium text-gray-800 dark:text-gray-200">
                 <MarkdownRenderer content={item.question.text} />
             </div>
+
+            {/* RENDER CODE SNIPPET IF AVAILABLE */}
+            {item.question.codeSnippet && (
+                <div className="mb-6">
+                    <CodeWindow code={item.question.codeSnippet} />
+                </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                 <div className="bg-gray-100 dark:bg-black p-4 rounded border border-gray-200 dark:border-gray-800">
@@ -205,6 +218,13 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         )}
 
         <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-center">
+            <button 
+                onClick={handleDownloadPDF}
+                className="px-4 py-2 border border-orange-400 dark:border-orange-600 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 font-bold transition-colors flex items-center gap-2"
+            >
+                <span>PDF REPORT</span>
+            </button>
+
             <button 
                 onClick={onRetake}
                 className="px-4 py-2 border border-blue-400 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-bold transition-colors"

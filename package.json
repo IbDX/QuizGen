@@ -13,7 +13,8 @@
     "react": "^19.2.0",
     "@google/genai": "^1.30.0",
     "prismjs": "^1.30.0",
-    "react-simple-code-editor": "^0.14.1"
+    "react-simple-code-editor": "^0.14.1",
+    "jspdf": "^2.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
