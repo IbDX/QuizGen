@@ -104,6 +104,9 @@ const SnakeGame = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+          e.preventDefault();
+      }
       switch (e.key) {
         case 'ArrowUp': if (dir.y === 0) setDir({ x: 0, y: -1 }); break;
         case 'ArrowDown': if (dir.y === 0) setDir({ x: 0, y: 1 }); break;
@@ -263,6 +266,266 @@ const XO = () => {
     );
 };
 
+// --- SOKOBAN COMPONENT ---
+// Simple level: 0=floor, 1=wall, 2=box, 3=target, 4=player
+const INITIAL_LEVEL = [
+    [1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,1],
+    [1,0,2,0,2,0,1],
+    [1,0,3,4,3,0,1],
+    [1,0,0,0,0,0,1],
+    [1,0,1,0,1,0,1],
+    [1,1,1,1,1,1,1]
+];
+
+const SokobanGame = () => {
+    const [grid, setGrid] = useState<number[][]>(JSON.parse(JSON.stringify(INITIAL_LEVEL)));
+    const [playerPos, setPlayerPos] = useState({x: 3, y: 3});
+    const [won, setWon] = useState(false);
+
+    const reset = () => {
+        setGrid(JSON.parse(JSON.stringify(INITIAL_LEVEL)));
+        setPlayerPos({x: 3, y: 3});
+        setWon(false);
+    };
+
+    const checkWin = (currentGrid: number[][]) => {
+        // Win if no boxes (2) are on non-target spots.
+        // Actually easier: Win if all targets (3) are covered by boxes.
+        // In this simple grid rep: 
+        // 0: Floor
+        // 1: Wall
+        // 2: Box
+        // 3: Target
+        // 4: Player
+        // 5: Box on Target
+        // 6: Player on Target
+        
+        // Let's refine the state representation for easier logic
+        // Static Map vs Dynamic Objects is usually better, but for a mini game, we'll mix.
+        // Simple check: Are there any '3' (Empty Targets) left?
+        // Wait, if a box is on a target, it should be a distinct state.
+        return !currentGrid.some(row => row.some(cell => cell === 3 || cell === 6));
+    };
+
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => {
+            if(won) return;
+            if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+            } else {
+                return;
+            }
+
+            const dx = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
+            const dy = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
+            
+            if (dx === 0 && dy === 0) return;
+
+            setGrid(prev => {
+                const nextGrid = prev.map(row => [...row]);
+                const x = playerPos.x;
+                const y = playerPos.y;
+                const nx = x + dx;
+                const ny = y + dy;
+                const nnx = nx + dx;
+                const nny = ny + dy;
+
+                // Logic Helper: 
+                // Cell Types: 0=Floor, 1=Wall, 2=Box, 3=Target, 4=Player, 5=BoxOnTarget, 6=PlayerOnTarget
+
+                const targetCell = nextGrid[ny][nx];
+                
+                // Check Walls
+                if (targetCell === 1) return prev;
+
+                // Check Moving into Empty Floor or Target
+                if (targetCell === 0 || targetCell === 3) {
+                    // Move Player
+                    // Restore old cell
+                    nextGrid[y][x] = (prev[y][x] === 6) ? 3 : 0;
+                    // Set new cell
+                    nextGrid[ny][nx] = (targetCell === 3) ? 6 : 4;
+                    setPlayerPos({x: nx, y: ny});
+                    return nextGrid;
+                }
+
+                // Check Pushing Box (2 or 5)
+                if (targetCell === 2 || targetCell === 5) {
+                    const beyondCell = nextGrid[nny][nnx];
+                    // Can only push into Floor (0) or Target (3)
+                    if (beyondCell === 0 || beyondCell === 3) {
+                         // Move Box
+                         nextGrid[nny][nnx] = (beyondCell === 3) ? 5 : 2;
+                         
+                         // Move Player
+                         // Restore old player spot
+                         nextGrid[y][x] = (prev[y][x] === 6) ? 3 : 0;
+                         // Set new player spot (where box was)
+                         nextGrid[ny][nx] = (targetCell === 5) ? 6 : 4; // If box was on target, now player is on target
+                         
+                         setPlayerPos({x: nx, y: ny});
+                         
+                         // Check Win condition after move
+                         // We do this by checking if any '2' exists? No, because 2 is Box on Floor.
+                         // Win is when NO '3' (Empty Target) and NO '6' (Player on Target - wait, player on target doesn't prevent win).
+                         // Basically, win if all boxes are 5s.
+                         // Let's assume win if no '2's exist (all boxes are on targets -> 5).
+                         if (!nextGrid.some(r => r.includes(2))) {
+                             setWon(true);
+                         }
+
+                         return nextGrid;
+                    }
+                }
+                
+                return prev;
+            });
+        };
+
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [playerPos, won]);
+
+    // Map cell values to colors/chars
+    const renderCell = (val: number) => {
+        switch(val) {
+            case 1: return <div className="w-full h-full bg-gray-700 border border-gray-600"></div>; // Wall
+            case 2: return <div className="w-full h-full bg-yellow-600 border-2 border-yellow-400 flex items-center justify-center text-[10px]">box</div>; // Box
+            case 3: return <div className="w-full h-full flex items-center justify-center"><div className="w-2 h-2 bg-red-500 rounded-full"></div></div>; // Target
+            case 4: return <div className="w-full h-full bg-blue-500 border border-blue-300 flex items-center justify-center">☺</div>; // Player
+            case 5: return <div className="w-full h-full bg-green-500 border-2 border-green-300 flex items-center justify-center">✓</div>; // Box on Target
+            case 6: return <div className="w-full h-full bg-blue-500 border border-blue-300 flex items-center justify-center">☺</div>; // Player on Target
+            default: return null; // Floor
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center">
+             <div className="mb-2 flex justify-between w-full px-4 font-mono text-xs font-bold text-terminal-green">
+                <span>SOKOBAN</span>
+                <span>{won ? 'VICTORY!' : 'PUSH BOXES'}</span>
+            </div>
+            <div 
+                className="grid bg-black border-2 border-terminal-green p-1"
+                style={{
+                    gridTemplateColumns: `repeat(7, 25px)`,
+                    gridTemplateRows: `repeat(7, 25px)`,
+                    gap: '1px'
+                }}
+            >
+                {grid.flat().map((cell, i) => (
+                    <div key={i} className="w-[25px] h-[25px] bg-[#111]">
+                        {renderCell(cell)}
+                    </div>
+                ))}
+            </div>
+            <div className="mt-4 text-[10px] text-gray-500 cursor-pointer underline hover:text-white" onClick={reset}>
+                {won ? 'PLAY AGAIN' : 'RESET LEVEL'}
+            </div>
+        </div>
+    );
+};
+
+// --- MEMORY MATCH COMPONENT ---
+const SYMBOLS = ['{}', '[]', '()', '&&', '||', '!=', '=>', '++'];
+
+interface Card {
+    id: number;
+    val: string;
+    flipped: boolean;
+    matched: boolean;
+}
+
+const MemoryGame = () => {
+    const [cards, setCards] = useState<Card[]>([]);
+    const [turns, setTurns] = useState(0);
+    const [disabled, setDisabled] = useState(false);
+    const [firstChoice, setFirstChoice] = useState<Card | null>(null);
+    const [secondChoice, setSecondChoice] = useState<Card | null>(null);
+
+    const shuffleCards = () => {
+        const shuffled = [...SYMBOLS, ...SYMBOLS]
+            .sort(() => Math.random() - 0.5)
+            .map((val, id) => ({ id, val, flipped: false, matched: false }));
+        
+        setFirstChoice(null);
+        setSecondChoice(null);
+        setCards(shuffled);
+        setTurns(0);
+    };
+
+    useEffect(() => {
+        shuffleCards();
+    }, []);
+
+    useEffect(() => {
+        if (firstChoice && secondChoice) {
+            setDisabled(true);
+            if (firstChoice.val === secondChoice.val) {
+                setCards(prev => prev.map(card => 
+                    card.val === firstChoice.val ? { ...card, matched: true } : card
+                ));
+                resetTurn();
+            } else {
+                setTimeout(() => resetTurn(), 1000);
+            }
+        }
+    }, [firstChoice, secondChoice]);
+
+    const resetTurn = () => {
+        setFirstChoice(null);
+        setSecondChoice(null);
+        setCards(prev => prev.map(card => ({ ...card, flipped: card.matched })));
+        setDisabled(false);
+        setTurns(t => t + 1);
+    };
+
+    const handleChoice = (card: Card) => {
+        if (disabled || card.flipped || card.matched) return;
+        
+        // Visual flip immediately
+        setCards(prev => prev.map(c => c.id === card.id ? { ...c, flipped: true } : c));
+
+        firstChoice ? setSecondChoice(card) : setFirstChoice(card);
+    };
+
+    const isWin = cards.length > 0 && cards.every(c => c.matched);
+
+    return (
+        <div className="flex flex-col items-center">
+             <div className="mb-2 flex justify-between w-full px-4 font-mono text-xs font-bold text-terminal-green">
+                <span>MEMORY</span>
+                <span>TURNS: {turns}</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+                {cards.map(card => (
+                    <div 
+                        key={card.id} 
+                        className={`
+                            w-10 h-10 flex items-center justify-center text-xs font-bold cursor-pointer transition-all duration-300
+                            border border-terminal-green
+                            ${card.flipped || card.matched ? 'bg-terminal-green text-black rotate-y-180' : 'bg-black text-terminal-green'}
+                        `}
+                        onClick={() => handleChoice(card)}
+                    >
+                        {(card.flipped || card.matched) ? card.val : '?'}
+                    </div>
+                ))}
+            </div>
+             {isWin && (
+                 <div className="mt-4 text-sm font-bold animate-bounce text-terminal-green cursor-pointer" onClick={shuffleCards}>
+                     ALL MATCHED! RESTART
+                 </div>
+             )}
+             {!isWin && (
+                 <div className="mt-4 text-[10px] text-gray-500">FIND MATCHING PAIRS</div>
+             )}
+        </div>
+    );
+};
+
+
 interface LoadingScreenProps {
   message: string;
   fileNames?: string[];
@@ -270,20 +533,24 @@ interface LoadingScreenProps {
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames = [] }) => {
   const [tipIndex, setTipIndex] = useState(0);
-  const [GameComponent, setGameComponent] = useState<React.ReactNode>(null);
+  const [gameIndex, setGameIndex] = useState(0);
+  
+  // Game Registry
+  const GAMES = [
+      <SnakeGame key="snake" />, 
+      <XO key="xo" />, 
+      <SokobanGame key="sokoban" />,
+      <MemoryGame key="memory" />
+  ];
 
-  // Compute tips based on file names
   const activeTips = useMemo(() => {
     const relevantTips: string[] = [];
     
     if (fileNames.length > 0) {
         fileNames.forEach(name => {
             const lowerName = name.toLowerCase();
-            // Iterate through known contexts
             Object.keys(CONTEXT_TIPS).forEach(key => {
-                // Avoid "Java" matching "Javascript" incorrectly by checking strict bounds or specific logic if needed
                 if (key === 'java' && lowerName.includes('javascript')) return;
-
                 if (lowerName.includes(key)) {
                     relevantTips.push(...CONTEXT_TIPS[key]);
                 }
@@ -291,11 +558,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
         });
     }
 
-    // Remove duplicates using Set
     const uniqueRelevant = Array.from(new Set(relevantTips));
-
-    // If we found relevant tips, use them. Otherwise (or if mixed with empty), add some general ones or fall back entirely.
-    // To keep it fresh, if we have relevant tips, we prioritize them, but maybe mix in a few general ones if list is short.
     if (uniqueRelevant.length > 0) {
         return uniqueRelevant;
     }
@@ -304,12 +567,12 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
   }, [fileNames]);
 
   useEffect(() => {
-      // Randomly choose a game on mount
-      setGameComponent(Math.random() > 0.5 ? <SnakeGame /> : <XO />);
+      // Pick a random game once on mount
+      setGameIndex(Math.floor(Math.random() * GAMES.length));
       
       const interval = setInterval(() => {
           setTipIndex(prev => (prev + 1) % activeTips.length);
-      }, 5000); // Slightly longer duration to read technical tips
+      }, 5000); 
       return () => clearInterval(interval);
   }, [activeTips]);
 
@@ -339,8 +602,14 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
           <div className="absolute top-0 left-0 bg-gray-200 dark:bg-gray-800 px-3 py-1 text-[10px] font-bold tracking-widest">
               WAITING_ROOM_MODULE.EXE
           </div>
-          <div className="mt-4 flex justify-center">
-              {GameComponent}
+          <div className="mt-4 flex justify-center min-h-[220px] items-center">
+              {GAMES[gameIndex]}
+          </div>
+          {/* Game Switcher (Easter Egg) */}
+          <div className="absolute bottom-1 right-2 flex gap-1">
+              <button onClick={() => setGameIndex((i) => (i + 1) % GAMES.length)} className="text-[9px] text-gray-600 hover:text-terminal-green">
+                  NEXT_GAME &gt;
+              </button>
           </div>
       </div>
     </div>
