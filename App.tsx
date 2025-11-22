@@ -14,21 +14,39 @@ import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('UPLOAD');
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  // Changed from single fileData to array of files
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{base64: string; mime: string; name: string}>>([]);
+  // Changed from single fileData to array of files, now includes hash for deduplication
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{base64: string; mime: string; name: string; hash: string}>>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [settings, setSettings] = useState<ExamSettings | null>(null);
   const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
   const [loadingMsg, setLoadingMsg] = useState('');
   const [isFullWidth, setIsFullWidth] = useState(true); 
 
-  const handleFilesAccepted = (files: Array<{base64: string; mime: string; name: string}>) => {
+  const handleFilesAccepted = (files: Array<{base64: string; mime: string; name: string; hash: string}>) => {
+    // Initial upload - just set the files (assuming batch from FileUpload doesn't have internal duplicates)
     setUploadedFiles(files);
     setAppState('CONFIG');
   };
 
-  const handleAppendFiles = (newFiles: Array<{base64: string; mime: string; name: string}>) => {
-    setUploadedFiles(prev => [...prev, ...newFiles]);
+  const handleAppendFiles = (newFiles: Array<{base64: string; mime: string; name: string; hash: string}>) => {
+    setUploadedFiles(prev => {
+      const existingHashes = new Set(prev.map(f => f.hash));
+      
+      // Filter out files that already exist
+      const uniqueNewFiles = newFiles.filter(f => {
+        if (existingHashes.has(f.hash)) {
+          console.warn(`Duplicate file detected and ignored: ${f.name}`);
+          return false;
+        }
+        return true;
+      });
+
+      if (uniqueNewFiles.length < newFiles.length) {
+        alert(`Skipped ${newFiles.length - uniqueNewFiles.length} duplicate file(s). Only unique files were added.`);
+      }
+
+      return [...prev, ...uniqueNewFiles];
+    });
   };
 
   const handleRemoveFile = (indexToRemove: number) => {

@@ -7,7 +7,7 @@ import { scanFileWithVirusTotal } from '../utils/virusTotal';
 interface ExamConfigProps {
   onStart: (settings: ExamSettings) => void;
   onRemoveFile: (index: number) => void;
-  onAppendFiles: (files: Array<{base64: string, mime: string, name: string}>) => void;
+  onAppendFiles: (files: Array<{base64: string, mime: string, name: string, hash: string}>) => void;
   files: Array<{ name: string }>;
   isFullWidth: boolean;
 }
@@ -37,7 +37,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       setIsScanning(true);
       setScanError(null);
       const newFiles = Array.from(fileList);
-      const successfulFiles: Array<{base64: string, mime: string, name: string}> = [];
+      const successfulFiles: Array<{base64: string, mime: string, name: string, hash: string}> = [];
 
       for (let i = 0; i < newFiles.length; i++) {
           const file = newFiles[i];
@@ -58,7 +58,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                   throw new Error(`File ${file.name}: ${scanResult.message}`);
               }
 
-              successfulFiles.push({ base64, mime: validationCheck.mimeType, name: file.name });
+              const hash = scanResult.hash || `unknown_hash_${Date.now()}_${Math.random()}`;
+              successfulFiles.push({ base64, mime: validationCheck.mimeType, name: file.name, hash });
 
           } catch (e: any) {
               setScanError(e.message);

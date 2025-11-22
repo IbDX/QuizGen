@@ -4,6 +4,7 @@ const API_KEY = "40db05fc89dc6b0735840be6127a78e91f4ed8cf10984014a6c4968ab489ef2
 export interface ScanResult {
   safe: boolean;
   message: string;
+  hash?: string; // Added to track file uniqueness
   threatLabel?: string;
   scans?: {
     malicious: number;
@@ -14,7 +15,7 @@ export interface ScanResult {
 }
 
 // Calculate SHA-256 hash locally
-const calculateSHA256 = async (file: File): Promise<string> => {
+export const calculateSHA256 = async (file: File): Promise<string> => {
   const buffer = await file.arrayBuffer();
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -38,15 +39,17 @@ export const scanFileWithVirusTotal = async (file: File): Promise<ScanResult> =>
     
     if (reportRes.status === 200) {
         const data = await reportRes.json();
-        return parseVTResponse(data.data.attributes, "Hash Lookup");
+        const result = parseVTResponse(data.data.attributes, "Hash Lookup");
+        return { ...result, hash };
     }
     
-    if (reportRes.status === 401) return { safe: true, message: "VT API Key Invalid (401)" };
-    if (reportRes.status === 429) return { safe: true, message: "VT Rate Limit Exceeded (429)" };
+    if (reportRes.status === 401) return { safe: true, message: "VT API Key Invalid (401)", hash };
+    if (reportRes.status === 429) return { safe: true, message: "VT Rate Limit Exceeded (429)", hash };
 
     // 2. SLOW PATH: File not known (404), so we Upload and Scan (POST /files)
     if (reportRes.status === 404) {
-        return await uploadAndPoll(file);
+        const result = await uploadAndPoll(file);
+        return { ...result, hash };
     }
 
     throw new Error(`Unexpected VT Status: ${reportRes.status}`);
@@ -55,8 +58,13 @@ export const scanFileWithVirusTotal = async (file: File): Promise<ScanResult> =>
     console.warn("VirusTotal Check Failed:", error);
     const isCors = error.name === 'TypeError' && error.message === 'Failed to fetch';
     
+    // We try to return the hash even if the scan fails (calculated locally)
+    let hash = undefined;
+    try { hash = await calculateSHA256(file); } catch (e) {}
+
     return {
       safe: true, 
+      hash,
       message: isCors 
         ? "Scan Skipped (Browser CORS blocked VT API). Running in offline mode." 
         : `Scan Error: ${error.message || 'Unknown'}`

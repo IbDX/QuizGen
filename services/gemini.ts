@@ -84,28 +84,27 @@ export const generateExam = async (files: { base64: string, mimeType: string }[]
     const prompt = `
       Analyze the provided document(s) (images/PDFs) and extract the exam questions contained within them.
       
-      **1. STRICT FIDELITY - REFLECT THE SOURCE**: 
-      - **Do Not Balance Types**: If the document contains 100% MCQs, return 100% MCQs. If it contains 5 Coding questions, return 5. Do not invent questions to fill quotas.
-      - **NO DUPLICATES**: Process the documents. If a question is repeated (e.g. on a summary slide), IGNORE the duplicate. Return unique questions only.
+      **CRITICAL: HANDLING MIXED TYPES**
+      - The document likely contains a **MIX** of Question Types (MCQ, Tracing, and Coding) on the same page or across pages.
+      - **Evaluate EACH question individually**. Do not assume that because the first question is an MCQ, the rest are too.
+      - Switch types dynamically as you parse the document.
+
+      **1. CLASSIFICATION RULES (STRICT)**:
+      - **MCQ**: Has explicit options (A, B, C, D) visible in the source.
+      - **TRACING**: Asks "What is the output?", "What does this print?", or shows code and asks for the result. **NO** explicit A/B/C/D options provided in the image.
+      - **CODING**: Asks to "Write a program", "Implement a function", "Complete the code", or "Fix the bug".
 
       **2. MULTIPLE CHOICE (MCQ) - PRECISION REQUIRED**:
       - **EXTRACT ALL OPTIONS**: You MUST extract every single option visible (A, B, C, D). Check for multi-column layouts (e.g., A/C on left, B/D on right).
       - **SYMBOL PRESERVATION**: Pay extreme attention to special characters in C++ or code options.
         - **DO NOT** treat "*" as a Markdown bullet point.
         - If Option A is "*", return "*".
-        - If Option B is "**", return "**".
-        - If Option C is "***", return "***".
-      - **EMPTY OPTIONS**: If an option looks empty, check if it's a whitespace character, a symbol, or "Nothing to Print". Do not return empty strings unless the option is literally blank.
+      - **EMPTY OPTIONS**: If an option looks empty, check if it's a whitespace character, a symbol, or "Nothing to Print".
 
-      **3. CLASSIFICATION**:
-      - **MCQ**: Has explicit choices (A, B, C, D) or a list of options.
-      - **TRACING**: Asks for output/result with NO provided choices.
-      - **CODING**: Asks to write/implement code.
-
-      **FORMATTING**:
-      - **Code Snippets**: Preserve newlines and indentation.
+      **3. CONTENT EXTRACTION**:
+      - **Code Snippets**: Preserve newlines, indentation, and headers (#include).
       - **Explanation**: Provide a step-by-step solution derivation.
-      - **Correct Answer**: Solve the problem yourself to determine the 'correctOptionIndex'.
+      - **Correct Answer**: Solve the problem yourself to determine the 'correctOptionIndex' or 'tracingOutput'.
 
       ${instructions ? `User Instructions: ${instructions}` : ''}
       
