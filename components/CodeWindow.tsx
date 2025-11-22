@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-python';
@@ -13,6 +13,8 @@ interface CodeWindowProps {
 }
 
 export const CodeWindow: React.FC<CodeWindowProps> = ({ code, title = "code" }) => {
+  const [copied, setCopied] = useState(false);
+
   const normalizedCode = useMemo(() => {
     if (!code) return "";
     
@@ -46,8 +48,18 @@ export const CodeWindow: React.FC<CodeWindowProps> = ({ code, title = "code" }) 
     Prism.highlightAll();
   }, [normalizedCode]);
 
+  const handleCopy = async () => {
+      try {
+          await navigator.clipboard.writeText(normalizedCode);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+          console.error('Failed to copy code', err);
+      }
+  };
+
   return (
-    <div className="rounded-lg overflow-hidden shadow-2xl my-6 border border-gray-700 bg-[#1e1e1e] group">
+    <div className="rounded-lg overflow-hidden shadow-2xl my-6 border border-gray-700 bg-[#1e1e1e] group relative">
       {/* Window Header */}
       <div className="bg-[#252526] px-4 py-2 flex items-center justify-between border-b border-black">
         <div className="flex gap-2">
@@ -55,10 +67,39 @@ export const CodeWindow: React.FC<CodeWindowProps> = ({ code, title = "code" }) 
           <div className="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#ffbd2e]/80 transition-colors shadow-inner"></div>
           <div className="w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#27c93f]/80 transition-colors shadow-inner"></div>
         </div>
-        <div className="text-xs text-gray-400 font-mono opacity-70 select-none group-hover:opacity-100 transition-opacity">
+        
+        <div className="text-xs text-gray-400 font-mono opacity-70 select-none group-hover:opacity-100 transition-opacity absolute left-1/2 transform -translate-x-1/2">
             {title}
         </div>
-        <div className="w-12"></div> {/* Spacer for centering */}
+
+        {/* Copy Button */}
+        <button 
+            onClick={handleCopy}
+            className={`
+                flex items-center gap-1 text-[10px] px-2 py-1 rounded border transition-all duration-300 font-bold uppercase tracking-wide
+                ${copied 
+                    ? 'border-green-500 text-green-500 bg-green-500/10' 
+                    : 'border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 hover:bg-white/5'
+                }
+            `}
+            title="Copy to Clipboard"
+        >
+            {copied ? (
+                <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span>COPIED</span>
+                </>
+            ) : (
+                <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span>COPY</span>
+                </>
+            )}
+        </button>
       </div>
 
       {/* Code Area */}

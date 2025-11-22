@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -145,6 +144,8 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   };
 
   const grade = getLetterGrade(score);
+  const isFailure = grade === 'F';
+  const isPerfect = score === 100;
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
@@ -192,23 +193,59 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
   return (
     <div className={`pb-28 transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl mx-auto'}`}>
-      <div className="text-center mb-12 border-b border-gray-300 dark:border-gray-800 pb-8">
-        <h2 className="text-4xl font-bold mb-6">ASSESSMENT COMPLETE</h2>
-        <div className="flex items-center justify-center gap-6 mb-6">
+      
+      {/* FAILURE ANIMATION OVERLAY */}
+      {isFailure && (
+          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-20 dark:opacity-10">
+              <div className="absolute top-0 left-0 w-full h-full bg-red-500/20 animate-pulse"></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-600 font-black text-[10rem] md:text-[20rem] -rotate-12 select-none opacity-10 whitespace-nowrap">
+                  FAILED
+              </div>
+          </div>
+      )}
+
+      <div className="text-center mb-12 border-b border-gray-300 dark:border-gray-800 pb-8 relative z-10">
+        
+        {/* Header Banner */}
+        {isFailure ? (
+             <div className="bg-red-600 text-white py-2 font-bold tracking-[0.5em] uppercase mb-8 animate-pulse shadow-[0_0_20px_rgba(220,38,38,0.6)]">
+                 ⚠ CRITICAL SYSTEM FAILURE ⚠
+             </div>
+        ) : isPerfect ? (
+             <div className="bg-yellow-500 text-black py-2 font-bold tracking-[0.5em] uppercase mb-8 shadow-[0_0_20px_rgba(234,179,8,0.6)] animate-pulse">
+                 ★ PERFECTION ACHIEVED ★
+             </div>
+        ) : (
+            <h2 className="text-4xl font-bold mb-6">ASSESSMENT COMPLETE</h2>
+        )}
+
+        <div className="flex items-center justify-center gap-6 mb-6 relative">
             <div className="text-center">
-                <div className="text-6xl font-mono mb-1">
-                    <span className={score >= 70 ? "text-green-500" : "text-red-500"}>{score}%</span>
+                <div className={`text-6xl font-mono mb-1 ${isFailure ? 'animate-bounce text-red-600' : score >= 70 ? "text-green-500" : "text-red-500"}`}>
+                    {score}%
                 </div>
                 <div className="text-sm text-gray-500">FINAL SCORE</div>
             </div>
             <div className="h-16 w-px bg-gray-300 dark:bg-gray-700"></div>
-            <div className="text-center">
+            <div className="text-center relative">
                 <div className={`text-6xl font-mono font-bold mb-1 ${['A+','A','A-','B+','B'].includes(grade) ? 'text-blue-500' : ['C+','C','C-'].includes(grade) ? 'text-yellow-500' : 'text-red-600'}`}>
                     {grade}
                 </div>
                 <div className="text-sm text-gray-500">GRADE</div>
+                
+                {/* Z+ ELITE BADGE FOR FULL MARKS */}
+                {isPerfect && (
+                    <div className="absolute -top-6 -right-16 md:-right-24 rotate-12 animate-fade-in">
+                        <div className="relative flex items-center justify-center w-16 h-16 bg-black border-2 border-yellow-400 rounded-full shadow-[0_0_15px_rgba(250,204,21,0.8)] group overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-yellow-600/50 to-transparent animate-spin-slow"></div>
+                            <span className="relative z-10 font-bold text-yellow-400 italic font-mono text-xl">Z+</span>
+                            <div className="absolute bottom-1 text-[6px] text-yellow-200 uppercase tracking-widest">Elite</div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
+        
         <p className="text-gray-500 dark:text-gray-400 mb-4">
             {correctCount} / {questions.length} CORRECT
         </p>
@@ -223,7 +260,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         )}
         
         {showWeakPoints && wrongIds.length > 0 && (
-            <div className="mt-6 max-w-2xl mx-auto bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 p-6 rounded">
+            <div className="mt-6 max-w-2xl mx-auto bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 p-6 rounded animate-fade-in">
                 <h4 className="font-bold text-red-600 dark:text-red-400 mb-4 text-sm uppercase tracking-wider text-center">
                     Areas for Improvement & Resources
                 </h4>
@@ -270,7 +307,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         )}
       </div>
 
-      <div className="space-y-8 mb-12">
+      <div className="space-y-8 mb-12 relative z-10">
         {processedAnswers.map((item, idx) => {
           const hasCodeBlockInText = item.question.text.includes('```');
           let displayText = item.question.text;
