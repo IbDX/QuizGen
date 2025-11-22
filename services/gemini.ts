@@ -1,30 +1,42 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference } from "../types";
 
-// Schema definition for the exam generation
-// Using implicit type inference for schema structure
-const examSchema = {
-  type: Type.ARRAY,
-  items: {
-    type: Type.OBJECT,
-    properties: {
-      id: { type: Type.STRING },
-      type: { type: Type.STRING, enum: [QuestionType.MCQ, QuestionType.TRACING, QuestionType.CODING] },
-      topic: { type: Type.STRING, description: "A short topic tag for this question (e.g., 'Loops', 'Pointers', 'Recursion')" },
-      text: { type: Type.STRING },
-      codeSnippet: { type: Type.STRING, nullable: true },
-      options: { 
-        type: Type.ARRAY, 
-        items: { type: Type.STRING },
-        nullable: true 
-      },
-      correctOptionIndex: { type: Type.INTEGER, nullable: true },
-      tracingOutput: { type: Type.STRING, nullable: true },
-      explanation: { type: Type.STRING }
-    },
-    required: ["id", "type", "topic", "text", "explanation"]
+// Helper to generate schema based on preference
+// This strictly enforces the Output Type at the JSON validation level
+const getExamSchema = (preference: QuestionFormatPreference): Schema => {
+  let allowedTypes = [QuestionType.MCQ, QuestionType.TRACING, QuestionType.CODING];
+  
+  if (preference === QuestionFormatPreference.MCQ) {
+    allowedTypes = [QuestionType.MCQ];
+  } else if (preference === QuestionFormatPreference.TRACING) {
+    allowedTypes = [QuestionType.TRACING];
+  } else if (preference === QuestionFormatPreference.CODING) {
+    allowedTypes = [QuestionType.CODING];
   }
+
+  return {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        id: { type: Type.STRING },
+        type: { type: Type.STRING, enum: allowedTypes },
+        topic: { type: Type.STRING, description: "A short topic tag for this question (e.g., 'Loops', 'Pointers', 'Recursion')" },
+        text: { type: Type.STRING },
+        codeSnippet: { type: Type.STRING, nullable: true },
+        options: { 
+          type: Type.ARRAY, 
+          items: { type: Type.STRING },
+          nullable: true 
+        },
+        correctOptionIndex: { type: Type.INTEGER, nullable: true },
+        tracingOutput: { type: Type.STRING, nullable: true },
+        explanation: { type: Type.STRING }
+      },
+      required: ["id", "type", "topic", "text", "explanation"]
+    }
+  };
 };
 
 const gradingSchema = {
@@ -66,10 +78,21 @@ const deduplicateQuestions = (questions: Question[]): Question[] => {
       seenSignatures.add(signature);
       
       // CLEANUP: Check if text contains the codeSnippet. If so, remove it from text to prevent display duplication.
+      // Also check if the code snippet is accidentally embedded as a markdown block inside text
       let cleanText = q.text;
+
+      // Remove raw code string if present
       if (q.codeSnippet && q.codeSnippet.length > 10 && cleanText.includes(q.codeSnippet)) {
           cleanText = cleanText.replace(q.codeSnippet, '').trim();
       }
+
+      // Remove markdown code blocks from text if they contain the logic
+      // This cleans up cases where the AI puts the code in 'codeSnippet' AND in 'text' as ```code```
+      cleanText = cleanText.replace(/```[\s\S]*?```/g, (match) => {
+         // If the block is very similar to the codeSnippet, remove it. 
+         // For safety, we generally remove large code blocks from text if a separate snippet exists.
+         return q.codeSnippet ? "[See Code Window Below]" : match;
+      });
 
       // Ensure unique ID for React rendering
       uniqueQuestions.push({
@@ -90,7 +113,6 @@ export const generateExam = async (
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // We select a model capable of multimodal understanding (images/pdf)
     const modelId = 'gemini-2.5-flash'; 
 
     // Construct Format Logic based on Preference
@@ -98,29 +120,43 @@ export const generateExam = async (
     
     if (preference === QuestionFormatPreference.MCQ) {
         formatInstruction = `
-        **CRITICAL FORMAT OVERRIDE: ALL QUESTIONS MUST BE MULTIPLE CHOICE (MCQ)**
-        - If you find a coding problem: Convert it into a conceptual MCQ or provide 4 potential code solutions as options.
-        - If you find a tracing problem: Provide 4 possible output strings as options.
-        - DO NOT output TRACING or CODING types. ONLY output MCQ.
+        **STRICT FORMAT ENFORCEMENT: MCQ ONLY**
+        1.  You MUST convert EVERY question into a Multiple Choice Question (MCQ).
+        2.  **Coding Problems -> MCQ**:
+            -   Create a scenario: "Which of the following code snippets correctly implements X?"
+            -   Provide 4 distinct code snippets as options A, B, C, D.
+        3.  **Tracing Problems -> MCQ**:
+            -   Ask "What is the output?"
+            -   Provide 4 possible output values as options.
+        4.  **Open Ended -> MCQ**:
+            -   Create a conceptual question with 4 distinct definitions or statements.
+        5.  **REQUIREMENT**: Every single item in the output array MUST have "type": "MCQ" and "options" filled with 4 strings.
         `;
     } else if (preference === QuestionFormatPreference.CODING) {
         formatInstruction = `
-        **CRITICAL FORMAT OVERRIDE: ALL QUESTIONS MUST BE CODING CHALLENGES**
-        - If you find an MCQ or Tracing problem: Rephrase it into a task where the user must write code to solve it.
-        - Example: Instead of "What does this loop do?", ask "Write a loop that iterates X times...".
-        - DO NOT output MCQ or TRACING types. ONLY output CODING.
+        **STRICT FORMAT ENFORCEMENT: CODING ONLY**
+        1.  You MUST convert EVERY question into a Coding Challenge.
+        2.  **MCQ -> Coding**:
+            -   Ignore the options. Take the core concept (e.g., "Loops") and ask the user to "Write a function that..." demonstrates that concept.
+        3.  **Tracing -> Coding**:
+            -   Instead of asking for the output, provide the function signature and ask the user to "Implement the logic to achieve X".
+        4.  **REQUIREMENT**: Every single item in the output array MUST have "type": "CODING". Do NOT provide options.
         `;
     } else if (preference === QuestionFormatPreference.TRACING) {
         formatInstruction = `
-        **CRITICAL FORMAT OVERRIDE: ALL QUESTIONS MUST BE CODE TRACING**
-        - Provide a code snippet for EVERY question.
-        - Ask "What is the output of this code?".
-        - DO NOT output MCQ options.
+        **STRICT FORMAT ENFORCEMENT: TRACING ONLY**
+        1.  You MUST convert EVERY question into a Code Tracing problem.
+        2.  **MCQ -> Tracing**:
+            -   Create a code snippet that demonstrates the concept in the MCQ.
+            -   Ask "What is the output of this code?".
+        3.  **Coding -> Tracing**:
+            -   Take the solution code, introduce a specific logic flow (or a bug), and ask "What does this print?" or "What is the value of X at the end?".
+        4.  **REQUIREMENT**: Every single item in the output array MUST have "type": "TRACING" and a "codeSnippet".
         `;
     } else {
         // Mixed / Default
         formatInstruction = `
-        **CRITICAL: HANDLING MIXED TYPES**
+        **HANDLING MIXED TYPES**
         - The document likely contains a **MIX** of Question Types (MCQ, Tracing, and Coding).
         - **Evaluate EACH question individually**. Switch types dynamically as you parse the document to match the original intent.
         `;
@@ -131,22 +167,11 @@ export const generateExam = async (
       
       ${formatInstruction}
 
-      **1. CLASSIFICATION RULES (Unless Overridden Above)**:
-      - **MCQ**: Has explicit options (A, B, C, D) visible in the source.
-      - **TRACING**: Asks "What is the output?", "What does this print?", or shows code and asks for the result.
-      - **CODING**: Asks to "Write a program", "Implement a function", "Complete the code", or "Fix the bug".
-
-      **2. MULTIPLE CHOICE (MCQ) - PRECISION REQUIRED**:
-      - **EXTRACT ALL OPTIONS**: You MUST extract every single option visible (A, B, C, D). Check for multi-column layouts.
-      - **SYMBOL PRESERVATION**: Pay extreme attention to special characters (pointers, math).
-      - **EMPTY OPTIONS**: If an option looks empty, check if it's a whitespace character, a symbol, or "Nothing to Print".
-
-      **3. CONTENT EXTRACTION**:
+      **GENERAL RULES**:
       - **Code Snippets**: Preserve newlines, indentation, and headers (#include). Put code in 'codeSnippet' field ONLY.
-      - **Text Separation**: The 'text' field must ONLY contain the question prompt (e.g., "What is the output?"). **DO NOT include the code in the 'text' field.**
+      - **Text Separation**: The 'text' field must ONLY contain the question prompt. **DO NOT include the code in the 'text' field.**
       - **Explanation**: Provide a step-by-step solution derivation.
-      - **Correct Answer**: Solve the problem yourself to determine the 'correctOptionIndex' or 'tracingOutput'.
-
+      
       ${instructions ? `User Instructions: ${instructions}` : ''}
       
       Return the response strictly as a JSON array adhering to the schema.
@@ -169,7 +194,7 @@ export const generateExam = async (
       },
       config: {
         responseMimeType: "application/json",
-        responseSchema: examSchema,
+        responseSchema: getExamSchema(preference), // Dynamic Schema strictly enforcing type
         thinkingConfig: { thinkingBudget: 0 }, 
         temperature: 0.2 
       }
@@ -191,6 +216,9 @@ export const generateExamFromWrongAnswers = async (originalQuestions: Question[]
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const wrongQuestions = originalQuestions.filter(q => wrongIds.includes(q.id));
         
+        // Remediation always uses Mixed schema to find best fit for learning
+        const schema = getExamSchema(QuestionFormatPreference.MIXED);
+
         const prompt = `
           The user failed the following questions:
           ${JSON.stringify(wrongQuestions)}
@@ -206,7 +234,7 @@ export const generateExamFromWrongAnswers = async (originalQuestions: Question[]
           contents: { parts: [{ text: prompt }] },
           config: {
             responseMimeType: "application/json",
-            responseSchema: examSchema,
+            responseSchema: schema,
             thinkingConfig: { thinkingBudget: 0 }
           }
         });
