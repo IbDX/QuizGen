@@ -1,0 +1,97 @@
+import React, { useState } from 'react';
+import { ExamMode, ExamSettings } from '../types';
+
+interface ExamConfigProps {
+  onStart: (settings: ExamSettings) => void;
+  onReplaceFile: () => void;
+  fileName: string;
+  isFullWidth: boolean;
+}
+
+export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onReplaceFile, fileName, isFullWidth }) => {
+  const [timeLimit, setTimeLimit] = useState<number>(30);
+  const [mode, setMode] = useState<ExamMode>(ExamMode.ONE_WAY);
+
+  return (
+    <div className={`border border-gray-300 dark:border-terminal-dimGreen p-6 bg-white dark:bg-gray-900 mt-10 shadow-lg mx-auto transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-xl'}`}>
+      <h2 className="text-2xl font-bold mb-6 border-b border-gray-300 dark:border-gray-700 pb-2">
+        <span className="text-blue-600 dark:text-blue-400">&gt;</span> CONFIGURATION
+      </h2>
+
+      <div className="mb-6 flex items-end justify-between bg-gray-100 dark:bg-black p-3 border border-gray-300 dark:border-gray-700">
+        <div>
+            <p className="text-xs mb-1 text-gray-500 dark:text-gray-400 uppercase tracking-wider">Target Source</p>
+            <div className="font-mono text-sm truncate max-w-[200px] md:max-w-[300px] text-terminal-green">
+            {fileName}
+            </div>
+        </div>
+        <button 
+            onClick={onReplaceFile}
+            className="text-xs text-blue-500 underline hover:text-blue-400 font-mono"
+        >
+            [CHANGE_SOURCE]
+        </button>
+      </div>
+
+      <div className="mb-6 space-y-4">
+        <div>
+          <label className="block text-sm font-bold mb-2">MODE_SELECT</label>
+          <div className="flex flex-col gap-2">
+            <label className={`flex items-center p-3 border cursor-pointer transition-colors ${mode === ExamMode.ONE_WAY ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-700'}`}>
+              <input 
+                type="radio" 
+                name="mode" 
+                value={ExamMode.ONE_WAY} 
+                checked={mode === ExamMode.ONE_WAY}
+                onChange={() => setMode(ExamMode.ONE_WAY)}
+                className="mr-3"
+              />
+              <div>
+                <span className="font-bold">ONE_WAY (Standard)</span>
+                <p className="text-xs opacity-70">Submit all answers at end. No immediate feedback.</p>
+              </div>
+            </label>
+            
+            <label className={`flex items-center p-3 border cursor-pointer transition-colors ${mode === ExamMode.TWO_WAY ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-700'}`}>
+              <input 
+                type="radio" 
+                name="mode" 
+                value={ExamMode.TWO_WAY}
+                checked={mode === ExamMode.TWO_WAY}
+                onChange={() => setMode(ExamMode.TWO_WAY)}
+                className="mr-3"
+              />
+              <div>
+                <span className="font-bold">TWO_WAY (Interactive)</span>
+                <p className="text-xs opacity-70">Check answers immediately. Practice mode.</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold mb-2">TIME_ALLOCATION (Minutes)</label>
+          <div className="flex items-center gap-4">
+            <input 
+              type="range" 
+              min="5" 
+              max="120" 
+              step="5" 
+              value={timeLimit} 
+              onChange={(e) => setTimeLimit(parseInt(e.target.value))}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-500"
+            />
+            <span className="font-mono text-xl w-16 text-right">{timeLimit}m</span>
+          </div>
+        </div>
+      </div>
+
+      <button 
+        onClick={() => onStart({ timeLimitMinutes: timeLimit, mode })}
+        className="w-full py-3 bg-gray-900 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold uppercase tracking-widest transition-all"
+      >
+        [ INITIATE_EXAM ]
+      </button>
+    </div>
+  );
+};
