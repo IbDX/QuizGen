@@ -6,6 +6,7 @@ import { ExamRunner } from './components/ExamRunner';
 import { Results } from './components/Results';
 import { Leaderboard } from './components/Leaderboard';
 import { QuestionLibrary } from './components/QuestionLibrary';
+import { LoadingScreen } from './components/LoadingScreen';
 import { AppState, Question, ExamSettings, UserAnswer } from './types';
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 
@@ -122,10 +123,7 @@ const App: React.FC = () => {
       )}
 
       {appState === 'GENERATING' && (
-        <div className="flex flex-col items-center justify-center h-[50vh] space-y-6">
-          <div className="w-16 h-16 border-4 border-t-terminal-green border-r-transparent border-b-terminal-green border-l-transparent rounded-full animate-spin"></div>
-          <p className="font-mono text-lg animate-pulse text-center max-w-md px-4">{loadingMsg}</p>
-        </div>
+        <LoadingScreen message={loadingMsg} />
       )}
 
       {appState === 'EXAM' && settings && (

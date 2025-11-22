@@ -91,6 +91,8 @@ export const generateExam = async (base64Data: string, mimeType: string, instruc
       config: {
         responseMimeType: "application/json",
         responseSchema: examSchema,
+        // OPTIMIZATION: Disable thinking for lower latency to speed up parsing
+        thinkingConfig: { thinkingBudget: 0 }, 
         temperature: 0.4
       }
     });
@@ -125,7 +127,8 @@ export const generateExamFromWrongAnswers = async (originalQuestions: Question[]
           contents: { parts: [{ text: prompt }] },
           config: {
             responseMimeType: "application/json",
-            responseSchema: examSchema
+            responseSchema: examSchema,
+            thinkingConfig: { thinkingBudget: 0 }
           }
         });
     
@@ -170,7 +173,8 @@ export const gradeCodingAnswer = async (question: Question, code: string): Promi
       contents: { parts: [{ text: prompt }] },
       config: {
         responseMimeType: "application/json",
-        responseSchema: gradingSchema
+        responseSchema: gradingSchema,
+        thinkingConfig: { thinkingBudget: 0 }
       }
     });
 
