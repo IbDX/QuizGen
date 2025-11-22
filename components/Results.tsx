@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
 import { generateExamPDF } from '../utils/pdfGenerator';
 import { saveQuestion, removeQuestion, isQuestionSaved } from '../services/library';
+import { sanitizeInput } from '../utils/security';
 
 interface ResultsProps {
   questions: Question[];
@@ -18,6 +20,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   const [userName, setUserName] = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [showWeakPoints, setShowWeakPoints] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [savedQuestions, setSavedQuestions] = useState<Record<string, boolean>>(() => {
       const initial: Record<string, boolean> = {};
       questions.forEach(q => { initial[q.id] = isQuestionSaved(q.id); });
@@ -85,12 +88,24 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
   const grade = getLetterGrade(score);
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      const validation = sanitizeInput(val, 20); // Max 20 chars for name
+      
+      if (!validation.isValid) {
+          setNameError(validation.error || "Invalid characters");
+          return;
+      }
+      setNameError(null);
+      setUserName(validation.sanitizedValue);
+  };
+
   const handlePublish = () => {
-    if (!userName.trim()) return;
+    if (!userName.trim() || nameError) return;
     
     // Save to Leaderboard
     const entry: LeaderboardEntry = {
-        name: userName,
+        name: userName.trim(),
         score: score,
         date: new Date().toISOString()
     };
@@ -221,21 +236,25 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-black border-t border-gray-300 dark:border-terminal-green flex flex-col xl:flex-row gap-4 justify-center items-center shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-50">
         
         {!isPublished ? (
-             <div className="flex gap-2 w-full xl:w-auto">
-                <input 
-                    type="text" 
-                    placeholder="ENTER_AGENT_NAME" 
-                    value={userName}
-                    onChange={e => setUserName(e.target.value)}
-                    className="bg-gray-100 dark:bg-gray-900 border border-gray-400 p-2 font-mono outline-none focus:border-blue-500 flex-grow xl:w-48"
-                />
-                <button 
-                    onClick={handlePublish}
-                    disabled={!userName}
-                    className="px-4 py-2 bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                    PUBLISH
-                </button>
+             <div className="flex flex-col w-full xl:w-auto">
+                <div className="flex gap-2 w-full xl:w-auto">
+                    <input 
+                        type="text" 
+                        placeholder="ENTER_AGENT_NAME" 
+                        value={userName}
+                        onChange={handleNameChange}
+                        maxLength={20}
+                        className={`bg-gray-100 dark:bg-gray-900 border ${nameError ? 'border-red-500' : 'border-gray-400'} p-2 font-mono outline-none focus:border-blue-500 flex-grow xl:w-48`}
+                    />
+                    <button 
+                        onClick={handlePublish}
+                        disabled={!userName || !!nameError}
+                        className="px-4 py-2 bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    >
+                        PUBLISH
+                    </button>
+                </div>
+                {nameError && <span className="text-[10px] text-red-500 mt-1 font-bold">{nameError}</span>}
              </div>
         ) : (
             <div className="text-green-600 dark:text-green-400 font-bold px-4 py-2 border border-green-500 bg-green-50 dark:bg-green-900/20 rounded">

@@ -1,6 +1,8 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
+import { sanitizeInput } from '../utils/security';
 
 interface FileUploadProps {
   onFileAccepted: (base64: string, mimeType: string, fileName: string) => void;
@@ -9,6 +11,7 @@ interface FileUploadProps {
 
 export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWidth }) => {
   const [error, setError] = useState<string | null>(null);
+  const [threatDetails, setThreatDetails] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<'IDLE' | 'SCANNING' | 'PROCESSING' | 'ERROR'>('IDLE');
@@ -32,6 +35,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
     setStatus('SCANNING');
     setScanMessage('Initializing VirusTotal Threat Scan...');
     setError(null);
+    setThreatDetails(null);
     const file = files[0];
 
     try {
@@ -49,6 +53,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
       
       if (!scanResult.safe) {
           setError(scanResult.message);
+          if (scanResult.threatLabel) {
+            setThreatDetails(scanResult.threatLabel);
+          }
           setStatus('ERROR');
           return;
       }
@@ -69,12 +76,30 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
     }
   };
 
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      const validation = sanitizeInput(val, 500); // 500 chars max for URL
+      setUrlInput(validation.sanitizedValue);
+      if (!validation.isValid) {
+          setError(validation.error || "Invalid characters in URL");
+      } else {
+          setError(null);
+      }
+  };
+
   const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!urlInput) return;
     
+    // Extra check before submitting
+    if (urlInput.toLowerCase().includes('javascript:')) {
+        setError("Invalid Protocol");
+        return;
+    }
+
     setStatus('PROCESSING');
     setError(null);
+    setThreatDetails(null);
     
     try {
        const { base64, mimeType, name } = await urlToBase64(urlInput);
@@ -179,7 +204,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
             placeholder="https://example.com/document.pdf" 
             className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-3 font-mono text-sm outline-none focus:border-terminal-green"
             value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
+            onChange={handleUrlChange}
             disabled={status !== 'IDLE'}
           />
           <button 
@@ -192,9 +217,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
       </form>
       
       {error && (
-        <div className="mt-4 p-3 border border-red-500 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-mono flex items-center gap-2 animate-fade-in">
-          <span>[ERROR]</span>
-          <span>{error}</span>
+        <div className="mt-4 p-4 border-l-4 border-red-500 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-mono animate-fade-in shadow-lg">
+          <div className="flex items-center gap-2 font-bold mb-1 text-base">
+            <span>⚠️ THREAT DETECTED</span>
+          </div>
+          <div className="mb-2">{error}</div>
+          {threatDetails && (
+             <div className="bg-red-200 dark:bg-red-900/40 p-2 rounded border border-red-300 dark:border-red-800 text-xs font-bold uppercase tracking-wider">
+               DETECTION LABEL: {threatDetails}
+             </div>
+          )}
         </div>
       )}
     </div>

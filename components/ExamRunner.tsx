@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
 import { saveQuestion, isQuestionSaved, removeQuestion } from '../services/library';
 import { CodeWindow } from './CodeWindow';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { validateCodeInput, sanitizeInput } from '../utils/security';
 import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-clike';
@@ -22,6 +24,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const [timeLeft, setTimeLeft] = useState(settings.timeLimitMinutes * 60);
   const [isGrading, setIsGrading] = useState(false);
   const [savedState, setSavedState] = useState<boolean>(false);
+  const [inputError, setInputError] = useState<string | null>(null);
   
   // Ref to track answers for timer closure
   const answersRef = useRef(answers);
@@ -36,9 +39,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   // Check if saved on mount or index change
   useEffect(() => {
       setSavedState(isQuestionSaved(currentQ.id));
+      setInputError(null); // Clear errors on nav
   }, [currentQ.id]);
 
   useEffect(() => {
+    // Only run timer if timeLimitMinutes is greater than 0
     if (settings.timeLimitMinutes > 0) {
       const timer = setInterval(() => {
         setTimeLeft((prev) => {
@@ -56,6 +61,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   }, [settings.timeLimitMinutes, onComplete]);
 
   const handleFinish = () => {
+    if (inputError) return; // Prevent submit if active error
     onComplete(Array.from(answers.values()));
   };
 
@@ -70,17 +76,38 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   };
 
   const handleAnswer = (value: string | number) => {
+    let validatedValue = value;
+    setInputError(null);
+
+    if (currentQ.type === QuestionType.CODING) {
+        const validation = validateCodeInput(String(value));
+        if (!validation.isValid) {
+            setInputError(validation.error || "Invalid Input");
+            // We allow typing but show error, or clamp value
+            if (validation.sanitizedValue) validatedValue = validation.sanitizedValue;
+        }
+    } else if (currentQ.type === QuestionType.TRACING) {
+        // Strict check for tracing
+        const validation = sanitizeInput(String(value));
+        if (!validation.isValid) {
+             setInputError(validation.error || "Invalid Character");
+             return; // Block input
+        }
+        validatedValue = validation.sanitizedValue;
+    }
+
     setAnswers(prev => {
       const newMap = new Map(prev);
       newMap.set(currentQ.id, {
         questionId: currentQ.id,
-        answer: value
+        answer: validatedValue
       });
       return newMap;
     });
   };
 
   const checkAnswerTwoWay = async () => {
+    if (inputError) return;
     setIsGrading(true);
     const userAnswer = answers.get(currentQ.id);
     
@@ -125,6 +152,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const nextQuestion = () => {
     setShowFeedback(false);
     setCurrentFeedback("");
+    setInputError(null);
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
     }
@@ -133,6 +161,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const prevQuestion = () => {
     setShowFeedback(false);
     setCurrentFeedback("");
+    setInputError(null);
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
     }
@@ -141,6 +170,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const jumpToQuestion = (index: number) => {
     setShowFeedback(false);
     setCurrentFeedback("");
+    setInputError(null);
     setCurrentIndex(index);
   }
 
@@ -181,8 +211,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             })}
          </div>
 
-        <div className={`text-xl font-mono whitespace-nowrap ${timeLeft < 60 ? 'text-red-500 animate-pulse' : ''}`}>
-           TIME: {formatTime(timeLeft)}
+        <div className={`text-xl font-mono whitespace-nowrap ${settings.timeLimitMinutes > 0 && timeLeft < 60 ? 'text-red-500 animate-pulse' : ''}`}>
+           TIME: {settings.timeLimitMinutes > 0 ? formatTime(timeLeft) : "UNLIMITED"}
         </div>
       </div>
 
@@ -216,6 +246,13 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
         {/* Inputs based on type */}
         <div className="mt-8 mb-8">
+          {inputError && (
+              <div className="mb-4 p-2 border border-red-500 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2 animate-bounce">
+                  <span>⚠️ SECURITY ALERT:</span>
+                  <span>{inputError}</span>
+              </div>
+          )}
+
           {currentQ.type === QuestionType.MCQ && currentQ.options && (
             <div className="space-y-3">
               {currentQ.options.map((opt, idx) => (
@@ -263,6 +300,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                   value={getAnswerValue() as string} 
                   onChange={(e) => handleAnswer(e.target.value)}
                   placeholder="Type output..."
+                  maxLength={200}
                   className="w-full bg-gray-50 dark:bg-[#0c0c0c] border border-gray-300 dark:border-gray-600 p-4 font-mono focus:border-blue-500 outline-none text-lg"
                   disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
                 />
@@ -271,7 +309,10 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
           {currentQ.type === QuestionType.CODING && (
             <div className="space-y-2 border border-gray-300 dark:border-gray-700">
-               <div className="bg-gray-200 dark:bg-gray-800 px-2 py-1 text-xs font-bold">EDITOR</div>
+               <div className="bg-gray-200 dark:bg-gray-800 px-2 py-1 text-xs font-bold flex justify-between">
+                   <span>EDITOR</span>
+                   <span className="text-[10px] opacity-70">MAX 5000 CHARS</span>
+               </div>
                <div className="min-h-[200px] bg-gray-50 dark:bg-[#0c0c0c]">
                  <Editor
                     value={String(getAnswerValue())}
@@ -316,7 +357,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             {settings.mode === ExamMode.TWO_WAY && !showFeedback && (
                 <button
                     onClick={checkAnswerTwoWay}
-                    disabled={isGrading}
+                    disabled={isGrading || !!inputError}
                     className="px-6 py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 shadow-lg shadow-blue-500/30 text-sm"
                 >
                     {isGrading ? 'VALIDATING...' : 'CHECK ANSWER'}
@@ -326,7 +367,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             {currentIndex === questions.length - 1 ? (
             <button 
                 onClick={handleFinish}
-                className="px-8 py-3 bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg shadow-green-500/30 text-sm tracking-wider"
+                disabled={!!inputError}
+                className="px-8 py-3 bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg shadow-green-500/30 text-sm tracking-wider disabled:opacity-50"
             >
                 SUBMIT EXAM
             </button>

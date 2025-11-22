@@ -1,8 +1,10 @@
+
 const API_KEY = "40db05fc89dc6b0735840be6127a78e91f4ed8cf10984014a6c4968ab489ef2c";
 
 export interface ScanResult {
   safe: boolean;
   message: string;
+  threatLabel?: string;
   scans?: {
     malicious: number;
     suspicious: number;
@@ -32,30 +34,65 @@ export const scanFileWithVirusTotal = async (file: File): Promise<ScanResult> =>
       }
     });
 
+    // Handle 404: File not found in VT database (New file)
+    // This is technically "safe" regarding known threats, but we haven't scanned it.
     if (response.status === 404) {
-      // File not found in VT database. 
-      // Since we cannot easily upload files from client-side (CORS restrictions on VT upload endpoints),
-      // we will treat unknown files as "Unverified" but allow them with a warning.
       return {
         safe: true,
-        message: "File hash not found in VirusTotal database. Proceeding with caution (Local Analysis Only)."
+        message: "Hash not in VirusTotal database. Local analysis only (Caution advised)."
       };
     }
 
-    if (!response.ok) {
-      throw new Error(`VirusTotal API Error: ${response.status}`);
+    // Handle 401: Unauthorized (Wrong API Key)
+    if (response.status === 401) {
+       console.error("VirusTotal API Key Invalid");
+       return {
+         safe: true,
+         message: "VirusTotal Config Error (401). Skipped."
+       };
+    }
+
+    // Handle 429: Quota Exceeded (Rate Limit)
+    if (response.status === 429) {
+       console.warn("VirusTotal Rate Limit Exceeded");
+       return {
+         safe: true,
+         message: "VirusTotal Rate Limit Exceeded. Skipped."
+       };
     }
 
     const data = await response.json();
-    const stats = data.data.attributes.last_analysis_stats;
+
+    // Check if the API returned a logical error inside the JSON
+    if (data.error) {
+        throw new Error(data.error.message || "Unknown API Error");
+    }
+
+    // Defensive coding: Ensure data structure exists
+    if (!data.data || !data.data.attributes) {
+        throw new Error("Invalid API Response Structure");
+    }
+
+    const attributes = data.data.attributes;
+    const stats = attributes.last_analysis_stats;
     
-    const malicious = stats.malicious;
-    const suspicious = stats.suspicious;
+    if (!stats) {
+        return { safe: true, message: "No analysis stats available." };
+    }
+
+    const malicious = stats.malicious || 0;
+    const suspicious = stats.suspicious || 0;
+    
+    // Extract specific threat label if available (e.g. "eicar/test", "trojan.win32...")
+    // We safely check for the nested property
+    const threatLabel = attributes.popular_threat_classification?.suggested_threat_label || 
+                        (malicious > 0 ? "Malicious Content" : undefined);
 
     if (malicious > 0 || suspicious > 0) {
       return {
         safe: false,
-        message: `THREAT DETECTED: ${malicious} security vendors flagged this file as malicious.`,
+        message: `SECURITY ALERT: ${malicious}/${malicious + (stats.undetected || 0) + (stats.harmless || 0)} vendors flagged this file.`,
+        threatLabel: threatLabel,
         scans: stats
       };
     }
@@ -68,10 +105,15 @@ export const scanFileWithVirusTotal = async (file: File): Promise<ScanResult> =>
 
   } catch (error: any) {
     console.warn("VirusTotal Check Failed:", error);
-    // If API fails (e.g., quota exceeded or CORS), we default to allowing but warning.
+    
+    // Check for likely CORS error (common in browser-to-api calls without proxy)
+    const isCors = error.name === 'TypeError' && error.message === 'Failed to fetch';
+    
     return {
-      safe: true, // Fail open for demo purposes, but in prod this might be false
-      message: "VirusTotal Scan Skipped (API/Network Error). Proceeding."
+      safe: true, 
+      message: isCors 
+        ? "VirusTotal Scan Skipped (CORS/Network). Browser blocked request." 
+        : `VirusTotal Error: ${error.message || 'Unknown'}`
     };
   }
 };

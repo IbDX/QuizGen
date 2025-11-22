@@ -10,7 +10,15 @@ interface ExamConfigProps {
 
 export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onReplaceFile, fileName, isFullWidth }) => {
   const [timeLimit, setTimeLimit] = useState<number>(30);
+  const [isTimed, setIsTimed] = useState<boolean>(true);
   const [mode, setMode] = useState<ExamMode>(ExamMode.ONE_WAY);
+
+  const handleStart = () => {
+      onStart({
+          timeLimitMinutes: isTimed ? timeLimit : 0,
+          mode
+      });
+  };
 
   return (
     <div className={`border border-gray-300 dark:border-terminal-dimGreen p-6 bg-white dark:bg-gray-900 mt-10 shadow-lg mx-auto transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-xl'}`}>
@@ -33,7 +41,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onReplaceFile, 
         </button>
       </div>
 
-      <div className="mb-6 space-y-4">
+      <div className="mb-6 space-y-6">
+        {/* Mode Selection */}
         <div>
           <label className="block text-sm font-bold mb-2">MODE_SELECT</label>
           <div className="flex flex-col gap-2">
@@ -69,25 +78,46 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onReplaceFile, 
           </div>
         </div>
 
+        {/* Time Allocation */}
         <div>
-          <label className="block text-sm font-bold mb-2">TIME_ALLOCATION (Minutes)</label>
-          <div className="flex items-center gap-4">
-            <input 
-              type="range" 
-              min="5" 
-              max="120" 
-              step="5" 
-              value={timeLimit} 
-              onChange={(e) => setTimeLimit(parseInt(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-500"
-            />
-            <span className="font-mono text-xl w-16 text-right">{timeLimit}m</span>
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-sm font-bold">TIME_ALLOCATION</label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm select-none">
+                <input 
+                    type="checkbox" 
+                    checked={isTimed} 
+                    onChange={(e) => setIsTimed(e.target.checked)} 
+                    className="accent-blue-600 w-4 h-4"
+                />
+                <span className={isTimed ? "text-gray-900 dark:text-white" : "text-gray-500"}>ENABLE TIMER</span>
+            </label>
+          </div>
+          
+          <div className={`transition-opacity duration-200 ${isTimed ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+            <div className="flex items-center gap-4">
+                <input 
+                type="range" 
+                min="5" 
+                max="120" 
+                step="5" 
+                value={timeLimit} 
+                onChange={(e) => setTimeLimit(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-500"
+                disabled={!isTimed}
+                />
+                <span className="font-mono text-xl w-20 text-right">
+                    {isTimed ? `${timeLimit}m` : '∞'}
+                </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1 text-right">
+                {isTimed ? 'Exam will auto-submit when time expires.' : 'No time limit imposed.'}
+            </p>
           </div>
         </div>
       </div>
 
       <button 
-        onClick={() => onStart({ timeLimitMinutes: timeLimit, mode })}
+        onClick={handleStart}
         className="w-full py-3 bg-gray-900 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold uppercase tracking-widest transition-all"
       >
         [ INITIATE_EXAM ]
