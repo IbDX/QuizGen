@@ -11,22 +11,23 @@ interface LayoutProps {
   onToggleFullWidth: () => void;
 }
 
-// Base64 SVG for a Terminal/Cyberpunk Arrow Cursor
-// Black fill, Green (#00ff41) Stroke, Sharp angles.
+// --- CURSOR ASSETS ---
+
+// 1. DEFAULT (Arrow)
 const CURSOR_DEFAULT_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M2 2L9 21L12.5 12.5L21 9L2 2Z" fill="#000000" stroke="#00ff41" stroke-width="1.5" stroke-linejoin="round"/>
 </svg>
 `;
 
-// Pointer State (Hovering Links/Buttons) - Filled Green
+// 2. POINTER (Hovering Links)
 const CURSOR_POINTER_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M2 2L9 21L12.5 12.5L21 9L2 2Z" fill="#00ff41" stroke="#003300" stroke-width="1" stroke-linejoin="round"/>
 </svg>
 `;
 
-// Text State (Inputs) - Bracket Style I-Beam
+// 3. TEXT (Inputs)
 const CURSOR_TEXT_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M5 4V2H11V4" stroke="#00ff41" stroke-width="2"/>
@@ -35,9 +36,62 @@ const CURSOR_TEXT_SVG = `
 </svg>
 `;
 
-const CURSOR_URI = `data:image/svg+xml;base64,${btoa(CURSOR_DEFAULT_SVG)}`;
-const POINTER_URI = `data:image/svg+xml;base64,${btoa(CURSOR_POINTER_SVG)}`;
-const TEXT_URI = `data:image/svg+xml;base64,${btoa(CURSOR_TEXT_SVG)}`;
+// 4. WAIT (Loading/Processing) - Pixelated Hourglass
+const CURSOR_WAIT_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M6 2H18V6L12 12L6 6V2Z" fill="#00ff41"/>
+<path d="M6 22H18V18L12 12L6 18V22Z" fill="#00ff41" fill-opacity="0.5"/>
+<path d="M6 2H18V6L14 10V14L18 18V22H6V18L10 14V10L6 6V2Z" stroke="#00ff41" stroke-width="2"/>
+</svg>
+`;
+
+// 5. NOT ALLOWED (Disabled) - Red Prohibited
+const CURSOR_NOT_ALLOWED_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="12" cy="12" r="8" stroke="#ff3333" stroke-width="2"/>
+<path d="M6 6L18 18" stroke="#ff3333" stroke-width="2"/>
+</svg>
+`;
+
+// 6. GRAB (Draggable) - Open Robotic Hand
+const CURSOR_GRAB_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2C12 2 11 5 11 8V13H8V8C8 5 7 2 7 2" stroke="#00ff41" stroke-width="2"/>
+<path d="M17 4C17 4 16 6 16 9V13H14" stroke="#00ff41" stroke-width="2"/>
+<path d="M19 12V17C19 20 16 22 12 22C8 22 5 20 5 17V12" stroke="#00ff41" stroke-width="2"/>
+</svg>
+`;
+
+// 7. GRABBING (Dragging) - Closed Robotic Hand
+const CURSOR_GRABBING_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="7" y="7" width="10" height="10" rx="2" fill="#00ff41"/>
+<path d="M6 10H18M6 14H18" stroke="black" stroke-width="1"/>
+<rect x="5" y="5" width="14" height="14" rx="3" stroke="#00ff41" stroke-width="2"/>
+</svg>
+`;
+
+// 8. CROSSHAIR (Precision)
+const CURSOR_CROSSHAIR_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2V22M2 12H22" stroke="#00ff41" stroke-width="1"/>
+<rect x="10" y="10" width="4" height="4" stroke="#00ff41" stroke-width="1" fill="none"/>
+</svg>
+`;
+
+// Convert to Base64 Data URIs
+const b64 = (svg: string) => `data:image/svg+xml;base64,${btoa(svg)}`;
+
+const CURSORS = {
+    default: b64(CURSOR_DEFAULT_SVG),
+    pointer: b64(CURSOR_POINTER_SVG),
+    text: b64(CURSOR_TEXT_SVG),
+    wait: b64(CURSOR_WAIT_SVG),
+    notAllowed: b64(CURSOR_NOT_ALLOWED_SVG),
+    grab: b64(CURSOR_GRAB_SVG),
+    grabbing: b64(CURSOR_GRABBING_SVG),
+    crosshair: b64(CURSOR_CROSSHAIR_SVG)
+};
 
 const FONT_OPTIONS = [
     { name: 'Fira Code', value: "'Fira Code', monospace" },
@@ -111,29 +165,60 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
       {/* Inject Custom Cursor Styles */}
       {useCustomCursor && (
         <style>{`
-          /* Default State */
+          /* 1. Default State */
           .custom-cursor {
-            cursor: url('${CURSOR_URI}') 2 2, auto !important;
+            cursor: url('${CURSORS.default}') 2 2, auto !important;
           }
           
-          /* Pointer State (Links, Buttons) */
+          /* 2. Pointer State (Links, Buttons) */
           .custom-cursor a, 
-          .custom-cursor button, 
-          .custom-cursor [role="button"],
+          .custom-cursor button:not(:disabled), 
+          .custom-cursor [role="button"]:not(:disabled),
           .custom-cursor .cursor-pointer,
           .custom-cursor select,
           .custom-cursor label {
-            cursor: url('${POINTER_URI}') 2 2, pointer !important;
+            cursor: url('${CURSORS.pointer}') 2 2, pointer !important;
           }
 
-          /* Text Selection State (Inputs) */
+          /* 3. Text Selection State (Inputs) */
           .custom-cursor input[type="text"],
           .custom-cursor input[type="number"],
           .custom-cursor input[type="password"],
           .custom-cursor input[type="email"],
           .custom-cursor textarea,
           .custom-cursor .prism-editor-textarea {
-            cursor: url('${TEXT_URI}') 6 12, text !important;
+            cursor: url('${CURSORS.text}') 12 12, text !important;
+          }
+
+          /* 4. Wait / Loading State */
+          .custom-cursor .cursor-wait,
+          .custom-cursor [aria-busy="true"],
+          .custom-cursor .animate-spin {
+            cursor: url('${CURSORS.wait}') 12 12, wait !important;
+          }
+
+          /* 5. Not Allowed / Disabled State */
+          .custom-cursor .cursor-not-allowed,
+          .custom-cursor :disabled,
+          .custom-cursor [aria-disabled="true"] {
+            cursor: url('${CURSORS.notAllowed}') 12 12, not-allowed !important;
+          }
+
+          /* 6. Grab (Draggable) */
+          .custom-cursor .cursor-grab,
+          .custom-cursor [draggable="true"] {
+            cursor: url('${CURSORS.grab}') 12 12, grab !important;
+          }
+
+          /* 7. Grabbing (Active Drag) */
+          .custom-cursor .cursor-grabbing,
+          .custom-cursor :active {
+            cursor: url('${CURSORS.grabbing}') 12 12, grabbing !important;
+          }
+
+          /* 8. Crosshair (Precision Areas like Canvas/Editor gutters) */
+          .custom-cursor .cursor-crosshair {
+            cursor: url('${CURSORS.crosshair}') 12 12, crosshair !important;
           }
         `}</style>
       )}
@@ -141,7 +226,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
       {/* Sensor Strip - Invisible area at top to trigger header when hidden - DESKTOP ONLY */}
       {autoHideHeader && (
           <div 
-            className="hidden md:block fixed top-0 left-0 w-full h-6 z-50 bg-transparent"
+            className="hidden md:block fixed top-0 left-0 w-full h-6 z-50 bg-transparent cursor-crosshair"
             onMouseEnter={handleMouseEnterHeader}
           />
       )}
