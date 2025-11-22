@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
@@ -13,6 +13,7 @@ interface ResultsProps {
   onRetake: () => void;
   onGenerateRemediation: (wrongIds: string[]) => void;
   isFullWidth: boolean;
+  autoHideFooter?: boolean;
 }
 
 // --- RESOURCE MAPPING HELPER ---
@@ -73,7 +74,7 @@ const getTopicResources = (topicRaw: string) => {
   };
 };
 
-export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart, onRetake, onGenerateRemediation, isFullWidth }) => {
+export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart, onRetake, onGenerateRemediation, isFullWidth, autoHideFooter = true }) => {
   const [userName, setUserName] = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [showWeakPoints, setShowWeakPoints] = useState(false);
@@ -83,6 +84,32 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       questions.forEach(q => { initial[q.id] = isQuestionSaved(q.id); });
       return initial;
   });
+
+  // Footer Visibility State
+  const [isFooterVisible, setIsFooterVisible] = useState(true);
+
+  // Footer Auto-Hide Logic
+  useEffect(() => {
+    if (!autoHideFooter) {
+        setIsFooterVisible(true);
+        return;
+    }
+
+    const timer = setTimeout(() => {
+        setIsFooterVisible(false);
+    }, 2000); // Hide after 2 seconds of inactivity
+    return () => clearTimeout(timer);
+  }, [autoHideFooter]);
+
+  const handleMouseEnterFooter = () => {
+    if (autoHideFooter) setIsFooterVisible(true);
+  };
+
+  const handleMouseLeaveFooter = () => {
+    if (autoHideFooter) {
+        setIsFooterVisible(false);
+    }
+  };
   
   // Helper to calculate score
   let correctCount = 0;
@@ -166,7 +193,8 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
     const entry: LeaderboardEntry = {
         name: userName.trim(),
         score: score,
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        isElite: isPerfect // Save Z+ Badge status
     };
 
     const stored = localStorage.getItem('exam_leaderboard');
@@ -377,9 +405,46 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         })}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-black border-t border-gray-300 dark:border-terminal-green flex flex-col xl:flex-row gap-4 justify-center items-center shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-50">
+      {/* Sensor Strip - Invisible area at bottom to trigger footer when hidden - DESKTOP ONLY */}
+      {autoHideFooter && (
+          <div 
+            className="hidden md:block fixed bottom-0 left-0 w-full h-6 z-40 bg-transparent cursor-crosshair"
+            onMouseEnter={handleMouseEnterFooter}
+          />
+      )}
+      
+      {/* Visual Cue for Hidden Footer - DESKTOP ONLY */}
+      {autoHideFooter && (
+        <div 
+            className={`hidden md:flex fixed bottom-0 left-1/2 -translate-x-1/2 z-40 transition-all duration-700 ease-in-out pointer-events-none flex-col items-center ${isFooterVisible ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+        >
+            <div className="text-[8px] font-bold text-gray-400 dark:text-terminal-green/50 mb-0.5 tracking-[0.2em] uppercase opacity-70">
+               ACTIONS
+            </div>
+            <div className="w-32 h-1.5 bg-gray-400/50 dark:bg-terminal-green/30 rounded-t-full shadow-[0_0_10px_rgba(0,255,65,0.2)] backdrop-blur-sm animate-pulse"></div>
+        </div>
+      )}
+
+      <div 
+        className={`
+            fixed bottom-0 left-0 right-0 
+            p-4 bg-white dark:bg-black border-t border-gray-300 dark:border-terminal-green 
+            flex flex-col xl:flex-row gap-4 justify-center items-center 
+            shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-50 
+            transition-transform duration-500 ease-in-out
+            translate-y-0
+            ${autoHideFooter ? (isFooterVisible ? 'md:translate-y-0' : 'md:translate-y-full') : ''}
+        `}
+        onMouseLeave={handleMouseLeaveFooter}
+        onMouseEnter={handleMouseEnterFooter}
+      >
         
         {!isPublished ? (
+            isFailure ? (
+               <div className="text-red-500 font-bold border border-red-500 p-3 bg-red-50 dark:bg-red-900/20 text-center w-full xl:w-auto text-sm tracking-widest">
+                   ✖ SYSTEM LOCKED: PUBLISHING DISABLED DUE TO FAILURE
+               </div>
+            ) : (
              <div className="flex flex-col w-full xl:w-auto">
                 <div className="flex gap-2 w-full xl:w-auto">
                     <input 
@@ -400,6 +465,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                 </div>
                 {nameError && <span className="text-[10px] text-red-500 mt-1 font-bold">{nameError}</span>}
              </div>
+            )
         ) : (
             <div className="text-green-600 dark:text-green-400 font-bold px-4 py-2 border border-green-500 bg-green-50 dark:bg-green-900/20 rounded w-full xl:w-auto text-center">
                 ✓ PUBLISHED: {userName}

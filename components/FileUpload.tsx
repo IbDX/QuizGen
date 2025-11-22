@@ -119,6 +119,52 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, isFullW
     setGlobalStatus('IDLE');
   };
 
+  const handleDemoLoad = () => {
+      // Sample C++ content for the demo
+      const content = `
+#include <iostream>
+using namespace std;
+
+// DEMO DIAGNOSTIC EXAM
+// Topic: Pointers, References, and Logic
+
+void mystery(int *a, int &b) {
+    *a = *a + b;
+    b = *a - b;
+    *a = *a - b;
+}
+
+int main() {
+    int x = 10, y = 5;
+    mystery(&x, y);
+    cout << "X: " << x << ", Y: " << y << endl;
+    
+    // What happens here?
+    int arr[3] = {1, 2, 3};
+    int *ptr = arr;
+    cout << *(ptr + 1) << endl;
+    
+    return 0;
+}
+
+// Q1: What is the exact output of the main function?
+// Q2: Explain line-by-line how the 'mystery' function swaps values.
+// Q3: Write a generic template version of the swap function.
+      `;
+      
+      // Simple base64 encoding for text
+      const base64 = btoa(content);
+      
+      const demoFile = {
+          base64: base64,
+          mime: 'text/plain',
+          name: 'diagnostic_demo.cpp',
+          hash: 'DEMO_HASH_PRESET_001'
+      };
+      
+      onFilesAccepted([demoFile]);
+  };
+
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -233,6 +279,37 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, isFullW
             FETCH
           </button>
       </form>
+
+      {/* DEMO SECTION */}
+      <div className="flex flex-col items-center mt-6">
+          <div className="h-px bg-gray-300 dark:bg-gray-700 w-full mb-6"></div>
+          
+          <div className="bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-4 rounded-lg flex flex-col md:flex-row items-center gap-6 hover:border-terminal-green transition-colors group w-full">
+              {/* Placeholder Image for Demo Card */}
+              <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden rounded border border-gray-400 dark:border-gray-600 group-hover:scale-105 transition-transform">
+                 <img 
+                    src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=150&h=150&q=80" 
+                    alt="Demo Source" 
+                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100"
+                 />
+                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+              </div>
+              
+              <div className="flex-grow text-center md:text-left">
+                  <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100">QUICK DIAGNOSTIC TEST</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      Run an instant simulation using a sample C++ pointer analysis document. No upload required.
+                  </p>
+                  <button 
+                     onClick={handleDemoLoad}
+                     disabled={globalStatus !== 'IDLE'}
+                     className="px-6 py-2 bg-terminal-green text-black font-bold text-sm hover:bg-green-400 transition-colors w-full md:w-auto uppercase tracking-wider disabled:opacity-50"
+                  >
+                      LOAD DEMO
+                  </button>
+              </div>
+          </div>
+      </div>
     </div>
   );
 };

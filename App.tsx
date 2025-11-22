@@ -21,6 +21,9 @@ const App: React.FC = () => {
   const [loadingMsg, setLoadingMsg] = useState('');
   const [isFullWidth, setIsFullWidth] = useState(true); 
   
+  // Global Settings passed down
+  const [autoHideFooter, setAutoHideFooter] = useState(true);
+  
   // State for Duplicate File Modal
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
 
@@ -154,6 +157,8 @@ const App: React.FC = () => {
       isLibraryOpen={isLibraryOpen}
       isFullWidth={isFullWidth} 
       onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
+      autoHideFooter={autoHideFooter}
+      onToggleAutoHideFooter={() => setAutoHideFooter(!autoHideFooter)}
     >
       {/* Duplicate Warning Modal */}
       {duplicateFiles.length > 0 && (
@@ -242,6 +247,7 @@ const App: React.FC = () => {
               onRetake={handleRetake}
               onGenerateRemediation={handleRemediation}
               isFullWidth={isFullWidth}
+              autoHideFooter={autoHideFooter}
             />
           )}
       </div>

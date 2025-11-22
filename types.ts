@@ -47,6 +47,7 @@ export interface LeaderboardEntry {
   name: string;
   score: number;
   date: string;
+  isElite?: boolean; // Tracks if user got a perfect score (Z+ Badge)
 }
 
 export type AppState = 

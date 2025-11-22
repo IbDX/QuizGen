@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BackgroundEffect } from './BackgroundEffect';
 
@@ -9,6 +8,8 @@ interface LayoutProps {
   isLibraryOpen: boolean;
   isFullWidth: boolean;
   onToggleFullWidth: () => void;
+  autoHideFooter?: boolean;
+  onToggleAutoHideFooter?: () => void;
 }
 
 // --- CURSOR ASSETS ---
@@ -100,7 +101,10 @@ const FONT_OPTIONS = [
     { name: 'Courier New', value: "'Courier New', Courier, monospace" },
 ];
 
-export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrary, isLibraryOpen, isFullWidth, onToggleFullWidth }) => {
+export const Layout: React.FC<LayoutProps> = ({ 
+    children, onHome, onToggleLibrary, isLibraryOpen, isFullWidth, onToggleFullWidth,
+    autoHideFooter = true, onToggleAutoHideFooter
+}) => {
   const [darkMode, setDarkMode] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [fontSize, setFontSize] = useState(16);
@@ -369,7 +373,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
                     SYSTEM PREFERENCES
                 </h2>
 
-                <div className="space-y-6 text-gray-800 dark:text-gray-200">
+                <div className="space-y-6 text-gray-800 dark:text-gray-200 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
                     {/* Font Family Selection */}
                     <div>
                         <label className="block text-sm font-bold mb-2 uppercase text-gray-600 dark:text-terminal-green">System Font</label>
@@ -431,8 +435,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
                     {/* Sticky / Auto-Hide Header Toggle - HIDDEN ON MOBILE (Always Sticky) */}
                     <div className="hidden md:flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">
                         <div>
-                            <span className="font-bold text-sm block">Auto-Hide Menu</span>
-                            <span className="text-[10px] text-gray-500 uppercase">Hides when not in use</span>
+                            <span className="font-bold text-sm block">Auto-Hide Top Menu</span>
+                            <span className="text-[10px] text-gray-500 uppercase">Hover top to reveal</span>
                         </div>
                         <button 
                             onClick={() => setAutoHideHeader(!autoHideHeader)}
@@ -441,6 +445,22 @@ export const Layout: React.FC<LayoutProps> = ({ children, onHome, onToggleLibrar
                             <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoHideHeader ? 'translate-x-6' : 'translate-x-0'}`}></div>
                         </button>
                     </div>
+
+                     {/* Sticky / Auto-Hide Footer Toggle - HIDDEN ON MOBILE (Always Sticky) */}
+                    {onToggleAutoHideFooter && (
+                        <div className="hidden md:flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">
+                            <div>
+                                <span className="font-bold text-sm block">Auto-Hide Bottom Bar</span>
+                                <span className="text-[10px] text-gray-500 uppercase">Hover bottom to reveal</span>
+                            </div>
+                            <button 
+                                onClick={onToggleAutoHideFooter}
+                                className={`w-12 h-6 rounded-full p-1 transition-colors ${autoHideFooter ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                            >
+                                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoHideFooter ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                            </button>
+                        </div>
+                    )}
 
                     {/* Dark Mode Toggle */}
                     <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">

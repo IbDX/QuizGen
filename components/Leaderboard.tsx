@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { LeaderboardEntry } from '../types';
 
@@ -30,7 +31,14 @@ export const Leaderboard: React.FC = () => {
               <span className={`font-bold w-4 ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-amber-600' : 'text-gray-600'}`}>
                 #{i + 1}
               </span>
-              <span className="uppercase">{entry.name}</span>
+              <div className="flex items-center gap-1">
+                  <span className="uppercase">{entry.name}</span>
+                  {entry.isElite && (
+                      <span className="text-yellow-400 font-bold ml-1 text-[10px] bg-yellow-900/30 px-1 rounded border border-yellow-600/50" title="Elite Agent (Perfect Score)">
+                          Z+
+                      </span>
+                  )}
+              </div>
             </div>
             <div className="flex items-center gap-4">
                 <span className="opacity-50 text-[10px]">{new Date(entry.date).toLocaleDateString()}</span>

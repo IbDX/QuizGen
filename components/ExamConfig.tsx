@@ -79,7 +79,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   const [timeLimit, setTimeLimit] = useState<number>(30);
   const [isTimed, setIsTimed] = useState<boolean>(true);
   const [mode, setMode] = useState<ExamMode>(ExamMode.ONE_WAY);
-  const [formatPref, setFormatPref] = useState<QuestionFormatPreference>(QuestionFormatPreference.MIXED);
+  // Changed default to ORIGINAL as requested
+  const [formatPref, setFormatPref] = useState<QuestionFormatPreference>(QuestionFormatPreference.ORIGINAL);
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   
@@ -180,6 +181,15 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       setHoveredFile(null);
   };
 
+  // Helper to safely decode base64 text
+  const decodeBase64Text = (b64: string) => {
+      try {
+          return atob(b64);
+      } catch {
+          return "Error decoding preview.";
+      }
+  };
+
   return (
     <div className={`border border-gray-300 dark:border-terminal-dimGreen p-4 md:p-6 bg-white dark:bg-gray-900 mt-4 md:mt-10 shadow-lg mx-auto transition-all duration-300 relative ${isFullWidth ? 'max-w-none w-full' : 'max-w-xl'}`}>
       
@@ -202,6 +212,10 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                   />
               ) : hoveredFile.file.mime === 'application/pdf' ? (
                   <PdfPreview base64={hoveredFile.file.base64} />
+              ) : hoveredFile.file.mime.startsWith('text/') ? (
+                   <pre className="w-[280px] max-h-[300px] overflow-hidden text-[9px] bg-[#1e1e1e] text-gray-300 p-2 font-mono">
+                       {decodeBase64Text(hoveredFile.file.base64).slice(0, 500)}...
+                   </pre>
               ) : (
                   <div className="p-4 text-center text-gray-500 text-xs font-mono">
                       NO PREVIEW AVAILABLE
@@ -233,8 +247,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                         <span className="opacity-50 text-xs text-gray-500">[{i+1}]</span>
                         <span className="truncate text-terminal-green max-w-[150px] md:max-w-none">{f.name}</span>
                         {/* Mini icon indicator */}
-                        <span className="text-[9px] px-1 rounded bg-gray-200 dark:bg-gray-800 text-gray-500">
-                            {f.mime.includes('pdf') ? 'PDF' : 'IMG'}
+                        <span className="text-[9px] px-1 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 uppercase">
+                            {f.mime.includes('pdf') ? 'PDF' : f.mime.includes('image') ? 'IMG' : 'TXT'}
                         </span>
                     </div>
                     <button 
