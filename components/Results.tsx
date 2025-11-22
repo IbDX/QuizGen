@@ -16,6 +16,64 @@ interface ResultsProps {
   isFullWidth: boolean;
 }
 
+// --- RESOURCE MAPPING HELPER ---
+const getTopicResources = (topicRaw: string) => {
+  const topic = topicRaw.toLowerCase().trim();
+  
+  // Curated list of high-quality resources for common CS concepts
+  const RESOURCES: Record<string, { video: string, read: string }> = {
+    'pointers': {
+      video: 'https://www.youtube.com/watch?v=DTxHyVn0ODg', // The Cherno (C++ Pointers)
+      read: 'https://www.geeksforgeeks.org/pointers-in-c-cpp/'
+    },
+    'recursion': {
+      video: 'https://www.youtube.com/watch?v=IJDJ0kBx2LM', // Computerphile
+      read: 'https://www.freecodecamp.org/news/recursion-in-programming-explained/'
+    },
+    'arrays': {
+      video: 'https://www.youtube.com/watch?v=1ivjaVE_M0Q',
+      read: 'https://www.w3schools.com/cpp/cpp_arrays.asp'
+    },
+    'loops': {
+      video: 'https://www.youtube.com/watch?v=s9y2a1t9a10',
+      read: 'https://www.programiz.com/cpp-programming/for-loop'
+    },
+    'object oriented programming': {
+      video: 'https://www.youtube.com/watch?v=pTB0EiLXUC8', // Mosh
+      read: 'https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/Object-oriented_programming'
+    },
+    'oop': {
+      video: 'https://www.youtube.com/watch?v=pTB0EiLXUC8',
+      read: 'https://www.geeksforgeeks.org/object-oriented-programming-in-cpp/'
+    },
+    'dynamic memory': {
+      video: 'https://www.youtube.com/watch?v=_8-ht2AKyH4',
+      read: 'https://learn.microsoft.com/en-us/cpp/cpp/memory-management-in-cpp'
+    },
+    'time complexity': {
+      video: 'https://www.youtube.com/watch?v=D6xkbGLQesk',
+      read: 'https://www.bigocheatsheet.com/'
+    },
+    'big o': {
+      video: 'https://www.youtube.com/watch?v=D6xkbGLQesk',
+      read: 'https://www.bigocheatsheet.com/'
+    }
+  };
+
+  // Check for exact match or partial match
+  for (const key in RESOURCES) {
+    if (topic.includes(key)) {
+      return RESOURCES[key];
+    }
+  }
+
+  // Fallback: Generate Smart Search URLs
+  return {
+    video: `https://www.youtube.com/results?search_query=${encodeURIComponent(topic + " programming tutorial")}`,
+    read: `https://www.google.com/search?q=${encodeURIComponent(topic + " programming guide")}`
+  };
+};
+
 export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart, onRetake, onGenerateRemediation, isFullWidth }) => {
   const [userName, setUserName] = useState('');
   const [isPublished, setIsPublished] = useState(false);
@@ -165,16 +223,49 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         )}
         
         {showWeakPoints && wrongIds.length > 0 && (
-            <div className="mt-6 max-w-md mx-auto bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 p-4 rounded">
-                <h4 className="font-bold text-red-600 dark:text-red-400 mb-2 text-sm uppercase">Areas for Improvement</h4>
-                <ul className="text-sm space-y-1">
-                    {Object.entries(wrongTopics).map(([topic, count]) => (
-                        <li key={topic} className="flex justify-between">
-                            <span>{topic}</span>
-                            <span className="font-bold">{count} failed</span>
-                        </li>
-                    ))}
-                </ul>
+            <div className="mt-6 max-w-2xl mx-auto bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 p-6 rounded">
+                <h4 className="font-bold text-red-600 dark:text-red-400 mb-4 text-sm uppercase tracking-wider text-center">
+                    Areas for Improvement & Resources
+                </h4>
+                <div className="space-y-3">
+                    {Object.entries(wrongTopics).map(([topic, count]) => {
+                        const resources = getTopicResources(topic);
+                        return (
+                            <div key={topic} className="flex flex-col md:flex-row md:items-center justify-between bg-white dark:bg-black p-3 rounded border border-gray-200 dark:border-gray-800 shadow-sm">
+                                <div className="flex items-center gap-3 mb-2 md:mb-0">
+                                    <span className="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs font-bold px-2 py-1 rounded-full">
+                                        {count} missed
+                                    </span>
+                                    <span className="font-mono font-bold text-sm">{topic}</span>
+                                </div>
+                                <div className="flex gap-2 text-xs font-bold">
+                                    <a 
+                                        href={resources.video} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                        </svg>
+                                        WATCH
+                                    </a>
+                                    <a 
+                                        href={resources.read} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+                                        </svg>
+                                        READ
+                                    </a>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         )}
       </div>
