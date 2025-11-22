@@ -1,14 +1,15 @@
+
 import React, { useState } from 'react';
 import { ExamMode, ExamSettings } from '../types';
 
 interface ExamConfigProps {
   onStart: (settings: ExamSettings) => void;
   onReplaceFile: () => void;
-  fileName: string;
+  files: Array<{ name: string }>;
   isFullWidth: boolean;
 }
 
-export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onReplaceFile, fileName, isFullWidth }) => {
+export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onReplaceFile, files, isFullWidth }) => {
   const [timeLimit, setTimeLimit] = useState<number>(30);
   const [isTimed, setIsTimed] = useState<boolean>(true);
   const [mode, setMode] = useState<ExamMode>(ExamMode.ONE_WAY);
@@ -26,19 +27,23 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onReplaceFile, 
         <span className="text-blue-600 dark:text-blue-400">&gt;</span> CONFIGURATION
       </h2>
 
-      <div className="mb-6 flex items-end justify-between bg-gray-100 dark:bg-black p-3 border border-gray-300 dark:border-gray-700">
-        <div>
-            <p className="text-xs mb-1 text-gray-500 dark:text-gray-400 uppercase tracking-wider">Target Source</p>
-            <div className="font-mono text-sm truncate max-w-[200px] md:max-w-[300px] text-terminal-green">
-            {fileName}
-            </div>
+      <div className="mb-6 bg-gray-100 dark:bg-black p-4 border border-gray-300 dark:border-gray-700">
+        <div className="flex justify-between items-center mb-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Target Sources ({files.length})</p>
+            <button 
+                onClick={onReplaceFile}
+                className="text-xs text-blue-500 underline hover:text-blue-400 font-mono"
+            >
+                [RESET_SOURCES]
+            </button>
         </div>
-        <button 
-            onClick={onReplaceFile}
-            className="text-xs text-blue-500 underline hover:text-blue-400 font-mono"
-        >
-            [CHANGE_SOURCE]
-        </button>
+        <ul className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+            {files.map((f, i) => (
+                <li key={i} className="font-mono text-sm truncate text-terminal-green flex items-center gap-2">
+                    <span className="opacity-50 text-xs">FILE_{i+1}:</span> {f.name}
+                </li>
+            ))}
+        </ul>
       </div>
 
       <div className="mb-6 space-y-6">

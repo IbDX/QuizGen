@@ -14,37 +14,41 @@ import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('UPLOAD');
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  const [fileData, setFileData] = useState<{base64: string; mime: string; name: string} | null>(null);
+  // Changed from single fileData to array of files
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{base64: string; mime: string; name: string}>>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [settings, setSettings] = useState<ExamSettings | null>(null);
   const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
   const [loadingMsg, setLoadingMsg] = useState('');
-  const [isFullWidth, setIsFullWidth] = useState(true); // Default to true
+  const [isFullWidth, setIsFullWidth] = useState(true); 
 
-  const handleFileAccepted = (base64: string, mime: string, name: string) => {
-    setFileData({ base64, mime, name });
+  const handleFilesAccepted = (files: Array<{base64: string; mime: string; name: string}>) => {
+    setUploadedFiles(files);
     setAppState('CONFIG');
   };
 
-  const handleReplaceFile = () => {
-    setFileData(null);
+  const handleReplaceFiles = () => {
+    setUploadedFiles([]);
     setAppState('UPLOAD');
   };
 
   const handleStartExam = async (examSettings: ExamSettings) => {
-    if (!fileData) return;
+    if (uploadedFiles.length === 0) return;
     setSettings(examSettings);
     setAppState('GENERATING');
-    setLoadingMsg('ESTABLISHING NEURAL LINK... PARSING SOURCE MATERIAL...');
+    setLoadingMsg(`ESTABLISHING NEURAL LINK... ANALYZING ${uploadedFiles.length} SOURCE DOCUMENT(S)...`);
 
     try {
-      const generatedQuestions = await generateExam(fileData.base64, fileData.mime);
+      // Map uploadedFiles to the format expected by generateExam
+      const filePayloads = uploadedFiles.map(f => ({ base64: f.base64, mimeType: f.mime }));
+      const generatedQuestions = await generateExam(filePayloads);
+      
       if (generatedQuestions.length === 0) throw new Error("No questions generated");
       setQuestions(generatedQuestions);
       setAppState('EXAM');
     } catch (e) {
       console.error(e);
-      alert('Failed to generate exam. Please try a different file.');
+      alert('Failed to generate exam. Please try different files.');
       setAppState('UPLOAD');
     }
   };
@@ -56,7 +60,7 @@ const App: React.FC = () => {
 
   const handleRestart = () => {
     setAppState('UPLOAD');
-    setFileData(null);
+    setUploadedFiles([]);
     setQuestions([]);
     setSettings(null);
     setUserAnswers([]);
@@ -106,18 +110,18 @@ const App: React.FC = () => {
           {appState === 'UPLOAD' && (
             <>
               <FileUpload 
-                onFileAccepted={handleFileAccepted} 
+                onFilesAccepted={handleFilesAccepted} 
                 isFullWidth={isFullWidth}
               />
               <Leaderboard />
             </>
           )}
 
-          {appState === 'CONFIG' && fileData && (
+          {appState === 'CONFIG' && uploadedFiles.length > 0 && (
             <ExamConfig 
                 onStart={handleStartExam} 
-                onReplaceFile={handleReplaceFile} 
-                fileName={fileData.name} 
+                onReplaceFile={handleReplaceFiles} 
+                files={uploadedFiles}
                 isFullWidth={isFullWidth}
             />
           )}

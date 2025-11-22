@@ -74,22 +74,19 @@ const deduplicateQuestions = (questions: Question[]): Question[] => {
   return uniqueQuestions;
 };
 
-export const generateExam = async (base64Data: string, mimeType: string, instructions?: string): Promise<Question[]> => {
+export const generateExam = async (files: { base64: string, mimeType: string }[], instructions?: string): Promise<Question[]> => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     // We select a model capable of multimodal understanding (images/pdf)
     const modelId = 'gemini-2.5-flash'; 
-    
-    // Ensure base64 data is clean (no newlines, no headers)
-    const cleanBase64 = base64Data.replace(/\s/g, '');
 
     const prompt = `
-      Analyze the provided document (image/PDF) and extract the exam questions contained within it.
+      Analyze the provided document(s) (images/PDFs) and extract the exam questions contained within them.
       
       **1. STRICT FIDELITY - REFLECT THE SOURCE**: 
       - **Do Not Balance Types**: If the document contains 100% MCQs, return 100% MCQs. If it contains 5 Coding questions, return 5. Do not invent questions to fill quotas.
-      - **NO DUPLICATES**: Process the document sequentially. If a question is repeated (e.g. on a summary slide), IGNORE the duplicate. Return unique questions only.
+      - **NO DUPLICATES**: Process the documents. If a question is repeated (e.g. on a summary slide), IGNORE the duplicate. Return unique questions only.
 
       **2. MULTIPLE CHOICE (MCQ) - PRECISION REQUIRED**:
       - **EXTRACT ALL OPTIONS**: You MUST extract every single option visible (A, B, C, D). Check for multi-column layouts (e.g., A/C on left, B/D on right).
@@ -115,13 +112,20 @@ export const generateExam = async (base64Data: string, mimeType: string, instruc
       Return the response strictly as a JSON array adhering to the schema.
     `;
 
+    // Construct multi-part content
+    const parts: any[] = files.map(file => ({
+        inlineData: {
+            mimeType: file.mimeType,
+            data: file.base64.replace(/\s/g, '') // Ensure clean base64
+        }
+    }));
+    
+    parts.push({ text: prompt });
+
     const response = await ai.models.generateContent({
       model: modelId,
       contents: {
-        parts: [
-          { inlineData: { mimeType, data: cleanBase64 } },
-          { text: prompt }
-        ]
+        parts: parts
       },
       config: {
         responseMimeType: "application/json",

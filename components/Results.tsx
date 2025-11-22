@@ -271,57 +271,61 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       </div>
 
       <div className="space-y-8 mb-12">
-        {processedAnswers.map((item, idx) => (
-          <div key={item.question.id} className={`p-6 border-l-4 ${item.isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'} bg-white dark:bg-gray-900 shadow-md rounded-r-lg relative`}>
-             <button 
-                onClick={() => toggleSave(item.question)}
-                className={`absolute top-4 right-4 p-1 transition-colors hover:scale-110 ${savedQuestions[item.question.id] ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
-                title={savedQuestions[item.question.id] ? "Remove from Library" : "Save to Library"}
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                </svg>
-            </button>
+        {processedAnswers.map((item, idx) => {
+          const hasCodeBlockInText = item.question.text.includes('```');
 
-            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-gray-800 pr-8">
-              <div className="flex flex-col">
-                 <h3 className="font-bold text-lg">Question {idx + 1}</h3>
-                 <span className="text-xs opacity-50 uppercase text-gray-500">{item.question.type} • {item.question.topic}</span>
-              </div>
-              <span className={`text-xs font-bold px-3 py-1 rounded-full ${item.isCorrect ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
-                {item.isCorrect ? 'PASSED' : 'FAILED'}
-              </span>
-            </div>
-            
-            <div className="mb-6 text-lg font-medium text-gray-800 dark:text-gray-200">
-                <MarkdownRenderer content={item.question.text} />
-            </div>
+          return (
+            <div key={item.question.id} className={`p-6 border-l-4 ${item.isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'} bg-white dark:bg-gray-900 shadow-md rounded-r-lg relative`}>
+                <button 
+                    onClick={() => toggleSave(item.question)}
+                    className={`absolute top-4 right-4 p-1 transition-colors hover:scale-110 ${savedQuestions[item.question.id] ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
+                    title={savedQuestions[item.question.id] ? "Remove from Library" : "Save to Library"}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                    </svg>
+                </button>
 
-            {/* RENDER CODE SNIPPET IF AVAILABLE */}
-            {item.question.codeSnippet && (
-                <div className="mb-6">
-                    <CodeWindow code={item.question.codeSnippet} />
+                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-gray-800 pr-8">
+                <div className="flex flex-col">
+                    <h3 className="font-bold text-lg">Question {idx + 1}</h3>
+                    <span className="text-xs opacity-50 uppercase text-gray-500">{item.question.type} • {item.question.topic}</span>
                 </div>
-            )}
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                <div className="bg-gray-100 dark:bg-black p-4 rounded border border-gray-200 dark:border-gray-800">
-                    <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider">Your Input</span>
-                    <div className="font-mono break-all whitespace-pre-wrap text-gray-700 dark:text-gray-300">
-                        {item.question.type === QuestionType.MCQ 
-                            ? (item.question.options && item.answer !== null ? 
-                                <MarkdownRenderer content={item.question.options[item.answer as number]} /> : 'None')
-                            : String(item.answer || 'No Answer')
-                        }
+                <span className={`text-xs font-bold px-3 py-1 rounded-full ${item.isCorrect ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                    {item.isCorrect ? 'PASSED' : 'FAILED'}
+                </span>
+                </div>
+                
+                <div className="mb-6 text-lg font-medium text-gray-800 dark:text-gray-200">
+                    <MarkdownRenderer content={item.question.text} />
+                </div>
+
+                {/* RENDER CODE SNIPPET ONLY IF NOT ALREADY IN TEXT */}
+                {item.question.codeSnippet && !hasCodeBlockInText && (
+                    <div className="mb-6">
+                        <CodeWindow code={item.question.codeSnippet} />
+                    </div>
+                )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                    <div className="bg-gray-100 dark:bg-black p-4 rounded border border-gray-200 dark:border-gray-800">
+                        <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider">Your Input</span>
+                        <div className="font-mono break-all whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+                            {item.question.type === QuestionType.MCQ 
+                                ? (item.question.options && item.answer !== null ? 
+                                    <MarkdownRenderer content={item.question.options[item.answer as number]} /> : 'None')
+                                : String(item.answer || 'No Answer')
+                            }
+                        </div>
+                    </div>
+                    <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded border border-blue-100 dark:border-gray-800">
+                        <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider text-blue-800 dark:text-blue-400">Analysis / Solution</span>
+                        <MarkdownRenderer content={item.feedback} />
                     </div>
                 </div>
-                <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded border border-blue-100 dark:border-gray-800">
-                    <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider text-blue-800 dark:text-blue-400">Analysis / Solution</span>
-                    <MarkdownRenderer content={item.feedback} />
-                </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-black border-t border-gray-300 dark:border-terminal-green flex flex-col xl:flex-row gap-4 justify-center items-center shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-50">

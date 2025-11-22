@@ -5,116 +5,113 @@ import { scanFileWithVirusTotal } from '../utils/virusTotal';
 import { sanitizeInput } from '../utils/security';
 
 interface FileUploadProps {
-  onFileAccepted: (base64: string, mimeType: string, fileName: string) => void;
+  onFilesAccepted: (files: Array<{base64: string, mime: string, name: string}>) => void;
   isFullWidth: boolean;
 }
 
-export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWidth }) => {
-  const [error, setError] = useState<string | null>(null);
-  const [threatDetails, setThreatDetails] = useState<string | null>(null);
+interface ProcessingLog {
+    name: string;
+    status: 'PENDING' | 'SCANNING' | 'SUCCESS' | 'FAILED';
+    error?: string;
+}
+
+export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, isFullWidth }) => {
+  const [logs, setLogs] = useState<ProcessingLog[]>([]);
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
-  const [status, setStatus] = useState<'IDLE' | 'SCANNING' | 'PROCESSING' | 'ERROR'>('IDLE');
-  const [scanMessage, setScanMessage] = useState('');
+  const [globalStatus, setGlobalStatus] = useState<'IDLE' | 'PROCESSING'>('IDLE');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
-      if (e.clipboardData && e.clipboardData.files.length > 0 && status === 'IDLE') {
+      if (e.clipboardData && e.clipboardData.files.length > 0 && globalStatus === 'IDLE') {
         e.preventDefault();
         handleFiles(e.clipboardData.files);
       }
     };
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [status]);
+  }, [globalStatus]);
 
-  const handleFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+  const handleFiles = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
     
-    setStatus('SCANNING');
-    setScanMessage('Initializing Parallel Processing Protocols...');
-    setError(null);
-    setThreatDetails(null);
-    const file = files[0];
+    const newFiles = Array.from(fileList);
+    setGlobalStatus('PROCESSING');
+    
+    // Initialize logs for these files
+    const newLogs: ProcessingLog[] = newFiles.map(f => ({ name: f.name, status: 'PENDING' }));
+    setLogs(prev => [...newLogs]); // Reset logs for new batch or append? Let's reset for cleaner UI in single batch mode.
 
-    try {
-      // 1. Pre-Check Validation (Fast Sync Check)
-      const validationCheck = await validateFile(file);
-      if (!validationCheck.valid || !validationCheck.mimeType) {
-          setError(validationCheck.error || 'Unknown error');
-          setStatus('ERROR');
-          return;
-      }
+    const successfulFiles: Array<{base64: string, mime: string, name: string}> = [];
 
-      // 2. PARALLEL EXECUTION: Run VirusTotal Scan and Base64 Conversion simultaneously
-      // This optimizes wait time significantly as they are independent operations.
-      setScanMessage('Running Security Scan & Data Conversion in Parallel...');
-      
-      const [scanResult, base64] = await Promise.all([
-          scanFileWithVirusTotal(file),
-          fileToBase64(file)
-      ]);
+    // Process Sequentially (to avoid rate limiting VirusTotal public API)
+    // For a production app with paid key, Promise.all is better.
+    for (let i = 0; i < newFiles.length; i++) {
+        const file = newFiles[i];
+        
+        // Update status to scanning
+        setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'SCANNING' } : l));
 
-      // 3. Check Security Result
-      if (!scanResult.safe) {
-          setError(scanResult.message);
-          if (scanResult.threatLabel) {
-            setThreatDetails(scanResult.threatLabel);
-          }
-          setStatus('ERROR');
-          return;
-      }
+        try {
+            // 1. Validation
+            const validationCheck = await validateFile(file);
+            if (!validationCheck.valid || !validationCheck.mimeType) {
+                throw new Error(validationCheck.error || 'Invalid file type');
+            }
 
-      setScanMessage(scanResult.message); // "Safe" message
+            // 2. Security Scan & Conversion
+            const [scanResult, base64] = await Promise.all([
+                scanFileWithVirusTotal(file),
+                fileToBase64(file)
+            ]);
 
-      // Short delay to show success message
-      await new Promise(r => setTimeout(r, 500));
-      
-      setStatus('PROCESSING');
-      
-      // 4. Submit
-      onFileAccepted(base64, validationCheck.mimeType, file.name);
+            if (!scanResult.safe) {
+                throw new Error(scanResult.message);
+            }
 
-    } catch (e: any) {
-      console.error(e);
-      setError(`Processing Failed: ${e.message || 'Unknown Error'}`);
-      setStatus('ERROR');
+            // Success
+            successfulFiles.push({ base64, mime: validationCheck.mimeType, name: file.name });
+            setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'SUCCESS' } : l));
+
+        } catch (e: any) {
+            setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'FAILED', error: e.message } : l));
+        }
+    }
+
+    setGlobalStatus('IDLE');
+
+    if (successfulFiles.length > 0) {
+        // Small delay to let user see success ticks before proceeding
+        setTimeout(() => {
+            onFilesAccepted(successfulFiles);
+        }, 1000);
     }
   };
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
-      const validation = sanitizeInput(val, 500); // 500 chars max for URL
+      const validation = sanitizeInput(val, 500); 
       setUrlInput(validation.sanitizedValue);
-      if (!validation.isValid) {
-          setError(validation.error || "Invalid characters in URL");
-      } else {
-          setError(null);
-      }
   };
 
   const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!urlInput) return;
     
-    // Extra check before submitting
-    if (urlInput.toLowerCase().includes('javascript:')) {
-        setError("Invalid Protocol");
-        return;
-    }
+    if (urlInput.toLowerCase().includes('javascript:')) return;
 
-    setStatus('PROCESSING');
-    setError(null);
-    setThreatDetails(null);
+    setGlobalStatus('PROCESSING');
+    setLogs([{ name: urlInput, status: 'SCANNING' }]);
     
     try {
        const { base64, mimeType, name } = await urlToBase64(urlInput);
-       onFileAccepted(base64, mimeType, name);
+       setLogs([{ name: name, status: 'SUCCESS' }]);
+       setTimeout(() => onFilesAccepted([{ base64, mime: mimeType, name }]), 800);
     } catch (err: any) {
-        setError(err.message || "Failed to load URL. Check CORS or format.");
-        setStatus('ERROR');
+        setLogs([{ name: urlInput, status: 'FAILED', error: err.message }]);
     }
+    setGlobalStatus('IDLE');
   };
 
   const onDragOver = (e: React.DragEvent) => {
@@ -129,7 +126,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (status === 'IDLE') {
+    if (globalStatus === 'IDLE') {
         handleFiles(e.dataTransfer.files);
     }
   };
@@ -141,63 +138,72 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
           border-2 border-dashed transition-all p-10 text-center cursor-pointer relative overflow-hidden
           ${isDragging 
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-            : status === 'ERROR'
-                ? 'border-red-500 bg-red-50 dark:bg-red-900/10'
+            : globalStatus === 'PROCESSING'
+                ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10 cursor-wait'
                 : 'border-gray-400 dark:border-terminal-green hover:border-blue-400 dark:hover:border-white'
           }
         `}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        onClick={() => status === 'IDLE' && fileInputRef.current?.click()}
+        onClick={() => globalStatus === 'IDLE' && fileInputRef.current?.click()}
       >
         <input 
           type="file" 
           ref={fileInputRef} 
           className="hidden" 
           accept=".pdf,.jpg,.jpeg,.png"
+          multiple // ENABLE MULTIPLE FILES
           onChange={(e) => handleFiles(e.target.files)}
-          disabled={status !== 'IDLE'}
+          disabled={globalStatus !== 'IDLE'}
         />
         
         <div className="space-y-4 relative z-10">
           <div className="text-4xl">
-             {status === 'SCANNING' ? (
+             {globalStatus === 'PROCESSING' ? (
                  <span className="inline-block animate-spin">🛡️</span>
-             ) : status === 'PROCESSING' ? (
-                 <span className="inline-block animate-bounce">📥</span>
-             ) : status === 'ERROR' ? (
-                 <span>⚠️</span>
              ) : (
                  <span>🛡️</span>
              )}
           </div>
 
           <h3 className="text-xl font-bold uppercase">
-            {status === 'SCANNING' ? 'SECURITY SCAN IN PROGRESS' 
-             : status === 'PROCESSING' ? 'PROCESSING PAYLOAD'
-             : status === 'ERROR' ? 'UPLOAD REJECTED'
-             : 'SECURE FILE UPLOAD'}
+            {globalStatus === 'PROCESSING' ? 'ANALYZING BATCH...' : 'SECURE FILE UPLOAD'}
           </h3>
           
           <p className="text-sm opacity-70 font-mono">
-            {status === 'SCANNING' ? scanMessage 
-             : status === 'PROCESSING' ? 'Converting data streams...'
-             : 'Drag & Drop PDF/IMG (VirusTotal Integrated)'}
+            {globalStatus === 'PROCESSING' 
+             ? 'Executing Security Protocols on individual files...'
+             : 'Drag & Drop Multiple PDFs/Images (VirusTotal Integrated)'}
           </p>
-          
-          {status === 'IDLE' && (
-            <div className="text-xs text-gray-400 mt-4">
-                [ MAX: 15MB ] • [ PROTECTED BY VIRUSTOTAL ]
-            </div>
-          )}
         </div>
 
         {/* Scanning overlay effect */}
-        {status === 'SCANNING' && (
-            <div className="absolute inset-0 bg-green-500/10 animate-pulse z-0"></div>
+        {globalStatus === 'PROCESSING' && (
+            <div className="absolute inset-0 bg-green-500/5 animate-pulse z-0"></div>
         )}
       </div>
+
+      {/* Processing Logs */}
+      {logs.length > 0 && (
+          <div className="mt-6 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 p-4 rounded shadow-inner font-mono text-xs">
+              <div className="text-xs font-bold uppercase text-gray-500 mb-2 border-b pb-1">Session Log</div>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {logs.map((log, i) => (
+                      <div key={i} className="flex justify-between items-center">
+                          <span className="truncate max-w-[70%]">{log.name}</span>
+                          <div className="flex items-center gap-2">
+                              {log.status === 'PENDING' && <span className="text-gray-500">WAITING</span>}
+                              {log.status === 'SCANNING' && <span className="text-blue-500 animate-pulse">SCANNING...</span>}
+                              {log.status === 'SUCCESS' && <span className="text-green-500 font-bold">✓ SAFE</span>}
+                              {log.status === 'FAILED' && <span className="text-red-500 font-bold">✕ BLOCKED</span>}
+                          </div>
+                          {log.error && <div className="w-full text-red-400 italic pl-2">{log.error}</div>}
+                      </div>
+                  ))}
+              </div>
+          </div>
+      )}
 
       <div className="flex items-center my-6">
           <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
@@ -212,30 +218,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileAccepted, isFullWi
             className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-3 font-mono text-sm outline-none focus:border-terminal-green"
             value={urlInput}
             onChange={handleUrlChange}
-            disabled={status !== 'IDLE'}
+            disabled={globalStatus !== 'IDLE'}
           />
           <button 
              type="submit"
-             disabled={!urlInput || status !== 'IDLE'}
+             disabled={!urlInput || globalStatus !== 'IDLE'}
              className="px-4 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50"
           >
             FETCH
           </button>
       </form>
-      
-      {error && (
-        <div className="mt-4 p-4 border-l-4 border-red-500 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-mono animate-fade-in shadow-lg">
-          <div className="flex items-center gap-2 font-bold mb-1 text-base">
-            <span>⚠️ THREAT DETECTED</span>
-          </div>
-          <div className="mb-2">{error}</div>
-          {threatDetails && (
-             <div className="bg-red-200 dark:bg-red-900/40 p-2 rounded border border-red-300 dark:border-red-800 text-xs font-bold uppercase tracking-wider">
-               DETECTION LABEL: {threatDetails}
-             </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };
