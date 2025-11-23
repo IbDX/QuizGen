@@ -4,6 +4,7 @@ import { getAiHelperResponse } from '../services/gemini';
 import { UILanguage } from '../types';
 import { t } from '../utils/translations';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { sanitizeInput } from '../utils/security';
 
 interface AiHelperProps {
     lang: UILanguage;
@@ -22,6 +23,7 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang }) => {
     ]);
     const [isLoading, setIsLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const MAX_CHARS = 300;
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -33,7 +35,32 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang }) => {
         e.preventDefault();
         if (!input.trim() || isLoading) return;
 
-        const userMsg = input.trim();
+        // 1. Sanitization & Length Check
+        const validation = sanitizeInput(input, MAX_CHARS); // Limit chat length
+        
+        if (!validation.isValid) {
+            // Show error as a system message
+            setMessages(prev => [...prev, { role: 'ai', text: `⚠️ SYSTEM ALERT: ${validation.error}` }]);
+            setInput('');
+            return;
+        }
+
+        const userMsg = validation.sanitizedValue;
+
+        // 2. Prompt Injection Heuristic
+        const injectionPatterns = [/ignore previous/i, /system prompt/i, /you are now/i, /act as/i];
+        if (injectionPatterns.some(p => p.test(userMsg))) {
+             setMessages(prev => [...prev, { role: 'user', text: userMsg }]); // Show what they typed
+             // Artificial delay to simulate processing
+             setIsLoading(true);
+             setTimeout(() => {
+                 setMessages(prev => [...prev, { role: 'ai', text: "🛡️ SECURITY PROTOCOL: Prompt injection attempt detected. Request denied." }]);
+                 setIsLoading(false);
+             }, 800);
+             setInput('');
+             return;
+        }
+
         setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
         setInput('');
         setIsLoading(true);
@@ -96,14 +123,20 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang }) => {
 
                     {/* Input Area */}
                     <form onSubmit={handleSubmit} className="p-3 border-t border-gray-300 dark:border-terminal-green bg-white dark:bg-gray-900">
-                        <div className="flex gap-2">
-                            <input 
-                                type="text" 
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                placeholder={t('ai_helper_placeholder', lang)}
-                                className="flex-grow bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded p-2 text-sm outline-none focus:border-blue-500 dark:focus:border-terminal-green dark:text-white"
-                            />
+                        <div className="relative flex gap-2 items-center">
+                            <div className="flex-grow relative">
+                                <input 
+                                    type="text" 
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    maxLength={MAX_CHARS}
+                                    placeholder={t('ai_helper_placeholder', lang)}
+                                    className="w-full bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded p-2 pr-12 text-sm outline-none focus:border-blue-500 dark:focus:border-terminal-green dark:text-white"
+                                />
+                                <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-mono pointer-events-none ${input.length >= MAX_CHARS ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {input.length}/{MAX_CHARS}
+                                </span>
+                            </div>
                             <button 
                                 type="submit" 
                                 disabled={isLoading || !input.trim()}
