@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generateLoadingTips } from '../services/gemini';
 import { UILanguage } from '../types';
@@ -115,7 +117,14 @@ const DPad = ({ onDir }: { onDir: (dir: string) => void }) => {
 
 // --- MINI GAMES ---
 
-const SnakeGame: React.FC<{ externalDir?: string }> = ({ externalDir }) => {
+// Shared Input Props
+interface GameProps {
+    externalDir?: string;
+    externalAction?: string;
+}
+
+// 1. SNAKE GAME
+const SnakeGame: React.FC<GameProps> = ({ externalDir, externalAction }) => {
     const GRID_SIZE = 20;
     const [snake, setSnake] = useState([{x: 10, y: 10}]);
     const [food, setFood] = useState({x: 15, y: 5});
@@ -130,6 +139,10 @@ const SnakeGame: React.FC<{ externalDir?: string }> = ({ externalDir }) => {
         setGameOver(false);
         setScore(0);
     };
+
+    useEffect(() => {
+        if (externalAction === 'ACTION' && gameOver) resetGame();
+    }, [externalAction, gameOver]);
 
     useEffect(() => {
         if(externalDir) {
@@ -150,12 +163,10 @@ const SnakeGame: React.FC<{ externalDir?: string }> = ({ externalDir }) => {
                 head.x += dir.x;
                 head.y += dir.y;
 
-                // Wall Collision
                 if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
                     setGameOver(true);
                     return prev;
                 }
-                // Self Collision
                 if (prev.some(seg => seg.x === head.x && seg.y === head.y)) {
                     setGameOver(true);
                     return prev;
@@ -179,12 +190,12 @@ const SnakeGame: React.FC<{ externalDir?: string }> = ({ externalDir }) => {
     }, [dir, food, gameOver]);
 
     return (
-        <div className="flex flex-col items-center">
-            <div className="mb-2 font-mono text-xs flex justify-between w-full px-4">
+        <div className="flex flex-col items-center h-full w-full">
+            <div className="mb-1 font-mono text-[10px] flex justify-between w-full px-4 text-[#222]">
                 <span>SCORE: {score}</span>
-                {gameOver && <span className="text-red-500 font-bold cursor-pointer" onClick={resetGame}>GAME OVER - TAP TO RETRY</span>}
+                {gameOver ? <span className="text-red-800 font-bold animate-pulse">GAME OVER (PRESS A)</span> : <span>SNAKE</span>}
             </div>
-            <div className="relative bg-black border-4 border-gray-600 w-48 h-48 sm:w-60 sm:h-60 grid" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`, gridTemplateRows: `repeat(${GRID_SIZE}, 1fr)` }}>
+            <div className="relative bg-[#9ead86] border-2 border-gray-600/50 w-48 h-48 sm:w-56 sm:h-56 grid shadow-inner" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`, gridTemplateRows: `repeat(${GRID_SIZE}, 1fr)` }}>
                 {Array.from({length: GRID_SIZE*GRID_SIZE}).map((_, i) => {
                     const x = i % GRID_SIZE;
                     const y = Math.floor(i / GRID_SIZE);
@@ -192,7 +203,7 @@ const SnakeGame: React.FC<{ externalDir?: string }> = ({ externalDir }) => {
                     const isHead = snake[0].x === x && snake[0].y === y;
                     const isFood = food.x === x && food.y === y;
                     return (
-                        <div key={i} className={`w-full h-full ${isHead ? 'bg-green-400' : isSnake ? 'bg-green-700' : isFood ? 'bg-red-500 rounded-full' : 'bg-[#111]'}`}></div>
+                        <div key={i} className={`w-full h-full ${isHead ? 'bg-black' : isSnake ? 'bg-gray-800' : isFood ? 'bg-red-900/80 rounded-full' : 'opacity-0'}`}></div>
                     )
                 })}
             </div>
@@ -200,11 +211,300 @@ const SnakeGame: React.FC<{ externalDir?: string }> = ({ externalDir }) => {
     );
 };
 
-// Placeholder games for variety
-const XO: React.FC = () => <div className="text-xs text-center text-gray-500 flex items-center justify-center h-48 border border-dashed w-48">XO GAME (Coming Soon)</div>;
-const SokobanGame: React.FC = () => <div className="text-xs text-center text-gray-500 flex items-center justify-center h-48 border border-dashed w-48">SOKOBAN (Coming Soon)</div>;
-const MemoryGame: React.FC = () => <div className="text-xs text-center text-gray-500 flex items-center justify-center h-48 border border-dashed w-48">MEMORY (Coming Soon)</div>;
+// 2. TIC TAC TOE (XO)
+const TicTacToe: React.FC<GameProps> = ({ externalDir, externalAction }) => {
+    const [board, setBoard] = useState(Array(9).fill(null));
+    const [cursor, setCursor] = useState(4); // Center
+    const [winner, setWinner] = useState<string | null>(null);
+    const [isXNext, setIsXNext] = useState(true);
 
+    const checkWinner = (squares: any[]) => {
+        const lines = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+        for (let i = 0; i < lines.length; i++) {
+            const [a, b, c] = lines[i];
+            if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+                return squares[a];
+            }
+        }
+        return squares.every(Boolean) ? 'DRAW' : null;
+    };
+
+    useEffect(() => {
+        if (externalDir) {
+            let next = cursor;
+            switch(externalDir) {
+                case 'UP': next = cursor - 3; break;
+                case 'DOWN': next = cursor + 3; break;
+                case 'LEFT': next = cursor - 1; break;
+                case 'RIGHT': next = cursor + 1; break;
+            }
+            if (next >= 0 && next < 9) setCursor(next);
+        }
+    }, [externalDir]);
+
+    const handlePlay = (idx: number) => {
+        if (board[idx] || winner) return;
+        const newBoard = [...board];
+        newBoard[idx] = 'X';
+        setBoard(newBoard);
+        setIsXNext(false);
+        
+        const w = checkWinner(newBoard);
+        if (w) setWinner(w);
+        else {
+            // CPU Move (Simple Random)
+            setTimeout(() => {
+                const emptyIndices = newBoard.map((v, i) => v === null ? i : null).filter(v => v !== null) as number[];
+                if (emptyIndices.length > 0) {
+                    const cpuMove = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+                    newBoard[cpuMove] = 'O';
+                    setBoard([...newBoard]);
+                    setIsXNext(true);
+                    const w2 = checkWinner(newBoard);
+                    if (w2) setWinner(w2);
+                }
+            }, 500);
+        }
+    };
+
+    useEffect(() => {
+        if (externalAction === 'ACTION') {
+            if (winner) {
+                setBoard(Array(9).fill(null));
+                setWinner(null);
+                setIsXNext(true);
+            } else {
+                handlePlay(cursor);
+            }
+        }
+    }, [externalAction]);
+
+    return (
+        <div className="flex flex-col items-center h-full w-full">
+            <div className="mb-1 font-mono text-[10px] flex justify-between w-full px-4 text-[#222]">
+                <span>P1: X | CPU: O</span>
+                {winner ? <span className="font-bold animate-pulse">{winner === 'DRAW' ? 'DRAW!' : `${winner} WINS!`} (PRESS A)</span> : <span>TIC-TAC-TOE</span>}
+            </div>
+            <div className="relative bg-[#9ead86] border-2 border-gray-600/50 w-48 h-48 sm:w-56 sm:h-56 grid grid-cols-3 grid-rows-3 gap-1 p-1 shadow-inner">
+                {board.map((cell, i) => (
+                    <div 
+                        key={i} 
+                        className={`
+                            flex items-center justify-center text-4xl font-bold font-mono border border-gray-600/20
+                            ${cursor === i ? 'bg-black/10 shadow-inner' : ''}
+                            ${cell === 'X' ? 'text-black' : 'text-gray-700'}
+                        `}
+                    >
+                        {cell}
+                        {cursor === i && !cell && !winner && <div className="w-2 h-2 bg-black/30 rounded-full animate-ping absolute"></div>}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// 3. SOKOBAN
+const SokobanGame: React.FC<GameProps> = ({ externalDir, externalAction }) => {
+    // 0: Floor, 1: Wall, 2: Box, 3: Target, 4: Player, 5: Box on Target
+    const LEVEL = [
+        [1,1,1,1,1,1,1,1],
+        [1,0,0,0,0,1,1,1],
+        [1,0,2,0,0,3,0,1],
+        [1,0,4,0,0,1,0,1],
+        [1,1,2,0,3,1,0,1],
+        [1,0,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1],
+    ];
+    
+    // Flatten level for simple state, store dynamic entities separately
+    const [walls] = useState(() => {
+        const w: string[] = [];
+        LEVEL.forEach((row, y) => row.forEach((cell, x) => { if(cell===1) w.push(`${x},${y}`) }));
+        return w;
+    });
+    const [targets] = useState(() => {
+        const t: string[] = [];
+        LEVEL.forEach((row, y) => row.forEach((cell, x) => { if(cell===3) t.push(`${x},${y}`) }));
+        return t;
+    });
+    
+    // Dynamic State
+    const [player, setPlayer] = useState({x: 2, y: 3});
+    const [boxes, setBoxes] = useState([{x: 2, y: 2}, {x: 2, y: 4}]); // Corrected logic
+    const [won, setWon] = useState(false);
+
+    useEffect(() => {
+        if (externalAction === 'ACTION' && won) {
+            // Reset
+            setPlayer({x: 2, y: 3});
+            setBoxes([{x: 2, y: 2}, {x: 2, y: 4}]);
+            setWon(false);
+        }
+    }, [externalAction]);
+
+    useEffect(() => {
+        if (!externalDir || won) return;
+        
+        let dx = 0, dy = 0;
+        switch(externalDir) {
+            case 'UP': dy = -1; break;
+            case 'DOWN': dy = 1; break;
+            case 'LEFT': dx = -1; break;
+            case 'RIGHT': dx = 1; break;
+        }
+
+        const newX = player.x + dx;
+        const newY = player.y + dy;
+        const key = `${newX},${newY}`;
+
+        if (walls.includes(key)) return;
+
+        const boxIndex = boxes.findIndex(b => b.x === newX && b.y === newY);
+        if (boxIndex >= 0) {
+            // Push Box
+            const boxNextX = newX + dx;
+            const boxNextY = newY + dy;
+            const boxNextKey = `${boxNextX},${boxNextY}`;
+            
+            if (walls.includes(boxNextKey) || boxes.some(b => b.x === boxNextX && b.y === boxNextY)) {
+                return; // Blocked
+            }
+            
+            const newBoxes = [...boxes];
+            newBoxes[boxIndex] = {x: boxNextX, y: boxNextY};
+            setBoxes(newBoxes);
+            setPlayer({x: newX, y: newY});
+            
+            // Check Win
+            if (newBoxes.every(b => targets.includes(`${b.x},${b.y}`))) setWon(true);
+        } else {
+            setPlayer({x: newX, y: newY});
+        }
+    }, [externalDir]);
+
+    return (
+        <div className="flex flex-col items-center h-full w-full">
+            <div className="mb-1 font-mono text-[10px] flex justify-between w-full px-4 text-[#222]">
+                <span>SOKOBAN</span>
+                {won && <span className="font-bold animate-pulse text-green-900">SOLVED! (PRESS A)</span>}
+            </div>
+            <div className="relative bg-[#9ead86] border-2 border-gray-600/50 w-48 h-42 sm:w-56 sm:h-48 grid shadow-inner" style={{ gridTemplateColumns: `repeat(8, 1fr)`, gridTemplateRows: `repeat(7, 1fr)` }}>
+                {Array.from({length: 56}).map((_, i) => {
+                    const x = i % 8;
+                    const y = Math.floor(i / 8);
+                    const key = `${x},${y}`;
+                    
+                    const isWall = walls.includes(key);
+                    const isTarget = targets.includes(key);
+                    const isBox = boxes.some(b => b.x === x && b.y === y);
+                    const isPlayer = player.x === x && player.y === y;
+                    
+                    return (
+                        <div key={i} className={`flex items-center justify-center text-[10px] sm:text-xs`}>
+                            {isWall && <div className="w-full h-full bg-gray-700 border border-gray-600"></div>}
+                            {isTarget && !isBox && !isPlayer && <div className="w-2 h-2 bg-red-800/50 rounded-full"></div>}
+                            {isBox && <div className={`w-3/4 h-3/4 border border-black ${isTarget ? 'bg-green-600' : 'bg-yellow-700'}`}></div>}
+                            {isPlayer && <div className="w-3/4 h-3/4 bg-blue-800 rounded-sm animate-pulse"></div>}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+// 4. MEMORY
+const MemoryGame: React.FC<GameProps> = ({ externalDir, externalAction }) => {
+    const ICONS = ['⚡', '💾', '💿', '🖥️', '⌨️', '🖱️', '🔋', '📡'];
+    
+    // Initial State Setup
+    const [cards, setCards] = useState(() => {
+        const d = [...ICONS, ...ICONS];
+        return d.sort(() => Math.random() - 0.5);
+    });
+    
+    const [flipped, setFlipped] = useState<number[]>([]);
+    const [matched, setMatched] = useState<number[]>([]);
+    const [cursor, setCursor] = useState(0);
+    const [gameOver, setGameOver] = useState(false);
+
+    useEffect(() => {
+        if (externalDir) {
+            let next = cursor;
+            switch(externalDir) {
+                case 'UP': next = cursor - 4; break;
+                case 'DOWN': next = cursor + 4; break;
+                case 'LEFT': next = cursor - 1; break;
+                case 'RIGHT': next = cursor + 1; break;
+            }
+            if (next >= 0 && next < 16) setCursor(next);
+        }
+    }, [externalDir]);
+
+    useEffect(() => {
+        if (externalAction === 'ACTION') {
+            if (gameOver) {
+                // Reset
+                setCards([...ICONS, ...ICONS].sort(() => Math.random() - 0.5));
+                setFlipped([]);
+                setMatched([]);
+                setGameOver(false);
+            } else {
+                // Flip Logic
+                if (matched.includes(cursor) || flipped.includes(cursor) || flipped.length >= 2) return;
+                
+                const newFlipped = [...flipped, cursor];
+                setFlipped(newFlipped);
+                
+                if (newFlipped.length === 2) {
+                    const c1 = cards[newFlipped[0]];
+                    const c2 = cards[newFlipped[1]];
+                    if (c1 === c2) {
+                        setMatched(prev => {
+                            const m = [...prev, ...newFlipped];
+                            if (m.length === 16) setGameOver(true);
+                            return m;
+                        });
+                        setFlipped([]);
+                    } else {
+                        setTimeout(() => setFlipped([]), 800);
+                    }
+                }
+            }
+        }
+    }, [externalAction]);
+
+    return (
+        <div className="flex flex-col items-center h-full w-full">
+            <div className="mb-1 font-mono text-[10px] flex justify-between w-full px-4 text-[#222]">
+                <span>MATCH PAIRS</span>
+                {gameOver && <span className="font-bold animate-pulse text-green-900">COMPLETE! (PRESS A)</span>}
+            </div>
+            <div className="relative bg-[#9ead86] border-2 border-gray-600/50 w-48 h-48 sm:w-56 sm:h-56 grid grid-cols-4 grid-rows-4 gap-1 p-1 shadow-inner">
+                 {cards.map((icon, i) => {
+                     const isFlipped = flipped.includes(i) || matched.includes(i);
+                     return (
+                         <div 
+                            key={i}
+                            className={`
+                                flex items-center justify-center text-lg border border-gray-600/30
+                                ${cursor === i ? 'ring-2 ring-black/50 z-10' : ''}
+                                ${isFlipped ? 'bg-[#8b9c70]' : 'bg-[#4a553a]'}
+                            `}
+                         >
+                             {isFlipped ? icon : <span className="opacity-20 text-[8px]">Z+</span>}
+                         </div>
+                     )
+                 })}
+            </div>
+        </div>
+    );
+};
 
 interface LoadingScreenProps {
   message: string;
@@ -212,18 +512,28 @@ interface LoadingScreenProps {
   lang?: UILanguage;
 }
 
-export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames = [], lang }) => {
+export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames = [], lang = 'en' }) => {
   const [tipIndex, setTipIndex] = useState(0);
   const [gameIndex, setGameIndex] = useState(0);
   const [dPadInput, setDPadInput] = useState<string>('');
+  const [actionInput, setActionInput] = useState<string>('');
   
   const [activeTips, setActiveTips] = useState<string[]>([]);
   const [isFetchingTips, setIsFetchingTips] = useState(false);
 
+  // --- CONTROLS ---
   const handleDir = (dir: string) => {
       setDPadInput(dir);
-      // clear quickly to allow re-trigger
       setTimeout(() => setDPadInput(''), 100);
+  };
+
+  const handleAction = (type: 'ACTION' | 'CYCLE') => {
+      if (type === 'CYCLE') {
+          setGameIndex((i) => (i + 1) % 4); // 4 Games
+      } else {
+          setActionInput('ACTION');
+          setTimeout(() => setActionInput(''), 100);
+      }
   };
 
   // Keyboard support for desktop
@@ -238,6 +548,16 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
               case 's': handleDir('DOWN'); break;
               case 'a': handleDir('LEFT'); break;
               case 'd': handleDir('RIGHT'); break;
+              // Action Buttons
+              case 'Enter': 
+              case ' ': 
+              case 'z': 
+                  handleAction('ACTION'); 
+                  break;
+              case 'Shift':
+              case 'x':
+                  handleAction('CYCLE');
+                  break;
           }
       };
       window.addEventListener('keydown', handleKeyDown);
@@ -245,10 +565,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
   }, []);
 
   const GAMES = [
-      <SnakeGame key="snake" externalDir={dPadInput} />, 
-      <XO key="xo" />, 
-      <SokobanGame key="sokoban" />,
-      <MemoryGame key="memory" />
+      <SnakeGame key="snake" externalDir={dPadInput} externalAction={actionInput} />, 
+      <TicTacToe key="xo" externalDir={dPadInput} externalAction={actionInput} />, 
+      <SokobanGame key="sokoban" externalDir={dPadInput} externalAction={actionInput} />,
+      <MemoryGame key="memory" externalDir={dPadInput} externalAction={actionInput} />
   ];
 
   useEffect(() => {
@@ -270,7 +590,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
 
       const fetchNewTips = async () => {
           setIsFetchingTips(true);
-          const newAiTips = await generateLoadingTips(fileNames);
+          const newAiTips = await generateLoadingTips(fileNames, lang as UILanguage);
           if (newAiTips && newAiTips.length > 0) {
               setActiveTips(prev => {
                   const combined = Array.from(new Set([...newAiTips, ...prev]));
@@ -281,11 +601,9 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
       };
       
       fetchNewTips();
-  }, [fileNames]);
+  }, [fileNames, lang]);
 
   useEffect(() => {
-      // Default to Snake (Index 0)
-      setGameIndex(0);
       const interval = setInterval(() => {
           setTipIndex(prev => (prev + 1) % activeTips.length);
       }, 5000); 
@@ -346,16 +664,29 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
                         <span className="border border-gray-500 px-1.5 py-0.5 rounded bg-gray-300 dark:bg-gray-800">▲▼◀▶</span>
                         <span>TO MOVE</span>
                     </div>
-                    <div>USE KEYBOARD ARROWS</div>
+                    <div className="flex items-center gap-2">
+                         <span className="border border-gray-500 px-1.5 py-0.5 rounded bg-gray-300 dark:bg-gray-800">SPACE/Z</span>
+                         <span>ACTION</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                         <span className="border border-gray-500 px-1.5 py-0.5 rounded bg-gray-300 dark:bg-gray-800">SHIFT/X</span>
+                         <span>CYCLE GAME</span>
+                    </div>
                </div>
 
                {/* Action Buttons */}
                <div className="flex flex-col gap-3 mt-4">
                     <div className="flex gap-4 rotate-12">
-                        <button className="w-10 h-10 bg-red-600 rounded-full shadow-[0_4px_0_#990000] active:shadow-none active:translate-y-1 active:bg-red-700"></button>
+                        {/* Button B - Red - Cycle */}
                         <button 
-                            className="w-10 h-10 bg-blue-600 rounded-full shadow-[0_4px_0_#000099] active:shadow-none active:translate-y-1 active:bg-blue-700"
-                            onClick={() => setGameIndex((i) => (i + 1) % GAMES.length)}
+                            className="w-10 h-10 bg-red-600 rounded-full shadow-[0_4px_0_#990000] active:shadow-none active:translate-y-1 active:bg-red-700 select-none"
+                            onPointerDown={(e) => { e.preventDefault(); handleAction('CYCLE'); }}
+                        ></button>
+                        
+                        {/* Button A - Blue - Action */}
+                        <button 
+                            className="w-10 h-10 bg-blue-600 rounded-full shadow-[0_4px_0_#000099] active:shadow-none active:translate-y-1 active:bg-blue-700 select-none"
+                            onPointerDown={(e) => { e.preventDefault(); handleAction('ACTION'); }}
                         ></button>
                     </div>
                     <div className="text-[9px] text-gray-500 font-bold flex gap-8 ml-2">

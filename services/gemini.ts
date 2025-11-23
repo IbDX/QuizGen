@@ -1,5 +1,6 @@
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { Question, QuestionType, QuestionFormatPreference, OutputLanguage } from "../types";
+import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage } from "../types";
 
 // Helper to generate schema based on preference
 const getExamSchema = (preference: QuestionFormatPreference): Schema => {
@@ -380,21 +381,35 @@ export const gradeCodingAnswer = async (question: Question, code: string): Promi
 };
 
 // --- NEW FEATURE: DYNAMIC TIP GENERATION ---
-export const generateLoadingTips = async (fileNames: string[]): Promise<string[]> => {
+export const generateLoadingTips = async (fileNames: string[], lang: UILanguage = 'en'): Promise<string[]> => {
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         
         const context = fileNames.length > 0 ? fileNames.join(', ') : "Programming, Computer Science, and Technology";
         
-        const prompt = `
-            Generate 3 unique, obscure, and interesting technical facts or tips related to: ${context}.
-            
-            Rules:
-            1. Keep each tip short (under 25 words).
-            2. If including code, wrap it in backticks.
-            3. Do not use generic "Hello World" advice. Make it sound like a system log or advanced hint.
-            4. Randomize the topics slightly within the domain.
-        `;
+        let prompt = "";
+        if (lang === 'ar') {
+             prompt = `
+                Generate 3 unique, obscure, and interesting technical facts or tips related to: ${context}.
+                
+                Rules:
+                1. **OUTPUT MUST BE IN ARABIC**.
+                2. Keep each tip short (under 25 words).
+                3. If including code, wrap it in backticks and keep the code in English.
+                4. Do not use generic advice. Make it sound like a system log or advanced hint.
+                5. Randomize the topics slightly within the domain.
+            `;
+        } else {
+             prompt = `
+                Generate 3 unique, obscure, and interesting technical facts or tips related to: ${context}.
+                
+                Rules:
+                1. Keep each tip short (under 25 words).
+                2. If including code, wrap it in backticks.
+                3. Do not use generic "Hello World" advice. Make it sound like a system log or advanced hint.
+                4. Randomize the topics slightly within the domain.
+            `;
+        }
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
