@@ -1,5 +1,4 @@
 
-
 export enum QuestionType {
   MCQ = 'MCQ',
   TRACING = 'TRACING',
@@ -19,7 +18,7 @@ export enum ExamMode {
   TWO_WAY = 'TWO_WAY'  // Immediate feedback allowed
 }
 
-export type OutputLanguage = 'en' | 'ar';
+export type OutputLanguage = 'en' | 'ar' | 'auto';
 export type UILanguage = 'en' | 'ar';
 
 export interface Question {

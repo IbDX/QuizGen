@@ -1,3 +1,5 @@
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ExamMode, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage } from '../types';
 import { validateFile, fileToBase64 } from '../utils/fileValidation';
@@ -140,26 +142,35 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
   const updatePreviewPosition = (target: Element, file: FileData) => {
       const rect = target.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const TOOLTIP_WIDTH = 320;
-      const TOOLTIP_MAX_HEIGHT = 350;
-      const PADDING = 15;
+      // Use visualViewport if available for better mobile accuracy, fallback to window
+      const viewportWidth = window.visualViewport?.width || window.innerWidth;
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      
+      const TOOLTIP_WIDTH = Math.min(320, viewportWidth - 30); // Dynamic width for small screens
+      const TOOLTIP_HEIGHT = 350; // Approx height
+      const PADDING = 10;
 
       let left = rect.right + PADDING;
-      if (lang === 'ar') { // Flip logic for RTL
-          left = rect.left - TOOLTIP_WIDTH - PADDING;
-          if (left < PADDING) left = rect.right + PADDING; // Fallback
+      let top = rect.top;
+
+      // RTL handling
+      if (lang === 'ar') {
+           left = rect.left - TOOLTIP_WIDTH - PADDING;
+           if (left < PADDING) left = rect.right + PADDING; // Flip if hits left edge
       } else {
+          // LTR handling
+          // If tooltip goes off right edge, flip to left
           if (left + TOOLTIP_WIDTH > viewportWidth) {
               left = rect.left - TOOLTIP_WIDTH - PADDING;
           }
+          // If still off screen (left), simply clamp to left edge
           if (left < PADDING) left = PADDING;
       }
-
-      let top = rect.top;
-      if (top + TOOLTIP_MAX_HEIGHT > viewportHeight) {
-          top = viewportHeight - TOOLTIP_MAX_HEIGHT - PADDING;
+      
+      // Vertical clamping
+      if (top + TOOLTIP_HEIGHT > viewportHeight) {
+          // Shift up to align bottom with viewport bottom (minus padding)
+          top = viewportHeight - TOOLTIP_HEIGHT - PADDING;
       }
       if (top < PADDING) top = PADDING;
 
@@ -172,6 +183,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   };
 
   const handleTouchStartFile = (e: React.TouchEvent, file: FileData) => {
+      // e.preventDefault(); // Prevents scroll, handled nicely by onTouchEnd clearing it
       updatePreviewPosition(e.currentTarget, file);
   };
 
@@ -183,13 +195,21 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       try { return atob(b64); } catch { return "Error decoding preview."; }
   };
 
+  const getLangDescription = (l: OutputLanguage) => {
+      switch(l) {
+          case 'ar': return t('lang_desc_ar', lang);
+          case 'auto': return t('lang_desc_auto', lang);
+          default: return t('lang_desc_en', lang);
+      }
+  }
+
   return (
-    <div className={`border border-gray-300 dark:border-terminal-dimGreen p-4 md:p-6 bg-white dark:bg-terminal-black mt-4 md:mt-10 shadow-lg mx-auto transition-all duration-300 relative ${isFullWidth ? 'max-w-none w-full' : 'max-w-xl'}`}>
+    <div className={`border border-gray-300 dark:border-terminal-dimGreen p-4 md:p-6 bg-white/95 dark:bg-gray-900/90 backdrop-blur-md mt-4 md:mt-10 shadow-lg mx-auto transition-all duration-300 relative ${isFullWidth ? 'max-w-none w-full' : 'max-w-xl'}`}>
       
       {hoveredFile && (
           <div 
-            className="fixed z-50 bg-gray-100 dark:bg-black border-2 border-terminal-green shadow-2xl p-2 pointer-events-none animate-fade-in"
-            style={{ top: hoveredFile.y, left: hoveredFile.x, maxWidth: '300px' }}
+            className="fixed z-[100] bg-gray-100 dark:bg-black border-2 border-terminal-green shadow-2xl p-2 animate-fade-in"
+            style={{ top: hoveredFile.y, left: hoveredFile.x, maxWidth: '90vw', width: '320px' }}
           >
               <div className="text-[10px] font-bold bg-terminal-green text-black px-1 mb-1">PREVIEW SOURCE</div>
               {hoveredFile.file.mime.startsWith('image/') ? (
@@ -197,7 +217,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
               ) : hoveredFile.file.mime === 'application/pdf' ? (
                   <PdfPreview base64={hoveredFile.file.base64} />
               ) : hoveredFile.file.mime.startsWith('text/') ? (
-                   <pre className="w-[280px] max-h-[300px] overflow-hidden text-[9px] bg-[#1e1e1e] text-gray-300 p-2 font-mono" dir="ltr">
+                   <pre className="w-full max-h-[300px] overflow-hidden text-[9px] bg-[#1e1e1e] text-gray-300 p-2 font-mono whitespace-pre-wrap" dir="ltr">
                        {decodeBase64Text(hoveredFile.file.base64).slice(0, 500)}...
                    </pre>
               ) : (
@@ -212,7 +232,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
         <span className="text-gray-900 dark:text-terminal-light">{t('configuration', lang)}</span>
       </h2>
 
-      <div className="mb-6 bg-gray-100 dark:bg-gray-900/50 p-4 border border-gray-300 dark:border-terminal-gray">
+      <div className="mb-6 bg-gray-100 dark:bg-gray-900/50 p-4 border border-gray-300 dark:border-terminal-gray shadow-sm">
         <div className="flex justify-between items-center mb-3">
             <p className="text-xs text-gray-500 dark:text-terminal-green uppercase tracking-wider font-bold">{t('target_sources', lang)} ({files.length})</p>
         </div>
@@ -221,12 +241,11 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
             {files.map((f, i) => (
                 <li 
                     key={i} 
-                    className="font-mono text-sm bg-white dark:bg-terminal-black border border-gray-200 dark:border-terminal-gray p-3 md:p-2 flex items-center justify-between group hover:border-terminal-green hover:bg-gray-50 dark:hover:bg-terminal-dimGreen/10 transition-colors relative cursor-help"
+                    className="font-mono text-sm bg-white dark:bg-black border border-gray-200 dark:border-terminal-gray p-3 md:p-2 flex items-center justify-between group hover:border-terminal-green hover:bg-gray-50 dark:hover:bg-terminal-dimGreen/10 transition-colors relative cursor-help select-none"
                     onMouseEnter={(e) => handleMouseEnterFile(e, f)}
                     onMouseLeave={handleMouseLeaveFile}
                     onTouchStart={(e) => handleTouchStartFile(e, f)}
                     onTouchEnd={handleMouseLeaveFile}
-                    onTouchMove={handleMouseLeaveFile}
                 >
                     <div className="flex items-center gap-2 overflow-hidden">
                         <span className="opacity-50 text-xs text-gray-500 shrink-0">[{i+1}]</span>
@@ -277,28 +296,34 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
       <div className="mb-6 space-y-6">
         {/* Output Language Selection */}
-        <div className="bg-gray-50 dark:bg-terminal-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded">
+        <div className="bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
             <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('output_lang', lang)}</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
                 <button
                     onClick={() => setOutputLanguage('en')}
-                    className={`p-3 border text-center font-bold text-sm transition-all rounded ${outputLanguage === 'en' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 bg-white dark:bg-black dark:border-gray-700 dark:text-gray-400'}`}
+                    className={`p-3 border text-center font-bold text-sm transition-all rounded ${outputLanguage === 'en' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 bg-white dark:bg-black dark:border-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 >
-                    ENGLISH (Default)
+                    ENGLISH
                 </button>
                 <button
                     onClick={() => setOutputLanguage('ar')}
-                    className={`p-3 border text-center font-bold text-sm transition-all rounded font-sans ${outputLanguage === 'ar' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 bg-white dark:bg-black dark:border-gray-700 dark:text-gray-400'}`}
+                    className={`p-3 border text-center font-bold text-sm transition-all rounded font-sans ${outputLanguage === 'ar' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 bg-white dark:bg-black dark:border-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 >
-                    العربية (Technical)
+                    العربية
+                </button>
+                <button
+                    onClick={() => setOutputLanguage('auto')}
+                    className={`p-3 border text-center font-bold text-sm transition-all rounded ${outputLanguage === 'auto' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 bg-white dark:bg-black dark:border-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                >
+                    {t('original_lang', lang)}
                 </button>
             </div>
-            <p className="text-[10px] mt-1 text-gray-500 dark:text-gray-400">
-                {outputLanguage === 'ar' ? "Exam questions will be in Arabic, but code and syntax remain in English." : "Exam generated entirely in English."}
+            <p className="text-[10px] mt-2 text-gray-500 dark:text-gray-400 font-mono">
+                &gt; {getLangDescription(outputLanguage)}
             </p>
         </div>
 
-        <div className="hidden md:block bg-gray-50 dark:bg-terminal-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded">
+        <div className="hidden md:block bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
             <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('output_format', lang)}</label>
             <div className="grid grid-cols-5 gap-2">
                 {FORMAT_OPTIONS.map((opt) => (
@@ -309,7 +334,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                             p-2 border text-left transition-all relative overflow-hidden rtl:text-right rounded
                             ${formatPref === opt.val 
                                 ? 'border-terminal-green bg-terminal-green/10 text-terminal-green' 
-                                : 'border-gray-300 bg-white dark:bg-black dark:border-terminal-gray opacity-60 hover:opacity-100 dark:text-gray-400'
+                                : 'border-gray-300 bg-white dark:bg-black dark:border-terminal-gray opacity-60 hover:opacity-100 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                             }
                         `}
                     >
@@ -320,11 +345,11 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
             </div>
         </div>
 
-        <div className="bg-gray-50 dark:bg-terminal-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded">
+        <div className="bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
           <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('mode_select', lang)}</label>
           <div className="hidden md:flex flex-col gap-2">
             {[ExamMode.ONE_WAY, ExamMode.TWO_WAY].map((m) => (
-                 <label key={m} className={`flex items-center p-3 border cursor-pointer transition-colors rounded ${mode === m ? 'border-blue-500 dark:border-terminal-green bg-blue-50 dark:bg-terminal-green/10' : 'bg-white dark:bg-black border-gray-300 dark:border-terminal-gray'}`}>
+                 <label key={m} className={`flex items-center p-3 border cursor-pointer transition-colors rounded ${mode === m ? 'border-blue-500 dark:border-terminal-green bg-blue-50 dark:bg-terminal-green/10' : 'bg-white dark:bg-black border-gray-300 dark:border-terminal-gray hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                     <input type="radio" name="mode" value={m} checked={mode === m} onChange={() => setMode(m)} className="mr-3 accent-terminal-green rtl:ml-3 rtl:mr-0" />
                     <div>
                         <span className="font-bold text-gray-800 dark:text-terminal-light">{m === ExamMode.ONE_WAY ? 'ONE_WAY (Standard)' : 'TWO_WAY (Interactive)'}</span>
@@ -339,14 +364,14 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                 onChange={(e) => setMode(e.target.value as ExamMode)}
                 className="w-full p-4 bg-white dark:bg-black text-gray-900 dark:text-terminal-light border border-gray-300 dark:border-terminal-gray font-mono text-base focus:border-terminal-green outline-none appearance-none rounded"
              >
-                <option value={ExamMode.ONE_WAY} className="bg-white dark:bg-black">ONE_WAY (Standard)</option>
-                <option value={ExamMode.TWO_WAY} className="bg-white dark:bg-black">TWO_WAY (Interactive)</option>
+                <option value={ExamMode.ONE_WAY} className="bg-white dark:bg-black text-gray-900 dark:text-terminal-light">ONE_WAY (Standard)</option>
+                <option value={ExamMode.TWO_WAY} className="bg-white dark:bg-black text-gray-900 dark:text-terminal-light">TWO_WAY (Interactive)</option>
              </select>
              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">▼</div>
           </div>
         </div>
 
-        <div className="bg-gray-50 dark:bg-terminal-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded">
+        <div className="bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
           <div className="flex justify-between items-center mb-2">
             <label className="text-sm font-bold text-gray-900 dark:text-terminal-light">{t('time_alloc', lang)}</label>
             <label className="flex items-center gap-2 cursor-pointer text-sm select-none p-2">

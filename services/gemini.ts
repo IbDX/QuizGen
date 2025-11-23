@@ -1,6 +1,7 @@
 
 
 
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage } from "../types";
 
@@ -111,17 +112,29 @@ const deduplicateQuestions = (questions: Question[]): Question[] => {
 };
 
 const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: OutputLanguage): string => {
-    const langInstruction = outputLang === 'ar' 
-        ? `
+    let langInstruction = "";
+    
+    if (outputLang === 'ar') {
+        langInstruction = `
         **LANGUAGE REQUIREMENT: TECHNICAL ARABIC**
         - You MUST generate the "text" (Question), "options", and "explanation" in **Arabic**.
         - However, **ALL CODE SNIPPETS, VARIABLE NAMES, and PROGRAMMING SYNTAX MUST REMAIN IN ENGLISH**.
         - Use standard computer science terminology in Arabic (e.g., use 'مصفوفة' for Array, 'دالة' for Function, 'مؤشر' for Pointer) but keep the code strictly English.
         - Example: "ما هي مخرجات الكود التالي؟" instead of "What is the output?".
         - Do NOT translate code keywords (e.g., 'int', 'void', 'for', 'if').
-        `
-        : `**LANGUAGE REQUIREMENT: ENGLISH**
+        `;
+    } else if (outputLang === 'auto') {
+        langInstruction = `
+        **LANGUAGE REQUIREMENT: SOURCE MATCHING**
+        - Detect the primary language of the specific question in the source file (English, Arabic, French, etc.).
+        - Generate the question, options, and explanation in that **SAME SOURCE LANGUAGE**.
+        - If a file contains multiple languages, respect the language of each individual question.
+        - ALWAYS keep code snippets and syntax in ENGLISH/Technical format regardless of the question language.
+        `;
+    } else {
+        langInstruction = `**LANGUAGE REQUIREMENT: ENGLISH**
            - Generate all content in English.`;
+    }
 
     const BASE_INSTRUCTION = `
     ${langInstruction}

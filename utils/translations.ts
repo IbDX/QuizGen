@@ -1,4 +1,5 @@
 
+
 export const translations = {
     en: {
         // Layout & Settings
@@ -41,6 +42,10 @@ export const translations = {
         "enable_timer": "ENABLE TIMER",
         "initiate_exam": "INITIATE_EXAM",
         "scanning": "SCANNING...",
+        "original_lang": "ORIGINAL (Auto)",
+        "lang_desc_auto": "Preserves the language of the source document(s).",
+        "lang_desc_en": "Exam generated entirely in English.",
+        "lang_desc_ar": "Exam questions in Arabic, code in English.",
         
         // Exam Runner
         "question": "QUESTION",
@@ -131,6 +136,10 @@ export const translations = {
         "enable_timer": "تفعيل المؤقت",
         "initiate_exam": "بدء الاختبار",
         "scanning": "جاري الفحص...",
+        "original_lang": "الأصلية (تلقائي)",
+        "lang_desc_auto": "يحافظ على لغة المستند الأصلي.",
+        "lang_desc_en": "الاختبار بالكامل باللغة الإنجليزية.",
+        "lang_desc_ar": "الأسئلة بالعربية، الأكواد بالإنجليزية.",
 
         // Exam Runner
         "question": "سؤال",
