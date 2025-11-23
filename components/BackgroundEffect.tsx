@@ -62,14 +62,14 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
         if (isLight) {
             ctx.fillStyle = '#888'; // Subtle gray
         } else if (isPalestine) {
-            // Mix of Flag Colors: Green, Red, White, Black (skipped as invisible)
+            // Mix of Flag Colors: Green, Red, White
             const rand = Math.random();
             if (rand > 0.66) {
-                ctx.fillStyle = '#10b981'; // Green
+                ctx.fillStyle = '#007A3D'; // Official Flag Green
             } else if (rand > 0.33) {
-                ctx.fillStyle = '#e11d48'; // Red
+                ctx.fillStyle = '#CE1126'; // Official Flag Red
             } else {
-                ctx.fillStyle = '#ffffff'; // White
+                ctx.fillStyle = '#FFFFFF'; // White
             }
         } else {
             // Standard Terminal Dark Mode

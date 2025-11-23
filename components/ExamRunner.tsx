@@ -26,6 +26,9 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const [savedState, setSavedState] = useState<boolean>(false);
   const [inputError, setInputError] = useState<string | null>(null);
   
+  // Ref for scrolling
+  const topRef = useRef<HTMLDivElement>(null);
+  
   // Ref to track answers for timer closure
   const answersRef = useRef(answers);
   answersRef.current = answers;
@@ -60,6 +63,17 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       return () => clearInterval(timer);
     }
   }, [settings.timeLimitMinutes, onComplete]);
+
+  // Scroll helper
+  const scrollToTop = () => {
+    if (topRef.current) {
+        const yOffset = -120; // Offset for sticky header
+        const y = topRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({top: y, behavior: 'smooth'});
+    } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const handleFinish = () => {
     if (inputError) return; // Prevent submit if active error
@@ -167,6 +181,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     setInputError(null);
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
+      scrollToTop();
     }
   };
   
@@ -176,6 +191,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     setInputError(null);
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
+      scrollToTop();
     }
   };
 
@@ -184,6 +200,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     setCurrentFeedback("");
     setInputError(null);
     setCurrentIndex(index);
+    scrollToTop();
   }
 
   const formatTime = (seconds: number) => {
@@ -200,10 +217,6 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const isStandardMCQ = currentQ.type === QuestionType.MCQ && currentQ.options && currentQ.options.length > 0;
 
   // Logic to avoid duplicate code windows:
-  // If the text itself contains a markdown code block (```), we assume MarkdownRenderer handles it.
-  // If NOT, and we have a codeSnippet, we show the explicit CodeWindow.
-  // ADDITIONALLY: If !hasCodeBlockInText but the text contains the code snippet string (plain text duplication),
-  // we clean the text to avoid showing it twice (once as plain text, once as canvas).
   const hasCodeBlockInText = currentQ.text.includes('```');
   
   let displayText = currentQ.text;
@@ -214,6 +227,9 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
       
+      {/* Anchor for Scroll To Top */}
+      <div ref={topRef} className="scroll-mt-28"></div>
+
       {/* Progress Bar */}
       <div className="mb-4">
         <div className="flex justify-between text-[10px] font-bold font-mono mb-1 text-gray-500 dark:text-gray-400 tracking-widest">
@@ -413,12 +429,21 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
       {/* Navigation Footer */}
       <div className="mt-6 flex flex-col md:flex-row justify-between gap-4">
+        {/* PREV BUTTON: Arrow on Mobile, Text on Desktop */}
         <button 
           onClick={prevQuestion} 
           disabled={currentIndex === 0 || isOneWay}
-          className={`px-6 py-4 md:py-3 border border-gray-300 dark:border-gray-600 font-bold text-sm transition-all w-full md:w-auto ${currentIndex === 0 || isOneWay ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}`}
+          className={`
+            px-6 py-4 md:py-3 border border-gray-300 dark:border-gray-600 font-bold text-sm transition-all w-full md:w-auto flex items-center justify-center
+            ${currentIndex === 0 || isOneWay ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}
+          `}
         >
-          &lt; PREV
+          <span className="hidden md:inline">&lt; PREV</span>
+          <span className="md:hidden">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+              </svg>
+          </span>
         </button>
 
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
@@ -443,9 +468,14 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             ) : (
             <button 
                 onClick={nextQuestion}
-                className="px-6 py-4 md:py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold text-sm w-full md:w-auto"
+                className="px-6 py-4 md:py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold text-sm w-full md:w-auto flex items-center justify-center"
             >
-                NEXT &gt;
+                <span className="hidden md:inline">NEXT &gt;</span>
+                <span className="md:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                    </svg>
+                </span>
             </button>
             )}
         </div>

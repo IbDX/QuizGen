@@ -78,61 +78,62 @@ const CONTEXT_TIPS: Record<string, string[]> = {
 
 // --- HELPER: MOBILE D-PAD ---
 const DPad = ({ onDir }: { onDir: (dir: string) => void }) => {
-    // Style classes for the invisible hit buttons
-    const hitBtnClass = "absolute z-20 w-12 h-12 flex items-center justify-center active:scale-90 transition-transform touch-none outline-none";
-    
-    // Style for the arrows inside the D-pad
-    const arrowClass = "border-solid opacity-60";
-
     return (
-        <div className="relative w-36 h-36 mt-4 select-none touch-none flex items-center justify-center">
-            {/* SHADOW / BORDER LAYER */}
-            <div className="absolute w-36 h-36 bg-gray-400 dark:bg-gray-700 rounded-full opacity-20 blur-sm"></div>
-            
-            {/* CROSS SHAPE (Vertical Bar) */}
-            <div className="absolute w-12 h-full bg-[#1a1a1a] rounded-lg shadow-xl border border-gray-700 z-10"></div>
-            
-            {/* CROSS SHAPE (Horizontal Bar) */}
-            <div className="absolute w-full h-12 bg-[#1a1a1a] rounded-lg shadow-xl border border-gray-700 z-10"></div>
+        <div className="relative w-40 h-40 flex items-center justify-center select-none touch-none mt-4">
+             {/* Base/Casing */}
+             <div className="absolute inset-0 bg-gray-200 dark:bg-[#1a1a1a] rounded-[2rem] shadow-xl border-4 border-gray-300 dark:border-gray-700"></div>
+             
+             {/* D-Pad Well/Indentation */}
+             <div className="absolute inset-4 bg-gray-300 dark:bg-black rounded-full shadow-inner opacity-50"></div>
 
-            {/* CENTER PIVOT (Decoration) */}
-            <div className="absolute w-8 h-8 bg-[#0c0c0c] rounded-full shadow-inner z-10 radial-gradient border border-gray-800">
-                <div className="absolute inset-2 bg-gray-800 rounded-full opacity-30"></div>
-            </div>
+             {/* The Cross Button */}
+             <div className="relative w-28 h-28 filter drop-shadow-lg">
+                 {/* Horizontal Arm */}
+                 <div className="absolute top-[34%] left-0 w-full h-[32%] bg-[#111] rounded-sm shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] z-10"></div>
+                 {/* Vertical Arm */}
+                 <div className="absolute left-[34%] top-0 w-[32%] h-full bg-[#111] rounded-sm shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] z-10"></div>
+                 
+                 {/* Central Pivot */}
+                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-br from-[#222] to-black rounded-full shadow-inner z-20">
+                     <div className="absolute inset-1.5 bg-[#111] rounded-full opacity-80"></div>
+                 </div>
 
-            {/* --- TOUCH ZONES & ARROWS --- */}
-            
-            {/* UP */}
-            <button 
-                onPointerDown={(e) => {e.preventDefault(); onDir('UP')}} 
-                className={`${hitBtnClass} -top-1 left-1/2 -translate-x-1/2 pt-1`}
-            >
-                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[12px] border-l-transparent border-r-transparent border-b-gray-400"></div>
-            </button>
-            
-            {/* DOWN */}
-            <button 
-                onPointerDown={(e) => {e.preventDefault(); onDir('DOWN')}} 
-                className={`${hitBtnClass} -bottom-1 left-1/2 -translate-x-1/2 pb-1`}
-            >
-                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-gray-400"></div>
-            </button>
+                 {/* Arrows / Markings */}
+                 {/* UP */}
+                 <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 opacity-60 pointer-events-none">
+                     <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[8px] border-l-transparent border-r-transparent border-b-[#444]"></div>
+                 </div>
+                 {/* DOWN */}
+                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 opacity-60 pointer-events-none">
+                     <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-[#444]"></div>
+                 </div>
+                 {/* LEFT */}
+                 <div className="absolute left-2 top-1/2 -translate-y-1/2 z-20 opacity-60 pointer-events-none">
+                      <div className="w-0 h-0 border-t-[6px] border-b-[6px] border-r-[8px] border-t-transparent border-b-transparent border-r-[#444]"></div>
+                 </div>
+                 {/* RIGHT */}
+                 <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-60 pointer-events-none">
+                      <div className="w-0 h-0 border-t-[6px] border-b-[6px] border-l-[8px] border-t-transparent border-b-transparent border-l-[#444]"></div>
+                 </div>
 
-            {/* LEFT */}
-            <button 
-                onPointerDown={(e) => {e.preventDefault(); onDir('LEFT')}} 
-                className={`${hitBtnClass} -left-1 top-1/2 -translate-y-1/2 pr-1`}
-            >
-                <div className="w-0 h-0 border-t-[8px] border-b-[8px] border-r-[12px] border-t-transparent border-b-transparent border-r-gray-400"></div>
-            </button>
-
-            {/* RIGHT */}
-            <button 
-                onPointerDown={(e) => {e.preventDefault(); onDir('RIGHT')}} 
-                className={`${hitBtnClass} -right-1 top-1/2 -translate-y-1/2 pl-1`}
-            >
-                <div className="w-0 h-0 border-t-[8px] border-b-[8px] border-l-[12px] border-t-transparent border-b-transparent border-l-gray-400"></div>
-            </button>
+                 {/* Hit Areas (Invisible Buttons) */}
+                 <button 
+                    className="absolute top-0 left-[34%] w-[32%] h-1/2 z-30 outline-none active:bg-white/10 rounded-t-sm" 
+                    onPointerDown={(e) => { e.preventDefault(); onDir('UP'); }}
+                 ></button>
+                 <button 
+                    className="absolute bottom-0 left-[34%] w-[32%] h-1/2 z-30 outline-none active:bg-white/10 rounded-b-sm" 
+                    onPointerDown={(e) => { e.preventDefault(); onDir('DOWN'); }}
+                 ></button>
+                 <button 
+                    className="absolute left-0 top-[34%] w-1/2 h-[32%] z-30 outline-none active:bg-white/10 rounded-l-sm" 
+                    onPointerDown={(e) => { e.preventDefault(); onDir('LEFT'); }}
+                 ></button>
+                 <button 
+                    className="absolute right-0 top-[34%] w-1/2 h-[32%] z-30 outline-none active:bg-white/10 rounded-r-sm" 
+                    onPointerDown={(e) => { e.preventDefault(); onDir('RIGHT'); }}
+                 ></button>
+             </div>
         </div>
     );
 };
