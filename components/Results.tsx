@@ -1,10 +1,11 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
 import { generateExamPDF } from '../utils/pdfGenerator';
-import { saveQuestion, removeQuestion, isQuestionSaved } from '../services/library';
+import { saveQuestion, removeQuestion, isQuestionSaved, saveFullExam } from '../services/library';
 import { sanitizeInput } from '../utils/security';
 
 interface ResultsProps {
@@ -85,6 +86,8 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       questions.forEach(q => { initial[q.id] = isQuestionSaved(q.id); });
       return initial;
   });
+  
+  const [examSaved, setExamSaved] = useState(false);
 
   // Footer Visibility State
   const [isFooterVisible, setIsFooterVisible] = useState(true);
@@ -209,6 +212,12 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   const handleDownloadPDF = () => {
       generateExamPDF(questions, score, grade, userName);
   };
+  
+  const handleSaveExam = () => {
+      saveFullExam(questions);
+      setExamSaved(true);
+      setTimeout(() => setExamSaved(false), 3000);
+  };
 
   const toggleSave = (q: Question) => {
       if (savedQuestions[q.id]) {
@@ -306,6 +315,14 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                      Publishing Locked (Failure)
                  </div>
              )}
+             
+             {/* Mobile Save Exam */}
+             <button
+                onClick={handleSaveExam}
+                className="w-full max-w-sm px-4 py-3 border border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-bold transition-colors text-xs uppercase tracking-wider"
+             >
+                {examSaved ? '✓ EXAM SAVED TO LIBRARY' : 'SAVE FULL EXAM'}
+             </button>
         </div>
         
         <p className="text-gray-500 dark:text-gray-400 mb-4">
@@ -508,6 +525,24 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         )}
 
         <div className="flex flex-col md:flex-row flex-wrap gap-2 w-full xl:w-auto justify-center">
+            
+            {/* SAVE FULL EXAM BUTTON */}
+            <button 
+                onClick={handleSaveExam}
+                className={`px-4 py-4 md:py-2 border font-bold transition-all flex items-center justify-center gap-2 w-full md:w-auto
+                    ${examSaved 
+                        ? 'border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                        : 'border-purple-400 dark:border-purple-600 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                    }
+                `}
+            >
+                {examSaved ? (
+                    <><span>✓</span> EXAM SAVED</>
+                ) : (
+                    <><span>💾</span> SAVE FULL EXAM</>
+                )}
+            </button>
+
             <button 
                 onClick={handleDownloadPDF}
                 className="px-4 py-4 md:py-2 border border-orange-400 dark:border-orange-600 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 font-bold transition-colors flex items-center justify-center gap-2 w-full md:w-auto"

@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
@@ -8,7 +9,7 @@ import { Results } from './components/Results';
 import { Leaderboard } from './components/Leaderboard';
 import { QuestionLibrary } from './components/QuestionLibrary';
 import { LoadingScreen } from './components/LoadingScreen';
-import { AppState, Question, ExamSettings, UserAnswer, QuestionType } from './types';
+import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference } from './types';
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 import { generateExamPDF } from './utils/pdfGenerator';
 
@@ -177,6 +178,20 @@ int main() {
     setUserAnswers([]);
     setAppState('EXAM');
   };
+  
+  // Loads an exam from the Library (SavedExams)
+  const handleLoadSavedExam = (loadedQuestions: Question[]) => {
+      setQuestions(loadedQuestions);
+      setUserAnswers([]);
+      // Default settings for retake from library
+      setSettings({
+          timeLimitMinutes: 0,
+          mode: ExamMode.ONE_WAY,
+          formatPreference: QuestionFormatPreference.ORIGINAL
+      });
+      setIsLibraryOpen(false);
+      setAppState('EXAM');
+  };
 
   const handleRemediation = async (wrongIds: string[]) => {
     setAppState('GENERATING');
@@ -232,7 +247,7 @@ int main() {
              const ua = userAnswers.find(a => a.questionId === q.id);
              if (!ua) return true;
              if (q.type === QuestionType.MCQ) return ua.answer !== q.correctOptionIndex;
-             if (q.type === QuestionType.TRACING) return String(ua.answer).trim().toLowerCase() !== String(q.tracingOutput || "").trim().toLowerCase();
+             if (q.type === QuestionType.TRACING) return String(ua.answer).trim().toLowerCase() === String(q.tracingOutput || "").trim().toLowerCase();
              if (q.type === QuestionType.CODING) return !ua.isCorrect;
              return true;
           }).map(q => q.id);
@@ -305,7 +320,7 @@ int main() {
 
       {/* Overlay Library if Open */}
       {isLibraryOpen && (
-          <QuestionLibrary isFullWidth={isFullWidth} />
+          <QuestionLibrary isFullWidth={isFullWidth} onLoadExam={handleLoadSavedExam} />
       )}
 
       {/* Main App State - Hidden when Library is open to preserve state (timer, inputs) */}

@@ -1,4 +1,5 @@
 
+
 export enum QuestionType {
   MCQ = 'MCQ',
   TRACING = 'TRACING',
@@ -48,6 +49,13 @@ export interface LeaderboardEntry {
   score: number;
   date: string;
   isElite?: boolean; // Tracks if user got a perfect score (Z+ Badge)
+}
+
+export interface SavedExam {
+  id: string;
+  title: string;
+  date: string;
+  questions: Question[];
 }
 
 export type AppState = 
