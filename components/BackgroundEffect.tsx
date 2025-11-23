@@ -1,11 +1,12 @@
 
 import React, { useEffect, useRef } from 'react';
+import { ThemeOption } from './Layout';
 
 interface BackgroundEffectProps {
-  isDarkMode: boolean;
+  theme: ThemeOption;
 }
 
-export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ isDarkMode }) => {
+export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -35,32 +36,49 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ isDarkMode }
     };
 
     const draw = () => {
+      const isDark = theme === 'dark';
+      const isPalestine = theme === 'palestine';
+      const isLight = theme === 'light';
+
       // Trail effect: Paint over with low opacity background
       // Dark Mode: Black with very slight opacity (long trails)
       // Light Mode: Gray/White with higher opacity (cleaner look)
-      ctx.fillStyle = isDarkMode 
-        ? 'rgba(12, 12, 12, 0.05)' 
-        : 'rgba(243, 244, 246, 0.1)'; 
+      if (isLight) {
+          ctx.fillStyle = 'rgba(243, 244, 246, 0.1)';
+      } else {
+          // Both Dark and Palestine use dark backgrounds
+          ctx.fillStyle = 'rgba(5, 5, 5, 0.05)';
+      }
       
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.fillStyle = isDarkMode ? '#0F0' : '#000'; // Bright Green in Dark, Black in Light
       ctx.font = `${fontSize}px monospace`;
 
       for (let i = 0; i < drops.length; i++) {
         // Randomize character
         const text = charArray[Math.floor(Math.random() * charArray.length)];
         
-        // Specific color tweaking for "matrix" feel
-        if (isDarkMode) {
+        // Color Selection Logic
+        if (isLight) {
+            ctx.fillStyle = '#888'; // Subtle gray
+        } else if (isPalestine) {
+            // Mix of Flag Colors: Green, Red, White, Black (skipped as invisible)
+            const rand = Math.random();
+            if (rand > 0.66) {
+                ctx.fillStyle = '#10b981'; // Green
+            } else if (rand > 0.33) {
+                ctx.fillStyle = '#e11d48'; // Red
+            } else {
+                ctx.fillStyle = '#ffffff'; // White
+            }
+        } else {
+            // Standard Terminal Dark Mode
            // Randomly make some characters brighter/white for "glint" effect
            if (Math.random() > 0.98) {
                ctx.fillStyle = '#FFF';
            } else {
                ctx.fillStyle = '#00ff41'; // Terminal Green
            }
-        } else {
-            ctx.fillStyle = '#888'; // Subtle gray in light mode
         }
 
         const x = i * fontSize;
@@ -90,7 +108,7 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ isDarkMode }
       window.removeEventListener('resize', resize);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isDarkMode]);
+  }, [theme]);
 
   return (
     <canvas 

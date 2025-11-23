@@ -21,6 +21,8 @@ interface LayoutProps {
   mobileActions?: MobileAction[];
 }
 
+export type ThemeOption = 'light' | 'dark' | 'palestine';
+
 // --- CURSOR ASSETS ---
 
 // 1. DEFAULT (Arrow)
@@ -114,7 +116,7 @@ export const Layout: React.FC<LayoutProps> = ({
     children, onHome, onToggleLibrary, isLibraryOpen, isFullWidth, onToggleFullWidth,
     autoHideFooter = true, onToggleAutoHideFooter, mobileActions
 }) => {
-  const [darkMode, setDarkMode] = useState(true);
+  const [theme, setTheme] = useState<ThemeOption>('dark');
   const [showSettings, setShowSettings] = useState(false);
   const [fontSize, setFontSize] = useState(16);
   const [useCustomCursor, setUseCustomCursor] = useState(true);
@@ -129,12 +131,16 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    // Reset classes
+    document.documentElement.classList.remove('dark', 'theme-palestine');
+    
+    // Apply logic
+    if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+    } else if (theme === 'palestine') {
+        document.documentElement.classList.add('dark', 'theme-palestine');
     }
-  }, [darkMode]);
+  }, [theme]);
 
   // Apply root font size for global scaling
   useEffect(() => {
@@ -183,7 +189,7 @@ export const Layout: React.FC<LayoutProps> = ({
     <div className={`min-h-screen flex flex-col font-mono selection:bg-terminal-green selection:text-terminal-black ${useCustomCursor ? 'custom-cursor' : ''} relative overflow-x-hidden`}>
       
       {/* Background Animation */}
-      {enableBackgroundAnim && <BackgroundEffect isDarkMode={darkMode} />}
+      {enableBackgroundAnim && <BackgroundEffect theme={theme} />}
 
       {/* Inject Custom Cursor Styles */}
       {useCustomCursor && (
@@ -431,6 +437,32 @@ export const Layout: React.FC<LayoutProps> = ({
                 </h2>
 
                 <div className="space-y-6 text-gray-800 dark:text-gray-200 overflow-y-auto custom-scrollbar pr-2 flex-grow">
+                    {/* Theme Selection */}
+                    <div>
+                        <label className="block text-sm font-bold mb-2 uppercase text-gray-600 dark:text-terminal-green">UI Theme</label>
+                        <div className="grid grid-cols-3 gap-2">
+                             <button
+                                onClick={() => setTheme('light')}
+                                className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'light' ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 bg-gray-100 text-gray-600'}`}
+                             >
+                                 LIGHT
+                             </button>
+                             <button
+                                onClick={() => setTheme('dark')}
+                                className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'dark' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-700 bg-black text-gray-500'}`}
+                             >
+                                 TERMINAL
+                             </button>
+                             <button
+                                onClick={() => setTheme('palestine')}
+                                className={`p-2 border rounded text-xs font-bold transition-all relative overflow-hidden ${theme === 'palestine' ? 'border-red-500 text-white' : 'border-gray-700 bg-black text-gray-500'}`}
+                                style={theme === 'palestine' ? { background: 'linear-gradient(135deg, #000 0%, #10b981 100%)' } : {}}
+                             >
+                                 PALESTINE
+                             </button>
+                        </div>
+                    </div>
+
                     {/* Font Family Selection */}
                     <div>
                         <label className="block text-sm font-bold mb-2 uppercase text-gray-600 dark:text-terminal-green">System Font</label>
@@ -518,17 +550,6 @@ export const Layout: React.FC<LayoutProps> = ({
                             </button>
                         </div>
                     )}
-
-                    {/* Dark Mode Toggle */}
-                    <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">
-                        <span className="font-bold text-sm">Dark Mode</span>
-                        <button 
-                            onClick={() => setDarkMode(!darkMode)}
-                            className={`w-12 h-6 rounded-full p-1 transition-colors ${darkMode ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}
-                        >
-                            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${darkMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                        </button>
-                    </div>
 
                     {/* Custom Cursor Toggle (PC Only) */}
                     <div className="hidden md:flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">

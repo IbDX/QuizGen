@@ -15,12 +15,12 @@
             },
             colors: {
               terminal: {
-                black: '#0c0c0c',
-                green: '#00ff41',
-                dimGreen: '#008F11',
-                gray: '#1a1a1a',
-                light: '#e0e0e0',
-                alert: '#ff3333'
+                black: 'var(--color-term-black)',
+                green: 'var(--color-term-green)',
+                dimGreen: 'var(--color-term-dim-green)',
+                gray: 'var(--color-term-gray)',
+                light: 'var(--color-term-light)',
+                alert: 'var(--color-term-alert)'
               }
             }
           },
@@ -31,6 +31,42 @@
     <!-- PrismJS Theme -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <style>
+      :root {
+        /* Default / Light Mode placeholders (though mostly unused due to dark: prefix) */
+        --color-term-black: #0c0c0c;
+        --color-term-green: #00ff41;
+        --color-term-dim-green: #008F11;
+        --color-term-gray: #1a1a1a;
+        --color-term-light: #e0e0e0;
+        --color-term-alert: #ff3333;
+      }
+
+      /* Terminal Dark Theme */
+      .dark {
+        --color-term-black: #0c0c0c;
+        --color-term-green: #00ff41;
+        --color-term-dim-green: #008F11;
+        --color-term-gray: #1a1a1a;
+        --color-term-light: #e0e0e0;
+        --color-term-alert: #ff3333;
+      }
+
+      /* Palestine Theme (Dark Variant) */
+      .theme-palestine {
+        /* Soft Deep Black */
+        --color-term-black: #050505; 
+        /* Emerald/Flag Green */
+        --color-term-green: #10b981; 
+        /* Darker Green for accents */
+        --color-term-dim-green: #047857;
+        /* Dark Gray for cards */
+        --color-term-gray: #171717;
+        /* Soft White */
+        --color-term-light: #f5f5f5;
+        /* Crimson/Flag Red */
+        --color-term-alert: #e11d48;
+      }
+
       body {
         font-family: 'Fira Code', monospace;
       }
@@ -39,14 +75,14 @@
         width: 10px;
       }
       ::-webkit-scrollbar-track {
-        background: #0c0c0c;
+        background: var(--color-term-black);
       }
       ::-webkit-scrollbar-thumb {
         background: #333;
-        border: 1px solid #00ff41;
+        border: 1px solid var(--color-term-green);
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #00ff41;
+        background: var(--color-term-green);
       }
     </style>
   <script type="importmap">
