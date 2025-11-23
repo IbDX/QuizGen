@@ -110,147 +110,159 @@ const deduplicateQuestions = (questions: Question[]): Question[] => {
 
 const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: OutputLanguage): string => {
     let langInstruction = "";
-    
     if (outputLang === 'ar') {
         langInstruction = `
-        **LANGUAGE REQUIREMENT: TECHNICAL ARABIC**
-        - You MUST generate the "text" (Question), "options", and "explanation" in **Arabic**.
-        - However, **ALL CODE SNIPPETS, VARIABLE NAMES, and PROGRAMMING SYNTAX MUST REMAIN IN ENGLISH**.
-        - Use standard computer science terminology in Arabic (e.g., use 'مصفوفة' for Array, 'دالة' for Function, 'مؤشر' for Pointer) but keep the code strictly English.
-        - Example: "ما هي مخرجات الكود التالي؟" instead of "What is the output?".
-        - Do NOT translate code keywords (e.g., 'int', 'void', 'for', 'if').
-        `;
+LANGUAGE REQUIREMENT: TECHNICAL ARABIC
+
+You MUST generate the "text" (Question), "options", and "explanation" in Arabic.
+However, ALL CODE SNIPPETS, VARIABLE NAMES, and PROGRAMMING SYNTAX MUST REMAIN IN ENGLISH.
+Use standard computer science terminology in Arabic (e.g., use 'مصفوفة' for Array, 'دالة' for Function, 'مؤشر' for Pointer) but keep the code strictly English.
+Example: "ما هي مخرجات الكود التالي؟" instead of "What is the output?".
+Do NOT translate code keywords (e.g., 'int', 'void', 'for', 'if').
+`;
     } else if (outputLang === 'auto') {
         langInstruction = `
-        **LANGUAGE REQUIREMENT: SOURCE MATCHING (MULTI-FILE BATCH SUPPORT)**
-        - You are likely processing a batch of files that may be in **DIFFERENT languages**.
-        - For **EACH** individual question you extract, detect the language of the specific source text/file it comes from.
-        - If File A is Arabic and File B is English, questions extracted from File A **MUST** be in Arabic, and questions from File B **MUST** be in English.
-        - **Do NOT** standardize the language across the whole exam. Preserve the original language of each individual question.
-        - **ALWAYS** keep code snippets and syntax in ENGLISH/Technical format regardless of the question language.
-        `;
+LANGUAGE REQUIREMENT: SOURCE MATCHING (MULTI-FILE BATCH SUPPORT)
+You are likely processing a batch of files that may be in DIFFERENT languages.
+For EACH individual question you extract, detect the language of the specific source text/file it comes from.
+If File A is Arabic and File B is English, questions extracted from File A MUST be in Arabic, and questions from File B MUST be in English.
+Do NOT standardize the language across the whole exam. Preserve the original language of each individual question.
+ALWAYS keep code snippets and syntax in ENGLISH/Technical format regardless of the question language.
+`;
     } else {
-        langInstruction = `**LANGUAGE REQUIREMENT: ENGLISH**
-           - Generate all content in English.`;
+        langInstruction = `
+LANGUAGE REQUIREMENT: ENGLISH
+Generate all content in English.
+`;
     }
 
     const BASE_INSTRUCTION = `
-    ${langInstruction}
+${langInstruction}
 
-    **PHASE 1: GLOBAL CONTEXT SCAN**
-    - First, analyze ALL attached files from start to finish.
-    - Understand the document layout, question numbering, and answer keys (if present).
-    - Identify EVERY question in the document. Do not skip any.
-    - Preserve C++ syntax like pointers (*ptr) and references (&ref). Do not interpret them as Markdown italics.
+PHASE 1: GLOBAL CONTEXT SCAN
+First, analyze ALL attached files from start to finish.
+Understand the document layout, question numbering, and answer keys (if present).
+Identify EVERY question in the document. Do not skip any.
+Preserve C++ syntax like pointers (*ptr) and references (&ref). Do not interpret them as Markdown italics.
 
-    **MATH FORMATTING RULES:**
-    - Use **LaTeX** for ALL mathematical expressions.
-    - **Inline Math:** Wrap in single dollar signs, e.g., $x^2 + y = 5$.
-    - **Block Math:** Wrap in double dollar signs, e.g., $$\\int_0^\\infty f(x) dx$$.
-    - Ensure all variables (x, y, n) and math symbols are inside LaTeX delimiters.
-    - DO NOT use plain text math (like x^2) without delimiters.
-    `;
+**MATH FORMATTING RULES:**
+- Use **LaTeX** for ALL mathematical expressions.
+- **Inline Math:** Wrap in single dollar signs, e.g., $x^2 + y = 5$.
+- **Block Math:** Wrap in double dollar signs, e.g., $$\\int_0^\\infty f(x) dx$$.
+- Ensure all variables (x, y, n) and math symbols are inside LaTeX delimiters.
+- DO NOT use plain text math (like x^2) without delimiters.
+`;
 
     switch (preference) {
         case QuestionFormatPreference.MCQ:
             return `
-            ${BASE_INSTRUCTION}
-            
-            **PHASE 2: FORCED MCQ TRANSFORMATION**
-            You MUST output EVERY question as "type": "MCQ". 
-            If a question is NOT originally an MCQ, you must creatively transform it.
+${BASE_INSTRUCTION}
 
-            **TRANSFORMATION RULES:**
-            1. **Source: Coding Challenge (Write code...)**
-               - *Transformation:* Generate 4 code snippets as options.
-               - *Option A:* The Correct Code.
-               - *Options B, C, D:* Plausible code with syntax errors or logic bugs.
-               - *Prompt:* "Which of the following implementations correctly solves: [Problem]?"
+PHASE 2: FORCED MCQ TRANSFORMATION
+You MUST output EVERY question as "type": "MCQ".
+If a question is NOT originally an MCQ, you must creatively transform it.
 
-            2. **Source: Tracing (What is output?)**
-               - *Transformation:* Keep the code snippet.
-               - *Options:* Generate 4 possible outputs (1 correct, 3 distractors).
-               - *Prompt:* "What is the output of the following code?"
+TRANSFORMATION RULES:
+Source: Coding Challenge (Write code...)
+Transformation: Generate 4 code snippets as options.
+Option A: The Correct Code.
+Options B, C, D: Plausible code with syntax errors or logic bugs.
+Prompt: "Which of the following implementations correctly solves: [Problem]?"
 
-            3. **Source: Open Ended (Define X...)**
-               - *Transformation:* Create 4 definition statements.
-               - *Prompt:* "Which statement best describes [Concept]?"
+Source: Tracing (What is output?)
+Transformation: Keep the code snippet.
+Options: Generate 4 possible outputs (1 correct, 3 distractors).
+Prompt: "What is the output of the following code?"
 
-            **CONSTRAINT:** Output JSON must ONLY contain "type": "MCQ". All other fields (tracingOutput) are ignored.
-            `;
+Source: Open Ended (Define X...)
+Transformation: Create 4 definition statements.
+Prompt: "Which statement best describes [Concept]?"
 
+CONSTRAINT: Output JSON must ONLY contain "type": "MCQ". All other fields (tracingOutput) are ignored.
+`;
         case QuestionFormatPreference.CODING:
             return `
-            ${BASE_INSTRUCTION}
-            
-            **PHASE 2: FORCED CODING TRANSFORMATION**
-            You MUST output EVERY question as "type": "CODING".
-            
-            **TRANSFORMATION RULES:**
-            1. **Source: MCQ (Choose the correct code...)**
-               - *Transformation:* Strip the options. Extract the problem statement.
-               - *Prompt:* "Write a function/program that [Original Goal]."
-               - *Action:* Set 'options' to null.
+${BASE_INSTRUCTION}
 
-            2. **Source: Tracing (What is the output of this code?)**
-               - *Transformation:* Reverse engineering.
-               - *Prompt:* "Write a program that produces exactly the following output: [Output Value]."
-               
-            3. **Source: Theory (What is recursion?)**
-               - *Prompt:* "Write a simple code example that demonstrates the concept of Recursion."
+PHASE 2: FORCED CODING TRANSFORMATION
+You MUST output EVERY question as "type": "CODING".
 
-            **CONSTRAINT:** Output JSON must ONLY contain "type": "CODING". 'options' and 'tracingOutput' must be null.
-            `;
+TRANSFORMATION RULES:
+Source: MCQ (Choose the correct code...)
+Transformation: Strip the options. Extract the problem statement.
+Prompt: "Write a function/program that [Original Goal]."
+Action: Set 'options' to null.
 
+Source: Tracing (What is the output of this code?)
+Transformation: Reverse engineering.
+Prompt: "Write a program that produces exactly the following output: [Output Value]."
+
+Source: Theory (What is recursion?)
+Prompt: "Write a simple code example that demonstrates the concept of Recursion."
+
+CONSTRAINT: Output JSON must ONLY contain "type": "CODING". 'options' and 'tracingOutput' must be null.
+`;
         case QuestionFormatPreference.TRACING:
             return `
-            ${BASE_INSTRUCTION}
-            
-            **PHASE 2: FORCED TRACING TRANSFORMATION**
-            You MUST output EVERY question as "type": "TRACING".
-            
-            **TRANSFORMATION RULES:**
-            1. **Source: Theory / MCQ**
-               - *Transformation:* Create a code snippet that demonstrates the concept being asked.
-               - *Prompt:* "What is the output of this code?"
-               - *Result:* Put the result in 'tracingOutput'.
+${BASE_INSTRUCTION}
 
-            2. **Source: Coding (Write a function...)**
-               - *Transformation:* Take the solution code. Hardcode specific inputs (e.g., func(5)).
-               - *Prompt:* "What does this function return when called with input 5?"
+PHASE 2: FORCED TRACING TRANSFORMATION
+You MUST output EVERY question as "type": "TRACING".
 
-            **CONSTRAINT:** Output JSON must ONLY contain "type": "TRACING". 'tracingOutput' field is REQUIRED.
-            `;
+TRANSFORMATION RULES:
+Source: Theory / MCQ
+Transformation: Create a code snippet that demonstrates the concept being asked.
+Prompt: "What is the output of this code?"
+Result: Put the result in 'tracingOutput'.
 
+Source: Coding (Write a function...)
+Transformation: Take the solution code. Hardcode specific inputs (e.g., func(5)}.
+Prompt: "What does this function return when called with input 5?"
+
+CONSTRAINT: Output JSON must ONLY contain "type": "TRACING". 'tracingOutput' field is REQUIRED.
+`;
         case QuestionFormatPreference.ORIGINAL:
             return `
-            ${BASE_INSTRUCTION}
-            
-            **PHASE 2: STRICT FIDELITY EXTRACTION**
-            Extract questions exactly as they appear. Do NOT change their type.
+${BASE_INSTRUCTION}
 
-            1. **MCQ**: If visual options (A,B,C,D) or True/False exist -> Type: "MCQ".
-            2. **TRACING**: If code exists and asks for output (No options) -> Type: "TRACING".
-            3. **CODING**: If prompt asks to Write/Implement code (No options) -> Type: "CODING".
-            4. **SHORT ANSWER**: If prompt is text-based (No options) -> Type: "MCQ" (Leave options empty).
+PHASE 2: STRICT FIDELITY EXTRACTION
+Extract questions exactly as they appear in the document(s). Do NOT change their type, wording, structure, or content in any way. This is a verbatim extraction task—no interpretation, summarization, or modification allowed.
 
-            **PRIORITY:** Always check for Options first. If options exist, it IS an MCQ, even if it contains code.
-            `;
+VERBATIM COPY RULES:
+Copy ALL text, options, code snippets, and explanations WORD-FOR-WORD from the source. Preserve exact punctuation, spacing, capitalization, and formatting (e.g., bold, italics if detectable).
+Do NOT paraphrase, rephrase, correct grammatical errors, fix typos, or improve clarity—even if the source has mistakes or inconsistencies.
+If the source has ambiguous or incomplete content due to OCR noise, layout issues, or scanning errors, replicate it as closely as possible without adding or inventing details. Note any unreadable parts in the 'explanation' field (e.g., "Source text blurry: approximated as [best guess], but verify original").
 
+COMPLETENESS RULES:
+Identify and extract EVERY single question in the document(s), including all sub-parts, options, and related elements. Do not skip, merge, omit, or abbreviate any component.
+Scan exhaustively: Check every page, section, and element (e.g., tables, footnotes, appendices). If questions are scattered or non-linear (e.g., options on separate pages), gather and include them fully.
+For answer keys: If present (e.g., in a separate section), match them precisely to the corresponding question. Use the exact source answer to set fields like 'correctOptionIndex' or 'tracingOutput'. If no key is available, set nullable fields to null and note in 'explanation' (e.g., "No answer key provided in source").
+
+MCQ-SPECIFIC RULES:
+If options are present (e.g., labeled A., B., C., D.; 1., 2., etc.; True/False), set "type": "MCQ".
+'options' array: List ALL options in the EXACT order, wording, and labeling from the source (e.g., ["A. Option one text", "B. Option two text"]). Do not add, remove, reorder, or alter any options—even if there are more/fewer than 4.
+'correctOptionIndex': Set to the 0-based index matching the source's correct answer. If the source uses labels (e.g., "Correct: B"), map to index (e.g., 1 for B if options are A-D). Verify against answer key without assumption.
+If options include code, math, or images, copy verbatim (use LaTeX for math; describe images if text-based).
+
+OTHER TYPE RULES:
+TRACING: If code exists and question asks for output/result (no options) -> Type: "TRACING". Set 'tracingOutput' verbatim from source key.
+CODING: If question asks to Write/Implement code (no options) -> Type: "CODING".
+SHORT ANSWER: If text-based (no options) -> Type: "MCQ" with empty options array [].
+
+PRIORITY: Detect options first. If options exist, classify as MCQ—even if code is present. Output strictly adheres to schema; no extra fields.
+`;
         default: // MIXED / AUTO
             return `
-            ${BASE_INSTRUCTION}
-            
-            **PHASE 2: SMART CLASSIFICATION**
-            Analyze each question and assign the most appropriate type for learning.
+${BASE_INSTRUCTION}
 
-            1. **MCQ**: Use if options are present. (Priority #1)
-            2. **CODING**: Use if the question asks to "Write" or "Implement".
-            3. **TRACING**: Use if the question asks for "Output" or "Result".
-            4. **FALLBACK**: Use "MCQ" with empty options for fill-in-the-blank or short answer.
-
-            **GOAL:** Provide a diverse mix of question types if the document supports it.
-            `;
+PHASE 2: SMART CLASSIFICATION
+Analyze each question and assign the most appropriate type for learning.
+MCQ: Use if options are present. (Priority #1)
+CODING: Use if the question asks to "Write" or "Implement".
+TRACING: Use if the question asks for "Output" or "Result".
+FALLBACK: Use "MCQ" with empty options for fill-in-the-blank or short answer.
+GOAL: Provide a diverse mix of question types if the document supports it.
+`;
     }
 };
 

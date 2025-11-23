@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64, validateBatchSize } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -25,23 +26,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
   const [globalStatus, setGlobalStatus] = useState<'IDLE' | 'PROCESSING'>('IDLE');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const handlePaste = async (e: ClipboardEvent) => {
-      if (e.clipboardData && e.clipboardData.files.length > 0 && globalStatus === 'IDLE') {
-        e.preventDefault();
-        handleFiles(e.clipboardData.files);
-      }
-    };
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [globalStatus]);
-
   const handleFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
     
     const newFiles = Array.from(fileList);
 
-    // 0. Batch Size Check
+    // 0. Batch Size Check (Strict 20MB)
     const batchCheck = validateBatchSize(newFiles);
     if (!batchCheck.valid) {
         setLogs([{ name: "BATCH UPLOAD", status: 'FAILED', error: batchCheck.error }]);
@@ -64,7 +54,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
         setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'SCANNING' } : l));
 
         try {
-            // 1. Validation
+            // 1. Validation (Strict 10MB per file)
             const validationCheck = await validateFile(file);
             if (!validationCheck.valid || !validationCheck.mimeType) {
                 throw new Error(validationCheck.error || 'Invalid file type');
@@ -80,7 +70,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                 throw new Error(scanResult.message);
             }
 
-            // Success - ensure hash is present (fallback to timestamp if unavailable to avoid null)
+            // Success - ensure hash is present
             const hash = scanResult.hash || `unknown_hash_${Date.now()}_${Math.random()}`;
             successfulFiles.push({ base64, mime: validationCheck.mimeType, name: file.name, hash });
             setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'SUCCESS' } : l));
@@ -93,11 +83,35 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     setGlobalStatus('IDLE');
 
     if (successfulFiles.length > 0) {
-        // Small delay to let user see success ticks before proceeding
         setTimeout(() => {
             onFilesAccepted(successfulFiles);
         }, 1000);
     }
+  };
+
+  const processUrl = async (url: string) => {
+    if (!url) return;
+    if (url.toLowerCase().includes('javascript:')) return;
+
+    setGlobalStatus('PROCESSING');
+    setLogs([{ name: url, status: 'SCANNING' }]);
+    
+    try {
+       // urlToBase64 enforces 10MB limit per file internally
+       const { base64, mimeType, name } = await urlToBase64(url);
+       const hash = `url_hash_${Date.now()}_${name}`; 
+       
+       setLogs([{ name: name, status: 'SUCCESS' }]);
+       setTimeout(() => onFilesAccepted([{ base64, mime: mimeType, name, hash }]), 800);
+    } catch (err: any) {
+        setLogs([{ name: url, status: 'FAILED', error: err.message }]);
+    }
+    setGlobalStatus('IDLE');
+  };
+
+  const handleUrlSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    processUrl(urlInput);
   };
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,26 +120,32 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
       setUrlInput(validation.sanitizedValue);
   };
 
-  const handleUrlSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!urlInput) return;
-    
-    if (urlInput.toLowerCase().includes('javascript:')) return;
+  // Global Paste Handler (Files & URLs)
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      // Avoid interfering if user is typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
-    setGlobalStatus('PROCESSING');
-    setLogs([{ name: urlInput, status: 'SCANNING' }]);
-    
-    try {
-       const { base64, mimeType, name } = await urlToBase64(urlInput);
-       const hash = `url_hash_${Date.now()}_${name}`; 
-       
-       setLogs([{ name: name, status: 'SUCCESS' }]);
-       setTimeout(() => onFilesAccepted([{ base64, mime: mimeType, name, hash }]), 800);
-    } catch (err: any) {
-        setLogs([{ name: urlInput, status: 'FAILED', error: err.message }]);
-    }
-    setGlobalStatus('IDLE');
-  };
+      if (globalStatus !== 'IDLE') return;
+
+      if (e.clipboardData) {
+          if (e.clipboardData.files.length > 0) {
+            e.preventDefault();
+            handleFiles(e.clipboardData.files);
+          } else {
+            const text = e.clipboardData.getData('text');
+            if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+                e.preventDefault();
+                setUrlInput(text.trim());
+                processUrl(text.trim());
+            }
+          }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [globalStatus]);
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -147,7 +167,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
   return (
     <div className={`w-full mx-auto mt-4 md:mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none' : 'max-w-2xl'}`}>
       
-      {/* MOBILE UPLOAD BUTTON (Solid, no dashed border) */}
+      {/* MOBILE UPLOAD BUTTON */}
       <div className="md:hidden">
           <button
             onClick={() => globalStatus === 'IDLE' && fileInputRef.current?.click()}
@@ -168,7 +188,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           </button>
       </div>
 
-      {/* DESKTOP UPLOAD ZONE (Dashed border, drag & drop) */}
+      {/* DESKTOP UPLOAD ZONE */}
       <div 
         className={`
           hidden md:block
@@ -276,6 +296,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
             {t('fetch', lang)}
           </button>
       </form>
+      <div className="text-center mt-2 text-[9px] text-gray-400 dark:text-gray-500">
+          Tip: You can Paste (Ctrl+V) files or URLs directly anywhere on this screen.
+      </div>
 
       {/* DEMO SECTION */}
       <div className="flex flex-col items-center mt-6">

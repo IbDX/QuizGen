@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ExamMode, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage } from '../types';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
@@ -130,7 +131,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       const newFiles = Array.from(fileList);
       const newFilesSize = newFiles.reduce((acc, f) => acc + f.size, 0);
 
-      // Strict Batch Limit Check
+      // Strict Batch Limit Check (Existing + New)
       if ((currentTotalSize + newFilesSize) > MAX_BATCH_SIZE_MB * 1024 * 1024) {
            setScanError(`Batch limit exceeded. Total files cannot exceed ${MAX_BATCH_SIZE_MB}MB.`);
            return;
@@ -144,6 +145,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       for (let i = 0; i < newFiles.length; i++) {
           const file = newFiles[i];
           try {
+              // Strict 10MB per file check inside validateFile
               const validationCheck = await validateFile(file);
               if (!validationCheck.valid || !validationCheck.mimeType) {
                   throw new Error(`File ${file.name}: ${validationCheck.error || 'Invalid type'}`);
@@ -172,9 +174,10 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       setIsScanning(true);
       setScanError(null);
       try {
+          // 10MB individual limit check happens in urlToBase64
           const { base64, mimeType, name } = await urlToBase64(url);
           
-          // Calculate size
+          // Calculate size for Batch Limit Check (20MB)
           const newFileSize = base64.length * 0.75; 
           const currentTotalSize = files.reduce((acc, f) => acc + (f.base64.length * 0.75), 0);
           const MAX_BATCH_SIZE_MB = 20;
@@ -202,14 +205,24 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
     const handlePaste = (e: ClipboardEvent) => {
         if (isScanning) return;
         
-        if (e.clipboardData && e.clipboardData.files.length > 0) {
-            e.preventDefault();
-            processNewFiles(e.clipboardData.files);
-        } else {
-             const text = e.clipboardData?.getData('text');
-             if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-                 e.preventDefault();
-                 processUrl(text.trim());
+        // Don't interfere if pasting into specific text inputs (like custom instructions)
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'TEXTAREA' || (target.tagName === 'INPUT' && target !== fileInputRef.current)) {
+            // If it's the URL input, let default behavior happen, or check specifically
+             if (target.getAttribute('type') === 'url') return;
+        }
+
+        if (e.clipboardData) {
+             if (e.clipboardData.files.length > 0) {
+                e.preventDefault();
+                processNewFiles(e.clipboardData.files);
+             } else {
+                 const text = e.clipboardData.getData('text');
+                 if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+                     e.preventDefault();
+                     setUrlInput(text.trim());
+                     processUrl(text.trim());
+                 }
              }
         }
     };
