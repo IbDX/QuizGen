@@ -1,5 +1,3 @@
-
-
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -221,13 +219,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
               <div className="text-xs font-bold uppercase text-gray-500 mb-2 border-b pb-1">Session Log</div>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                   {logs.map((log, i) => (
-                      <div key={i} className="flex justify-between items-center">
-                          <span className="truncate max-w-[60%] md:max-w-[70%] text-gray-700 dark:text-gray-300">{log.name}</span>
-                          <div className="flex items-center gap-2">
+                      <div key={i} className="flex justify-between items-center py-1">
+                          <span className="truncate max-w-[60%] md:max-w-[50%] text-gray-700 dark:text-gray-300" title={log.name}>{log.name}</span>
+                          <div className="flex items-center gap-2 justify-end text-right">
                               {log.status === 'PENDING' && <span className="text-gray-500">WAITING</span>}
                               {log.status === 'SCANNING' && <span className="text-blue-500 animate-pulse">SCANNING...</span>}
                               {log.status === 'SUCCESS' && <span className="text-green-500 font-bold">✓ SAFE</span>}
-                              {log.status === 'FAILED' && <span className="text-red-500 font-bold">✕ BLOCKED</span>}
+                              {log.status === 'FAILED' && (
+                                  <div className="flex flex-col items-end">
+                                      <span className="text-red-500 font-bold">✕ BLOCKED</span>
+                                      {log.error && <span className="text-[9px] text-red-400 opacity-80 max-w-[150px] truncate" title={log.error}>{log.error}</span>}
+                                  </div>
+                              )}
                           </div>
                       </div>
                   ))}

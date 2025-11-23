@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { BackgroundEffect } from './BackgroundEffect';
 import { UILanguage } from '../types';
 import { t } from '../utils/translations';
+import { AiHelper } from './AiHelper';
 
 export interface MobileAction {
     label: string;
@@ -106,6 +108,46 @@ const FONT_OPTIONS = [
     { name: 'Courier New', value: "'Courier New', Courier, monospace" },
 ];
 
+// Z+ SVG Components
+const ZPlusLogo: React.FC<{ theme: ThemeOption }> = ({ theme }) => {
+    const isPalestine = theme === 'palestine';
+    
+    // Palestine Colors
+    const pRed = "#CE1126";
+    const pGreen = "#007A3D";
+    const pWhite = "#FFFFFF";
+
+    // Terminal Colors
+    const tGreen = "#00ff41";
+    const tWhite = "#FFFFFF";
+
+    return (
+        <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Z Path */}
+            <path 
+                d="M25 30 H75 L35 70 H75" 
+                stroke={isPalestine ? pWhite : tWhite} 
+                strokeWidth="8" 
+                strokeLinecap="square" 
+                strokeLinejoin="round"
+                className="drop-shadow-md"
+            />
+            
+            {/* Plus Path */}
+            <path 
+                d="M65 20 V40 M55 30 H75" 
+                stroke={isPalestine ? pRed : tGreen} 
+                strokeWidth="6" 
+                strokeLinecap="round"
+                className={isPalestine ? "" : "animate-pulse"}
+            />
+            
+            {/* Accent Dot/Underline */}
+            <circle cx="35" cy="70" r="4" fill={isPalestine ? pGreen : tGreen} />
+        </svg>
+    );
+};
+
 export const Layout: React.FC<LayoutProps> = ({ 
     children, onHome, onToggleLibrary, isLibraryOpen, isFullWidth, onToggleFullWidth,
     autoHideFooter = true, onToggleAutoHideFooter, mobileActions,
@@ -194,6 +236,9 @@ export const Layout: React.FC<LayoutProps> = ({
     >
       
       {enableBackgroundAnim && <BackgroundEffect theme={theme} />}
+      
+      {/* AI HELPER MOUNTED GLOBALLY */}
+      <AiHelper lang={uiLanguage} />
 
       {useCustomCursor && (
         <style>{`
@@ -240,23 +285,15 @@ export const Layout: React.FC<LayoutProps> = ({
                     className="relative group outline-none focus:outline-none"
                     title={t('home', uiLanguage)}
                 >
-                    {/* Enhanced Logo Container for Palestine Theme */}
-                    {isPalestine ? (
-                        <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-red-600 via-white to-green-600 blur opacity-50 animate-pulse rounded-full"></div>
-                            <div className="relative z-10 w-full h-full bg-black flex items-center justify-center border border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]">
-                                <span className="font-bold text-xl md:text-2xl italic font-mono text-white">Z+</span>
+                    {/* Updated Logo with SVG */}
+                    <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
+                        <div className={`absolute -inset-1 blur opacity-30 group-hover:opacity-60 transition duration-500 animate-pulse rounded-full ${isPalestine ? 'bg-gradient-to-tr from-red-600 via-white to-green-600' : 'bg-terminal-green'}`}></div>
+                        <div className={`relative z-10 w-full h-full bg-black border border-white/20 flex items-center justify-center shadow-lg transition-all overflow-hidden rounded-lg ${isPalestine ? 'border-red-500/30' : 'border-terminal-green/50'}`}>
+                            <div className="w-full h-full p-1">
+                                <ZPlusLogo theme={theme} />
                             </div>
                         </div>
-                    ) : (
-                        // Standard Terminal Theme Logo
-                        <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-                            <div className="absolute -inset-1 bg-terminal-green blur opacity-30 group-hover:opacity-60 transition duration-500 animate-pulse rounded-sm"></div>
-                            <div className="relative z-10 w-full h-full bg-black border-2 border-terminal-green flex items-center justify-center shadow-[0_0_8px_rgba(0,255,65,0.4)] transition-all group-hover:border-white">
-                                <span className="font-bold text-xl md:text-2xl italic font-mono text-white group-hover:text-terminal-green transition-colors">Z+</span>
-                            </div>
-                        </div>
-                    )}
+                    </div>
                 </button>
             </div>
             

@@ -430,3 +430,50 @@ export const generateLoadingTips = async (fileNames: string[], lang: UILanguage 
         return [];
     }
 };
+
+// --- AI HELPER BOT SERVICE ---
+export const getAiHelperResponse = async (message: string, lang: UILanguage): Promise<string> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const systemPrompt = `
+      You are the "Z+ System Support Unit" for the "Terminal Exam Gen" web application.
+      
+      **YOUR GOAL**: Assist the user with specific troubleshooting, features, and usage of THIS website only.
+      
+      **APP KNOWLEDGE BASE**:
+      - **Upload**: Supports PDF/IMG (Max 10MB). Securely scans files. Supports Demo mode.
+      - **Modes**: 
+         - *One-Way*: Standard exam, no feedback until end. 
+         - *Two-Way*: Interactive, instant feedback per question.
+      - **Formats**: 
+         - *Original*: Keeps source format.
+         - *MCQ Only*: Forces all questions to multiple choice.
+         - *Coding*: Forces write-code style.
+         - *Tracing*: Forces output prediction.
+      - **Library**: Saves questions/exams locally in the browser.
+      - **Z+ Badge**: Awarded for 100% score (Elite status).
+      - **Themes**: Light, Terminal (Dark), Palestine (Flag Colors).
+      
+      **STRICT RULES**:
+      1. **REFUSE** any request unrelated to using this website (e.g., "What is the capital of France?", "Write me a poem about cats", "Solve this math problem").
+         - If refused, say: "I am limited to Z+ System diagnostics and support only."
+      2. **LANGUAGE**: Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.
+      3. Keep answers short, robotic, and helpful.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: { parts: [{ text: message }] },
+      config: {
+        systemInstruction: systemPrompt,
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: 150
+      }
+    });
+
+    return response.text || "System Error: No response data.";
+  } catch (error) {
+    return "Connection Failure: Unable to reach Z+ Neural Core.";
+  }
+};

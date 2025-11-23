@@ -93,7 +93,12 @@ export const translations = {
         "saved_exams": "SAVED EXAMS",
         "no_saved_exams": "NO SAVED EXAMS",
         "load_retake": "LOAD & RETAKE EXAM",
-        "library_empty": "QUESTION LIBRARY IS EMPTY"
+        "library_empty": "QUESTION LIBRARY IS EMPTY",
+
+        // AI Helper
+        "ai_helper_title": "SYSTEM SUPPORT",
+        "ai_helper_placeholder": "Ask about using Z+...",
+        "ai_helper_welcome": "Greetings, Agent. I am the Z+ System Support Unit. I can assist with troubleshooting, explaining features (like Modes or Badges), or guiding you through the upload process. How may I assist?"
     },
     ar: {
         // Layout & Settings
@@ -187,7 +192,12 @@ export const translations = {
         "saved_exams": "الاختبارات المحفوظة",
         "no_saved_exams": "لا توجد اختبارات محفوظة",
         "load_retake": "تحميل وإعادة الاختبار",
-        "library_empty": "مكتبة الأسئلة فارغة"
+        "library_empty": "مكتبة الأسئلة فارغة",
+
+        // AI Helper
+        "ai_helper_title": "دعم النظام",
+        "ai_helper_placeholder": "اسأل عن كيفية استخدام Z+...",
+        "ai_helper_welcome": "تحياتي أيها العميل. أنا وحدة دعم نظام Z+. يمكنني المساعدة في حل المشكلات، شرح الميزات (مثل الأوضاع أو الشارات)، أو إرشادك خلال عملية الرفع. كيف يمكنني المساعدة؟"
     }
 };
 
