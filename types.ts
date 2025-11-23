@@ -45,6 +45,7 @@ export interface ExamSettings {
   mode: ExamMode;
   formatPreference: QuestionFormatPreference;
   outputLanguage: OutputLanguage;
+  instructions?: string; // Optional user context/constraints
 }
 
 export interface LeaderboardEntry {

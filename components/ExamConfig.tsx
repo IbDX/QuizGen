@@ -1,9 +1,9 @@
 
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ExamMode, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage } from '../types';
 import { validateFile, fileToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
+import { sanitizeInput } from '../utils/security';
 import { t } from '../utils/translations';
 
 interface FileData {
@@ -76,6 +76,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>('en'); // Default to En
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [instructions, setInstructions] = useState('');
+  const [instructionError, setInstructionError] = useState<string | null>(null);
   
   const [hoveredFile, setHoveredFile] = useState<{file: FileData, x: number, y: number} | null>(null);
   
@@ -94,12 +96,25 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   }, []);
 
   const handleStart = () => {
+      if (instructionError) return;
       onStart({
           timeLimitMinutes: isTimed ? timeLimit : 0,
           mode,
           formatPreference: formatPref,
-          outputLanguage // Pass selected language to generator
+          outputLanguage,
+          instructions: instructions.trim() || undefined
       });
+  };
+
+  const handleInstructionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.target.value;
+      const validation = sanitizeInput(val, 300); // Max 300 chars context
+      setInstructions(validation.sanitizedValue);
+      if (!validation.isValid) {
+          setInstructionError(validation.error || "Invalid Input");
+      } else {
+          setInstructionError(null);
+      }
   };
 
   const handleAddFileClick = () => {
@@ -389,6 +404,30 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
           </div>
         </div>
 
+        {/* Custom Instructions Input */}
+        <div className="bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
+            <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">
+                {lang === 'ar' ? 'تعليمات مخصصة (اختياري)' : 'CUSTOM INSTRUCTIONS (OPTIONAL)'}
+            </label>
+            <div className="relative">
+                <textarea
+                    value={instructions}
+                    onChange={handleInstructionsChange}
+                    maxLength={300}
+                    placeholder={lang === 'ar' 
+                        ? "مثال: ركز على المصفوفات، أو قم بإنشاء 5 أسئلة فقط." 
+                        : "e.g., Focus on Arrays, or Generate exactly 5 questions."}
+                    className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded text-sm font-mono focus:border-terminal-green outline-none min-h-[80px] resize-y dark:text-gray-300"
+                />
+                <div className="absolute bottom-2 right-2 text-[10px] text-gray-400 pointer-events-none rtl:right-auto rtl:left-2">
+                    {instructions.length}/300
+                </div>
+            </div>
+            {instructionError && (
+                <p className="text-[10px] text-red-500 mt-1 font-bold">{instructionError}</p>
+            )}
+        </div>
+
         <div className="bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
           <div className="flex justify-between items-center mb-2">
             <label className="text-sm font-bold text-gray-900 dark:text-terminal-light">{t('time_alloc', lang)}</label>
@@ -416,7 +455,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
       <button 
         onClick={handleStart}
-        disabled={isScanning}
+        disabled={isScanning || !!instructionError}
         className="w-full py-4 md:py-3 bg-gray-900 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-black font-bold text-lg md:text-base uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg rounded"
       >
         [ {t('initiate_exam', lang)} ]

@@ -266,7 +266,13 @@ export const generateExam = async (
       **INSTRUCTION**: 
       Process EVERY file from start to finish. Extract ALL questions found.
       
-      ${instructions ? `Additional User Instructions: ${instructions}` : ''}
+      ${instructions ? `
+      **USER CUSTOM INSTRUCTIONS/CONSTRAINTS**:
+      The user has provided specific constraints or context for this generation. You MUST adhere to them:
+      "${instructions}"
+      
+      (e.g., If user asks for specific number of questions, prioritize that. If user asks to focus on specific topics, filter for those.)
+      ` : ''}
       
       Return a JSON array adhering to the schema.
     `;

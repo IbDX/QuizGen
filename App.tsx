@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
@@ -159,8 +157,13 @@ int main() {
       // Map uploadedFiles to the format expected by generateExam
       const filePayloads = uploadedFiles.map(f => ({ base64: f.base64, mimeType: f.mime }));
       
-      // Pass the format preference AND Output Language to the generator
-      const generatedQuestions = await generateExam(filePayloads, examSettings.formatPreference, examSettings.outputLanguage);
+      // Pass the format preference, Output Language, and Custom Instructions to the generator
+      const generatedQuestions = await generateExam(
+          filePayloads, 
+          examSettings.formatPreference, 
+          examSettings.outputLanguage,
+          examSettings.instructions // Pass instructions here
+      );
       
       if (generatedQuestions.length === 0) throw new Error("No questions generated");
       setQuestions(generatedQuestions);
