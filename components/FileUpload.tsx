@@ -1,3 +1,5 @@
+
+
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -146,8 +148,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
             className={`
                 w-full p-8 rounded-lg shadow-lg flex flex-col items-center justify-center gap-4 transition-all active:scale-95
                 ${globalStatus === 'PROCESSING' 
-                    ? 'bg-yellow-100 border-2 border-yellow-500' 
-                    : 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-blue-500/30'
+                    ? 'bg-yellow-100 border-2 border-yellow-500 text-yellow-800' 
+                    : 'bg-terminal-green text-terminal-btn-text shadow-terminal-green/30'
                 }
             `}
           >
@@ -280,7 +282,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                   <button 
                      onClick={onLoadDemo}
                      disabled={globalStatus !== 'IDLE'}
-                     className="px-6 py-3 md:py-2 bg-terminal-green text-black font-bold text-sm hover:bg-green-400 transition-colors w-full sm:w-auto uppercase tracking-wider disabled:opacity-50 rounded-sm shadow-md"
+                     className="px-6 py-3 md:py-2 bg-terminal-green text-terminal-btn-text font-bold text-sm hover:brightness-110 transition-all w-full sm:w-auto uppercase tracking-wider disabled:opacity-50 rounded-sm shadow-md"
                   >
                       {t('load_demo', lang)}
                   </button>

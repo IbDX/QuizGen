@@ -349,10 +349,28 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
           <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('mode_select', lang)}</label>
           <div className="hidden md:flex flex-col gap-2">
             {[ExamMode.ONE_WAY, ExamMode.TWO_WAY].map((m) => (
-                 <label key={m} className={`flex items-center p-3 border cursor-pointer transition-colors rounded ${mode === m ? 'border-blue-500 dark:border-terminal-green bg-blue-50 dark:bg-terminal-green/10' : 'bg-white dark:bg-black border-gray-300 dark:border-terminal-gray hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-                    <input type="radio" name="mode" value={m} checked={mode === m} onChange={() => setMode(m)} className="mr-3 accent-terminal-green rtl:ml-3 rtl:mr-0" />
+                 <label 
+                    key={m} 
+                    className={`
+                        flex items-center p-3 border cursor-pointer transition-colors rounded
+                        ${mode === m 
+                            ? 'border-blue-600 dark:border-terminal-green bg-blue-600 dark:bg-terminal-green' 
+                            : 'bg-white dark:bg-black border-gray-300 dark:border-terminal-gray hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }
+                    `}
+                 >
+                    <input 
+                        type="radio" 
+                        name="mode" 
+                        value={m} 
+                        checked={mode === m} 
+                        onChange={() => setMode(m)} 
+                        className="mr-3 accent-white dark:accent-black rtl:ml-3 rtl:mr-0" 
+                    />
                     <div>
-                        <span className="font-bold text-gray-800 dark:text-terminal-light">{m === ExamMode.ONE_WAY ? 'ONE_WAY (Standard)' : 'TWO_WAY (Interactive)'}</span>
+                        <span className={`font-bold ${mode === m ? 'text-white dark:text-black' : 'text-gray-800 dark:text-terminal-light'}`}>
+                            {m === ExamMode.ONE_WAY ? 'ONE_WAY (Standard)' : 'TWO_WAY (Interactive)'}
+                        </span>
                     </div>
                 </label>
             ))}

@@ -1,7 +1,3 @@
-
-
-
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage } from "../types";
 
@@ -125,11 +121,12 @@ const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: 
         `;
     } else if (outputLang === 'auto') {
         langInstruction = `
-        **LANGUAGE REQUIREMENT: SOURCE MATCHING**
-        - Detect the primary language of the specific question in the source file (English, Arabic, French, etc.).
-        - Generate the question, options, and explanation in that **SAME SOURCE LANGUAGE**.
-        - If a file contains multiple languages, respect the language of each individual question.
-        - ALWAYS keep code snippets and syntax in ENGLISH/Technical format regardless of the question language.
+        **LANGUAGE REQUIREMENT: SOURCE MATCHING (MULTI-FILE BATCH SUPPORT)**
+        - You are likely processing a batch of files that may be in **DIFFERENT languages**.
+        - For **EACH** individual question you extract, detect the language of the specific source text/file it comes from.
+        - If File A is Arabic and File B is English, questions extracted from File A **MUST** be in Arabic, and questions from File B **MUST** be in English.
+        - **Do NOT** standardize the language across the whole exam. Preserve the original language of each individual question.
+        - **ALWAYS** keep code snippets and syntax in ENGLISH/Technical format regardless of the question language.
         `;
     } else {
         langInstruction = `**LANGUAGE REQUIREMENT: ENGLISH**

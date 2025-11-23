@@ -226,6 +226,24 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
       setTimeout(() => setDPadInput(''), 100);
   };
 
+  // Keyboard support for desktop
+  useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+          switch(e.key) {
+              case 'ArrowUp': handleDir('UP'); break;
+              case 'ArrowDown': handleDir('DOWN'); break;
+              case 'ArrowLeft': handleDir('LEFT'); break;
+              case 'ArrowRight': handleDir('RIGHT'); break;
+              case 'w': handleDir('UP'); break;
+              case 's': handleDir('DOWN'); break;
+              case 'a': handleDir('LEFT'); break;
+              case 'd': handleDir('RIGHT'); break;
+          }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const GAMES = [
       <SnakeGame key="snake" externalDir={dPadInput} />, 
       <XO key="xo" />, 
@@ -316,9 +334,20 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
                {GAMES[gameIndex]}
           </div>
 
-          <div className="w-full flex justify-between items-center px-4">
-               {/* Controls */}
-               <DPad onDir={handleDir} />
+          <div className="w-full flex justify-between items-center px-4 min-h-[160px]">
+               {/* Controls - Mobile Only */}
+               <div className="md:hidden">
+                   <DPad onDir={handleDir} />
+               </div>
+
+               {/* Controls - Desktop Only */}
+               <div className="hidden md:flex flex-col items-start justify-center text-gray-500 font-mono text-[10px] space-y-2 opacity-60">
+                    <div className="flex items-center gap-2">
+                        <span className="border border-gray-500 px-1.5 py-0.5 rounded bg-gray-300 dark:bg-gray-800">▲▼◀▶</span>
+                        <span>TO MOVE</span>
+                    </div>
+                    <div>USE KEYBOARD ARROWS</div>
+               </div>
 
                {/* Action Buttons */}
                <div className="flex flex-col gap-3 mt-4">

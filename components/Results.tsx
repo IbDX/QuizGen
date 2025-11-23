@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -22,13 +21,21 @@ interface ResultsProps {
 
 const getTopicResources = (topicRaw: string) => {
   const topic = topicRaw.toLowerCase().trim();
+  // Hardcoded curated list for common topics
   const RESOURCES: Record<string, { video: string, read: string }> = {
-    'pointers': { video: 'https://www.youtube.com/watch?v=DTxHyVn0ODg', read: 'https://www.geeksforgeeks.org/pointers-in-c-cpp/' },
-    'recursion': { video: 'https://www.youtube.com/watch?v=IJDJ0kBx2LM', read: 'https://www.freecodecamp.org/news/recursion-in-programming-explained/' },
+    'pointers': { video: 'https://www.youtube.com/results?search_query=pointers+in+c%2B%2B+explained', read: 'https://www.geeksforgeeks.org/pointers-in-c-cpp/' },
+    'recursion': { video: 'https://www.youtube.com/results?search_query=recursion+explained+computer+science', read: 'https://www.freecodecamp.org/news/recursion-in-programming-explained/' },
+    'loops': { video: 'https://www.youtube.com/results?search_query=loops+in+programming+tutorial', read: 'https://www.w3schools.com/cpp/cpp_for_loop.asp' },
+    'arrays': { video: 'https://www.youtube.com/results?search_query=arrays+data+structure', read: 'https://www.programiz.com/cpp-programming/arrays' },
+    'oop': { video: 'https://www.youtube.com/results?search_query=object+oriented+programming+concepts', read: 'https://www.educative.io/blog/object-oriented-programming' },
   };
+
+  if (RESOURCES[topic]) return RESOURCES[topic];
+
+  // Smart Fallback
   return {
     video: `https://www.youtube.com/results?search_query=${encodeURIComponent(topic + " programming tutorial")}`,
-    read: `https://www.google.com/search?q=${encodeURIComponent(topic + " programming guide")}`
+    read: `https://www.google.com/search?q=${encodeURIComponent(topic + " programming guide concepts")}`
   };
 };
 
@@ -180,17 +187,57 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         )}
         
         {showWeakPoints && wrongIds.length > 0 && (
-            <div className="mt-6 max-w-2xl mx-auto bg-red-50 dark:bg-terminal-alert/10 border border-red-200 dark:border-terminal-alert p-4 md:p-6 rounded animate-fade-in">
-                <h4 className="font-bold text-red-600 dark:text-terminal-alert mb-4 text-sm uppercase tracking-wider text-center">{t('areas_improvement', lang)}</h4>
-                <div className="space-y-3">
-                    {Object.entries(wrongTopics).map(([topic, count]) => (
-                        <div key={topic} className="flex justify-between bg-white dark:bg-terminal-black p-3 rounded border border-gray-200 dark:border-terminal-gray shadow-sm gap-2">
-                            <div className="flex items-center gap-3">
-                                <span className="bg-red-100 dark:bg-terminal-alert text-red-800 dark:text-black text-xs font-bold px-2 py-1 rounded-full">{count} missed</span>
-                                <span className="font-mono font-bold text-sm dark:text-terminal-light">{topic}</span>
+            <div className="mt-8 max-w-3xl mx-auto animate-fade-in">
+                <div className="flex items-center justify-center gap-2 mb-6">
+                    <span className="text-terminal-alert text-xl">⚠</span>
+                    <h4 className="font-bold text-gray-800 dark:text-terminal-light text-sm uppercase tracking-wider text-center">{t('areas_improvement', lang)}</h4>
+                    <span className="text-terminal-alert text-xl">⚠</span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.entries(wrongTopics).map(([topic, count]) => {
+                        const resources = getTopicResources(topic);
+                        return (
+                            <div key={topic} className="bg-white dark:bg-terminal-black p-4 rounded border border-l-4 border-gray-200 dark:border-terminal-gray border-l-terminal-alert shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <svg className="w-16 h-16 text-terminal-alert" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" /></svg>
+                                </div>
+                                
+                                <div className="relative z-10">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h5 className="font-bold text-lg dark:text-terminal-light capitalize">{topic}</h5>
+                                        <span className="bg-red-100 dark:bg-terminal-alert text-red-800 dark:text-white text-xs font-bold px-2 py-1 rounded">
+                                            {count} {t('failed', lang)}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="space-y-2 mt-4">
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Recommended Training:</p>
+                                        <div className="flex gap-2">
+                                            <a 
+                                                href={resources.video} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded transition-colors"
+                                            >
+                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+                                                <span>{lang === 'ar' ? 'شاهد الشرح' : 'WATCH TUTORIAL'}</span>
+                                            </a>
+                                            <a 
+                                                href={resources.read} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-terminal-green dark:text-black dark:hover:bg-terminal-dimGreen text-white text-xs font-bold rounded transition-colors"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                                <span>{lang === 'ar' ? 'اقرأ الدليل' : 'READ GUIDE'}</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         )}

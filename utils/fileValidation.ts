@@ -1,9 +1,10 @@
 
+
 /**
  * Validates file size and magic bytes to ensure it is PDF, JPG, or PNG.
  */
 export const validateFile = async (file: File): Promise<{ valid: boolean; error?: string; mimeType?: string }> => {
-  const MAX_SIZE_MB = 15;
+  const MAX_SIZE_MB = 10; // Updated to 10MB limit
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
     return { valid: false, error: `File size exceeds ${MAX_SIZE_MB}MB limit.` };
   }
