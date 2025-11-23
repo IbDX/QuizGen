@@ -108,42 +108,61 @@ const FONT_OPTIONS = [
     { name: 'Courier New', value: "'Courier New', Courier, monospace" },
 ];
 
-// Z+ SVG Components
+// Enhanced 3D Z+ Logo
 const ZPlusLogo: React.FC<{ theme: ThemeOption }> = ({ theme }) => {
     const isPalestine = theme === 'palestine';
-    
-    // Palestine Colors
-    const pRed = "#CE1126";
-    const pGreen = "#007A3D";
-    const pWhite = "#FFFFFF";
-
-    // Terminal Colors
-    const tGreen = "#00ff41";
-    const tWhite = "#FFFFFF";
+    const isLight = theme === 'light';
 
     return (
-        <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* Z Path */}
-            <path 
-                d="M25 30 H75 L35 70 H75" 
-                stroke={isPalestine ? pWhite : tWhite} 
-                strokeWidth="8" 
-                strokeLinecap="square" 
-                strokeLinejoin="round"
-                className="drop-shadow-md"
-            />
-            
-            {/* Plus Path */}
-            <path 
-                d="M65 20 V40 M55 30 H75" 
-                stroke={isPalestine ? pRed : tGreen} 
-                strokeWidth="6" 
-                strokeLinecap="round"
-                className={isPalestine ? "" : "animate-pulse"}
-            />
-            
-            {/* Accent Dot/Underline */}
-            <circle cx="35" cy="70" r="4" fill={isPalestine ? pGreen : tGreen} />
+        <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+            <defs>
+                {/* Metallic Gradient for Terminal Mode */}
+                <linearGradient id="termMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor={isLight ? "#1e3a8a" : "#0f3923"} />
+                    <stop offset="50%" stopColor={isLight ? "#3b82f6" : "#00ff41"} />
+                    <stop offset="100%" stopColor={isLight ? "#172554" : "#002200"} />
+                </linearGradient>
+
+                {/* Palestine Gradient */}
+                <linearGradient id="palMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#000000" />
+                    <stop offset="33%" stopColor="#CE1126" />
+                    <stop offset="66%" stopColor="#FFFFFF" />
+                    <stop offset="100%" stopColor="#007A3D" />
+                </linearGradient>
+
+                {/* 3D Bevel Filter */}
+                <filter id="bevel3d" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="blur"/>
+                    <feSpecularLighting in="blur" surfaceScale="4" specularConstant="1.2" specularExponent="15" lightingColor="white" result="specOut">
+                        <fePointLight x="-5000" y="-10000" z="20000"/>
+                    </feSpecularLighting>
+                    <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/>
+                    <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litPaint"/>
+                    <feDropShadow dx="2" dy="3" stdDeviation="2" floodOpacity="0.5"/>
+                </filter>
+            </defs>
+
+            <g filter="url(#bevel3d)">
+                {/* Z Shape - Left Side */}
+                <path 
+                    d="M15 25 H65 L25 75 H75" 
+                    fill="none" 
+                    stroke={isPalestine ? "#007A3D" : "url(#termMetal)"} 
+                    strokeWidth="14" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                />
+                
+                {/* Plus Shape - Right Side */}
+                <path 
+                    d="M85 35 V65 M70 50 H100" 
+                    fill="none" 
+                    stroke={isPalestine ? "#CE1126" : "url(#termMetal)"} 
+                    strokeWidth="12" 
+                    strokeLinecap="round"
+                />
+            </g>
         </svg>
     );
 };
@@ -223,7 +242,6 @@ export const Layout: React.FC<LayoutProps> = ({
     ? { borderTopWidth: '2px', borderImage: 'linear-gradient(to right, #007A3D, #FFFFFF, #CE1126) 1' }
     : {};
   
-  // Dynamic Background Gradient for Palestine Theme to avoid flat dark grey
   const palestineBgStyle = isPalestine ? {
       background: 'radial-gradient(circle at 50% 50%, #2a2a2a 0%, #1a1a1a 100%)'
   } : {};
@@ -237,7 +255,6 @@ export const Layout: React.FC<LayoutProps> = ({
       
       {enableBackgroundAnim && <BackgroundEffect theme={theme} />}
       
-      {/* AI HELPER MOUNTED GLOBALLY */}
       <AiHelper lang={uiLanguage} />
 
       {useCustomCursor && (
@@ -285,13 +302,10 @@ export const Layout: React.FC<LayoutProps> = ({
                     className="relative group outline-none focus:outline-none"
                     title={t('home', uiLanguage)}
                 >
-                    {/* Updated Logo with SVG */}
-                    <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-                        <div className={`absolute -inset-1 blur opacity-30 group-hover:opacity-60 transition duration-500 animate-pulse rounded-full ${isPalestine ? 'bg-gradient-to-tr from-red-600 via-white to-green-600' : 'bg-terminal-green'}`}></div>
-                        <div className={`relative z-10 w-full h-full bg-black border border-white/20 flex items-center justify-center shadow-lg transition-all overflow-hidden rounded-lg ${isPalestine ? 'border-red-500/30' : 'border-terminal-green/50'}`}>
-                            <div className="w-full h-full p-1">
-                                <ZPlusLogo theme={theme} />
-                            </div>
+                    <div className="relative w-12 h-12 md:w-14 md:h-14 flex items-center justify-center">
+                        <div className={`absolute -inset-2 blur opacity-20 group-hover:opacity-50 transition duration-500 ${isPalestine ? 'bg-red-500' : 'bg-terminal-green'}`}></div>
+                        <div className={`relative z-10 w-full h-full flex items-center justify-center`}>
+                            <ZPlusLogo theme={theme} />
                         </div>
                     </div>
                 </button>
