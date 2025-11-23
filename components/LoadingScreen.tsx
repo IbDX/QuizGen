@@ -76,6 +76,19 @@ const CONTEXT_TIPS: Record<string, string[]> = {
   ]
 };
 
+// --- HELPER: MOBILE D-PAD ---
+const DPad = ({ onDir }: { onDir: (dir: string) => void }) => (
+    <div className="grid grid-cols-3 gap-1 mt-4 select-none touch-none">
+        <div />
+        <button onPointerDown={(e) => {e.preventDefault(); onDir('UP')}} className="w-12 h-12 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded flex items-center justify-center hover:bg-terminal-green hover:text-black active:scale-95 transition-all">▲</button>
+        <div />
+        
+        <button onPointerDown={(e) => {e.preventDefault(); onDir('LEFT')}} className="w-12 h-12 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded flex items-center justify-center hover:bg-terminal-green hover:text-black active:scale-95 transition-all">◀</button>
+        <button onPointerDown={(e) => {e.preventDefault(); onDir('DOWN')}} className="w-12 h-12 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded flex items-center justify-center hover:bg-terminal-green hover:text-black active:scale-95 transition-all">▼</button>
+        <button onPointerDown={(e) => {e.preventDefault(); onDir('RIGHT')}} className="w-12 h-12 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded flex items-center justify-center hover:bg-terminal-green hover:text-black active:scale-95 transition-all">▶</button>
+    </div>
+);
+
 // --- SNAKE GAME COMPONENT ---
 const GRID_SIZE = 15;
 const SPEED = 150;
@@ -103,16 +116,32 @@ const SnakeGame = () => {
     setScore(0);
   };
 
+  const changeDirection = (newDirStr: string) => {
+      let newDir = { x: 0, y: 0 };
+      switch (newDirStr) {
+          case 'UP': newDir = { x: 0, y: -1 }; break;
+          case 'DOWN': newDir = { x: 0, y: 1 }; break;
+          case 'LEFT': newDir = { x: -1, y: 0 }; break;
+          case 'RIGHT': newDir = { x: 1, y: 0 }; break;
+      }
+      
+      // Prevent reversing
+      if ((newDir.x !== 0 && newDir.x === -dir.x) || (newDir.y !== 0 && newDir.y === -dir.y)) {
+          return;
+      }
+      setDir(newDir);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
           e.preventDefault();
       }
       switch (e.key) {
-        case 'ArrowUp': if (dir.y === 0) setDir({ x: 0, y: -1 }); break;
-        case 'ArrowDown': if (dir.y === 0) setDir({ x: 0, y: 1 }); break;
-        case 'ArrowLeft': if (dir.x === 0) setDir({ x: -1, y: 0 }); break;
-        case 'ArrowRight': if (dir.x === 0) setDir({ x: 1, y: 0 }); break;
+        case 'ArrowUp': changeDirection('UP'); break;
+        case 'ArrowDown': changeDirection('DOWN'); break;
+        case 'ArrowLeft': changeDirection('LEFT'); break;
+        case 'ArrowRight': changeDirection('RIGHT'); break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -150,15 +179,16 @@ const SnakeGame = () => {
   }, [dir, food, gameOver]);
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="mb-2 flex justify-between w-full px-4 font-mono text-xs font-bold text-terminal-green">
+    <div className="flex flex-col items-center w-full">
+      <div className="mb-2 flex justify-between w-full max-w-[300px] px-2 font-mono text-xs font-bold text-terminal-green">
          <span>STATUS: {gameOver ? 'CRASHED' : 'RUNNING'}</span>
          <span>SCORE: {score}</span>
       </div>
       <div 
-        className="relative bg-black border-2 border-terminal-green grid"
+        className="relative bg-black border-2 border-terminal-green grid mx-auto"
         style={{
-            width: '200px', height: '200px',
+            width: 'min(70vw, 250px)', 
+            height: 'min(70vw, 250px)',
             gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`,
             gridTemplateRows: `repeat(${GRID_SIZE}, 1fr)`
         }}
@@ -174,12 +204,16 @@ const SnakeGame = () => {
             );
         })}
         {gameOver && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-red-500 font-bold animate-pulse cursor-pointer" onClick={resetGame}>
-                RESTART
+            <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-red-500 font-bold animate-pulse cursor-pointer z-10" onClick={resetGame}>
+                TAP TO RESTART
             </div>
         )}
       </div>
-      <div className="mt-2 text-[10px] text-gray-500">USE ARROW KEYS</div>
+      <div className="hidden md:block mt-2 text-[10px] text-gray-500">USE ARROW KEYS</div>
+      {/* Mobile Controls */}
+      <div className="md:hidden">
+         <DPad onDir={changeDirection} />
+      </div>
     </div>
   );
 };
@@ -240,8 +274,8 @@ const XO = () => {
     };
 
     return (
-        <div className="flex flex-col items-center">
-            <div className="mb-2 flex justify-between w-full px-8 font-mono text-xs font-bold text-terminal-green">
+        <div className="flex flex-col items-center w-full">
+            <div className="mb-2 flex justify-between w-full px-8 font-mono text-xs font-bold text-terminal-green max-w-[300px]">
                 <span>YOU: X</span>
                 <span>CPU: O</span>
             </div>
@@ -250,7 +284,7 @@ const XO = () => {
                     <button 
                         key={i} 
                         onClick={() => handleClick(i)}
-                        className="w-16 h-16 bg-black flex items-center justify-center text-2xl font-bold hover:bg-gray-900"
+                        className="w-16 h-16 md:w-16 md:h-16 bg-black flex items-center justify-center text-2xl font-bold hover:bg-gray-900 active:bg-gray-800 touch-manipulation"
                     >
                         {val === 'X' && <span className="text-blue-500">X</span>}
                         {val === 'O' && <span className="text-red-500">O</span>}
@@ -259,7 +293,7 @@ const XO = () => {
             </div>
             {winner && (
                 <div className="mt-4 text-sm font-bold uppercase animate-bounce cursor-pointer text-terminal-green" onClick={reset}>
-                    {winner === 'Draw' ? 'DRAW - CLICK TO RESTART' : `WINNER: ${winner} - CLICK TO RESTART`}
+                    {winner === 'Draw' ? 'DRAW - TAP TO RESTART' : `WINNER: ${winner} - TAP TO RESTART`}
                 </div>
             )}
             {!winner && <div className="mt-2 text-[10px] text-gray-500">{isCPUTurn ? 'CPU THINKING...' : 'YOUR TURN'}</div>}
@@ -290,74 +324,84 @@ const SokobanGame = () => {
         setWon(false);
     };
 
+    const handleMove = (dx: number, dy: number) => {
+        if (won) return;
+        setGrid(prev => {
+            const nextGrid = prev.map(row => [...row]);
+            const x = playerPos.x;
+            const y = playerPos.y;
+            const nx = x + dx;
+            const ny = y + dy;
+            const nnx = nx + dx;
+            const nny = ny + dy;
+
+            // Logic Helper: 
+            // Cell Types: 0=Floor, 1=Wall, 2=Box, 3=Target, 4=Player, 5=BoxOnTarget, 6=PlayerOnTarget
+
+            const targetCell = nextGrid[ny][nx];
+            
+            // Check Walls
+            if (targetCell === 1) return prev;
+
+            // Check Moving into Empty Floor or Target
+            if (targetCell === 0 || targetCell === 3) {
+                // Move Player
+                // Restore old cell
+                nextGrid[y][x] = (prev[y][x] === 6) ? 3 : 0;
+                // Set new cell
+                nextGrid[ny][nx] = (targetCell === 3) ? 6 : 4;
+                setPlayerPos({x: nx, y: ny});
+                return nextGrid;
+            }
+
+            // Check Pushing Box (2 or 5)
+            if (targetCell === 2 || targetCell === 5) {
+                const beyondCell = nextGrid[nny][nnx];
+                // Can only push into Floor (0) or Target (3)
+                if (beyondCell === 0 || beyondCell === 3) {
+                     // Move Box
+                     nextGrid[nny][nnx] = (beyondCell === 3) ? 5 : 2;
+                     
+                     // Move Player
+                     // Restore old player spot
+                     nextGrid[y][x] = (prev[y][x] === 6) ? 3 : 0;
+                     // Set new player spot (where box was)
+                     nextGrid[ny][nx] = (targetCell === 5) ? 6 : 4; // If box was on target, now player is on target
+                     
+                     setPlayerPos({x: nx, y: ny});
+                     
+                     if (!nextGrid.some(r => r.includes(2))) {
+                         setWon(true);
+                     }
+
+                     return nextGrid;
+                }
+            }
+            
+            return prev;
+        });
+    };
+
+    const handleDirClick = (dir: string) => {
+        switch(dir) {
+            case 'UP': handleMove(0, -1); break;
+            case 'DOWN': handleMove(0, 1); break;
+            case 'LEFT': handleMove(-1, 0); break;
+            case 'RIGHT': handleMove(1, 0); break;
+        }
+    };
+
     useEffect(() => {
         const handleKey = (e: KeyboardEvent) => {
-            if(won) return;
             if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
                 e.preventDefault();
             } else {
                 return;
             }
-
-            const dx = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
-            const dy = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
-            
-            if (dx === 0 && dy === 0) return;
-
-            setGrid(prev => {
-                const nextGrid = prev.map(row => [...row]);
-                const x = playerPos.x;
-                const y = playerPos.y;
-                const nx = x + dx;
-                const ny = y + dy;
-                const nnx = nx + dx;
-                const nny = ny + dy;
-
-                // Logic Helper: 
-                // Cell Types: 0=Floor, 1=Wall, 2=Box, 3=Target, 4=Player, 5=BoxOnTarget, 6=PlayerOnTarget
-
-                const targetCell = nextGrid[ny][nx];
-                
-                // Check Walls
-                if (targetCell === 1) return prev;
-
-                // Check Moving into Empty Floor or Target
-                if (targetCell === 0 || targetCell === 3) {
-                    // Move Player
-                    // Restore old cell
-                    nextGrid[y][x] = (prev[y][x] === 6) ? 3 : 0;
-                    // Set new cell
-                    nextGrid[ny][nx] = (targetCell === 3) ? 6 : 4;
-                    setPlayerPos({x: nx, y: ny});
-                    return nextGrid;
-                }
-
-                // Check Pushing Box (2 or 5)
-                if (targetCell === 2 || targetCell === 5) {
-                    const beyondCell = nextGrid[nny][nnx];
-                    // Can only push into Floor (0) or Target (3)
-                    if (beyondCell === 0 || beyondCell === 3) {
-                         // Move Box
-                         nextGrid[nny][nnx] = (beyondCell === 3) ? 5 : 2;
-                         
-                         // Move Player
-                         // Restore old player spot
-                         nextGrid[y][x] = (prev[y][x] === 6) ? 3 : 0;
-                         // Set new player spot (where box was)
-                         nextGrid[ny][nx] = (targetCell === 5) ? 6 : 4; // If box was on target, now player is on target
-                         
-                         setPlayerPos({x: nx, y: ny});
-                         
-                         if (!nextGrid.some(r => r.includes(2))) {
-                             setWon(true);
-                         }
-
-                         return nextGrid;
-                    }
-                }
-                
-                return prev;
-            });
+            if (e.key === 'ArrowLeft') handleMove(-1, 0);
+            if (e.key === 'ArrowRight') handleMove(1, 0);
+            if (e.key === 'ArrowUp') handleMove(0, -1);
+            if (e.key === 'ArrowDown') handleMove(0, 1);
         };
 
         window.addEventListener('keydown', handleKey);
@@ -368,37 +412,44 @@ const SokobanGame = () => {
     const renderCell = (val: number) => {
         switch(val) {
             case 1: return <div className="w-full h-full bg-gray-700 border border-gray-600"></div>; // Wall
-            case 2: return <div className="w-full h-full bg-yellow-600 border-2 border-yellow-400 flex items-center justify-center text-[10px]">box</div>; // Box
+            case 2: return <div className="w-full h-full bg-yellow-600 border-2 border-yellow-400 flex items-center justify-center text-[8px] md:text-[10px]">box</div>; // Box
             case 3: return <div className="w-full h-full flex items-center justify-center"><div className="w-2 h-2 bg-red-500 rounded-full"></div></div>; // Target
-            case 4: return <div className="w-full h-full bg-blue-500 border border-blue-300 flex items-center justify-center">☺</div>; // Player
-            case 5: return <div className="w-full h-full bg-green-500 border-2 border-green-300 flex items-center justify-center">✓</div>; // Box on Target
-            case 6: return <div className="w-full h-full bg-blue-500 border border-blue-300 flex items-center justify-center">☺</div>; // Player on Target
+            case 4: return <div className="w-full h-full bg-blue-500 border border-blue-300 flex items-center justify-center text-[10px]">☺</div>; // Player
+            case 5: return <div className="w-full h-full bg-green-500 border-2 border-green-300 flex items-center justify-center text-[10px]">✓</div>; // Box on Target
+            case 6: return <div className="w-full h-full bg-blue-500 border border-blue-300 flex items-center justify-center text-[10px]">☺</div>; // Player on Target
             default: return null; // Floor
         }
     };
 
     return (
-        <div className="flex flex-col items-center">
-             <div className="mb-2 flex justify-between w-full px-4 font-mono text-xs font-bold text-terminal-green">
+        <div className="flex flex-col items-center w-full">
+             <div className="mb-2 flex justify-between w-full max-w-[300px] px-2 font-mono text-xs font-bold text-terminal-green">
                 <span>SOKOBAN</span>
                 <span>{won ? 'VICTORY!' : 'PUSH BOXES'}</span>
             </div>
             <div 
-                className="grid bg-black border-2 border-terminal-green p-1"
+                className="grid bg-black border-2 border-terminal-green p-1 mx-auto"
                 style={{
-                    gridTemplateColumns: `repeat(7, 25px)`,
-                    gridTemplateRows: `repeat(7, 25px)`,
+                    width: 'min(70vw, 250px)',
+                    height: 'min(70vw, 250px)',
+                    gridTemplateColumns: `repeat(7, 1fr)`,
+                    gridTemplateRows: `repeat(7, 1fr)`,
                     gap: '1px'
                 }}
             >
                 {grid.flat().map((cell, i) => (
-                    <div key={i} className="w-[25px] h-[25px] bg-[#111]">
+                    <div key={i} className="w-full h-full bg-[#111] flex items-center justify-center overflow-hidden">
                         {renderCell(cell)}
                     </div>
                 ))}
             </div>
-            <div className="mt-4 text-[10px] text-gray-500 cursor-pointer underline hover:text-white" onClick={reset}>
+            <div className="hidden md:block mt-4 text-[10px] text-gray-500 cursor-pointer underline hover:text-white" onClick={reset}>
                 {won ? 'PLAY AGAIN' : 'RESET LEVEL'}
+            </div>
+             {/* Mobile Controls */}
+            <div className="md:hidden">
+                <DPad onDir={handleDirClick} />
+                <div className="mt-2 text-center text-xs text-red-400 font-bold" onClick={reset}>RESET</div>
             </div>
         </div>
     );
@@ -470,18 +521,18 @@ const MemoryGame = () => {
     const isWin = cards.length > 0 && cards.every(c => c.matched);
 
     return (
-        <div className="flex flex-col items-center">
-             <div className="mb-2 flex justify-between w-full px-4 font-mono text-xs font-bold text-terminal-green">
+        <div className="flex flex-col items-center w-full">
+             <div className="mb-2 flex justify-between w-full max-w-[320px] px-2 font-mono text-xs font-bold text-terminal-green">
                 <span>MEMORY</span>
                 <span>TURNS: {turns}</span>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-2 md:gap-2">
                 {cards.map(card => (
                     <div 
                         key={card.id} 
                         className={`
-                            w-10 h-10 flex items-center justify-center text-xs font-bold cursor-pointer transition-all duration-300
-                            border border-terminal-green
+                            w-12 h-12 md:w-10 md:h-10 flex items-center justify-center text-xs font-bold cursor-pointer transition-all duration-300
+                            border border-terminal-green touch-manipulation select-none
                             ${card.flipped || card.matched ? 'bg-terminal-green text-black rotate-y-180' : 'bg-black text-terminal-green'}
                         `}
                         onClick={() => handleChoice(card)}
@@ -587,14 +638,14 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-xl mx-auto p-6 space-y-8 animate-fade-in">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-xl mx-auto p-4 md:p-6 space-y-6 md:space-y-8 animate-fade-in">
       {/* Status Section */}
       <div className="text-center space-y-4">
-         <div className="w-20 h-20 mx-auto relative">
+         <div className="w-16 h-16 md:w-20 md:h-20 mx-auto relative">
             <div className="absolute inset-0 border-4 border-t-terminal-green border-r-transparent border-b-terminal-green border-l-transparent rounded-full animate-spin"></div>
             <div className="absolute inset-2 border-4 border-t-transparent border-r-blue-500 border-b-transparent border-l-blue-500 rounded-full animate-spin-slow opacity-70"></div>
          </div>
-         <h2 className="font-mono text-xl font-bold animate-pulse text-terminal-green">{message}</h2>
+         <h2 className="font-mono text-lg md:text-xl font-bold animate-pulse text-terminal-green px-2">{message}</h2>
       </div>
 
       {/* Info/Tip Section */}
@@ -605,22 +656,22 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
              </div>
              {isFetchingTips && <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>}
           </div>
-          <p className="font-mono text-sm text-gray-700 dark:text-gray-300 min-h-[3rem] flex items-center flex-wrap">
+          <p className="font-mono text-xs md:text-sm text-gray-700 dark:text-gray-300 min-h-[3rem] flex items-center flex-wrap">
               {activeTips.length > 0 && formatTip(activeTips[tipIndex])}
           </p>
       </div>
 
       {/* Mini Game Section */}
-      <div className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-black p-6 shadow-xl relative overflow-hidden">
+      <div className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-black p-4 md:p-6 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 left-0 bg-gray-200 dark:bg-gray-800 px-3 py-1 text-[10px] font-bold tracking-widest">
               WAITING_ROOM_MODULE.EXE
           </div>
-          <div className="mt-4 flex justify-center min-h-[220px] items-center">
+          <div className="mt-4 flex justify-center min-h-[280px] md:min-h-[220px] items-center">
               {GAMES[gameIndex]}
           </div>
           {/* Game Switcher (Easter Egg) */}
-          <div className="absolute bottom-1 right-2 flex gap-1">
-              <button onClick={() => setGameIndex((i) => (i + 1) % GAMES.length)} className="text-[9px] text-gray-600 hover:text-terminal-green">
+          <div className="absolute bottom-1 right-2 flex gap-1 z-20">
+              <button onClick={() => setGameIndex((i) => (i + 1) % GAMES.length)} className="text-[9px] text-gray-600 hover:text-terminal-green p-2">
                   NEXT_GAME &gt;
               </button>
           </div>
