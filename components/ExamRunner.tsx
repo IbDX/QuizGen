@@ -263,24 +263,31 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       </div>
 
       {/* Question Card */}
-      <div className="flex-grow border border-gray-300 dark:border-terminal-green p-4 md:p-8 bg-white dark:bg-black relative overflow-hidden shadow-xl">
-        <div className="absolute top-0 right-0 flex z-10">
-            <button 
-                onClick={handleToggleSave}
-                className={`p-3 md:p-2 mr-2 mt-2 transition-colors hover:scale-110 ${savedState ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
-                title={savedState ? "Remove from Library" : "Save to Library"}
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-6 md:w-6" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                </svg>
-            </button>
-            <span className="text-[10px] font-bold uppercase tracking-widest bg-gray-200 dark:bg-terminal-dimGreen text-black px-3 py-2">
-                {currentQ.type}
+      <div className="flex-grow border border-gray-300 dark:border-terminal-green p-4 md:p-8 bg-white dark:bg-black relative overflow-hidden shadow-xl flex flex-col">
+        
+        {/* Header Row: Question # and Metadata/Controls (Flexbox prevents overlap) */}
+        <div className="flex justify-between items-start mb-4 w-full">
+            <span className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">
+                QUESTION {currentIndex + 1}
             </span>
+
+            <div className="flex items-center gap-2">
+                <button 
+                    onClick={handleToggleSave}
+                    className={`transition-colors hover:scale-110 ${savedState ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
+                    title={savedState ? "Remove from Library" : "Save to Library"}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                    </svg>
+                </button>
+                <span className="text-[10px] font-bold uppercase tracking-widest bg-gray-200 dark:bg-terminal-dimGreen text-black px-2 py-1 rounded-sm whitespace-nowrap">
+                    {currentQ.type}
+                </span>
+            </div>
         </div>
         
-        <div className="mb-6 relative z-0">
-             <span className="text-sm text-gray-500 dark:text-gray-400 font-mono block mb-2">QUESTION {currentIndex + 1}</span>
+        <div className="mb-6 relative z-0 flex-grow">
              <div className="text-base md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-gray-100 break-words">
                <MarkdownRenderer content={displayText} className="inline-block w-full" />
              </div>

@@ -77,17 +77,65 @@ const CONTEXT_TIPS: Record<string, string[]> = {
 };
 
 // --- HELPER: MOBILE D-PAD ---
-const DPad = ({ onDir }: { onDir: (dir: string) => void }) => (
-    <div className="grid grid-cols-3 gap-1 mt-4 select-none touch-none">
-        <div />
-        <button onPointerDown={(e) => {e.preventDefault(); onDir('UP')}} className="w-12 h-12 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded flex items-center justify-center hover:bg-terminal-green hover:text-black active:scale-95 transition-all">▲</button>
-        <div />
-        
-        <button onPointerDown={(e) => {e.preventDefault(); onDir('LEFT')}} className="w-12 h-12 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded flex items-center justify-center hover:bg-terminal-green hover:text-black active:scale-95 transition-all">◀</button>
-        <button onPointerDown={(e) => {e.preventDefault(); onDir('DOWN')}} className="w-12 h-12 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded flex items-center justify-center hover:bg-terminal-green hover:text-black active:scale-95 transition-all">▼</button>
-        <button onPointerDown={(e) => {e.preventDefault(); onDir('RIGHT')}} className="w-12 h-12 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded flex items-center justify-center hover:bg-terminal-green hover:text-black active:scale-95 transition-all">▶</button>
-    </div>
-);
+const DPad = ({ onDir }: { onDir: (dir: string) => void }) => {
+    // Style classes for the invisible hit buttons
+    const hitBtnClass = "absolute z-20 w-12 h-12 flex items-center justify-center active:scale-90 transition-transform touch-none outline-none";
+    
+    // Style for the arrows inside the D-pad
+    const arrowClass = "border-solid opacity-60";
+
+    return (
+        <div className="relative w-36 h-36 mt-4 select-none touch-none flex items-center justify-center">
+            {/* SHADOW / BORDER LAYER */}
+            <div className="absolute w-36 h-36 bg-gray-400 dark:bg-gray-700 rounded-full opacity-20 blur-sm"></div>
+            
+            {/* CROSS SHAPE (Vertical Bar) */}
+            <div className="absolute w-12 h-full bg-[#1a1a1a] rounded-lg shadow-xl border border-gray-700 z-10"></div>
+            
+            {/* CROSS SHAPE (Horizontal Bar) */}
+            <div className="absolute w-full h-12 bg-[#1a1a1a] rounded-lg shadow-xl border border-gray-700 z-10"></div>
+
+            {/* CENTER PIVOT (Decoration) */}
+            <div className="absolute w-8 h-8 bg-[#0c0c0c] rounded-full shadow-inner z-10 radial-gradient border border-gray-800">
+                <div className="absolute inset-2 bg-gray-800 rounded-full opacity-30"></div>
+            </div>
+
+            {/* --- TOUCH ZONES & ARROWS --- */}
+            
+            {/* UP */}
+            <button 
+                onPointerDown={(e) => {e.preventDefault(); onDir('UP')}} 
+                className={`${hitBtnClass} -top-1 left-1/2 -translate-x-1/2 pt-1`}
+            >
+                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[12px] border-l-transparent border-r-transparent border-b-gray-400"></div>
+            </button>
+            
+            {/* DOWN */}
+            <button 
+                onPointerDown={(e) => {e.preventDefault(); onDir('DOWN')}} 
+                className={`${hitBtnClass} -bottom-1 left-1/2 -translate-x-1/2 pb-1`}
+            >
+                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-gray-400"></div>
+            </button>
+
+            {/* LEFT */}
+            <button 
+                onPointerDown={(e) => {e.preventDefault(); onDir('LEFT')}} 
+                className={`${hitBtnClass} -left-1 top-1/2 -translate-y-1/2 pr-1`}
+            >
+                <div className="w-0 h-0 border-t-[8px] border-b-[8px] border-r-[12px] border-t-transparent border-b-transparent border-r-gray-400"></div>
+            </button>
+
+            {/* RIGHT */}
+            <button 
+                onPointerDown={(e) => {e.preventDefault(); onDir('RIGHT')}} 
+                className={`${hitBtnClass} -right-1 top-1/2 -translate-y-1/2 pl-1`}
+            >
+                <div className="w-0 h-0 border-t-[8px] border-b-[8px] border-l-[12px] border-t-transparent border-b-transparent border-l-gray-400"></div>
+            </button>
+        </div>
+    );
+};
 
 // --- SNAKE GAME COMPONENT ---
 const GRID_SIZE = 15;
