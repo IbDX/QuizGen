@@ -18,7 +18,7 @@ export const validateFile = async (file: File): Promise<{ valid: boolean; error?
 };
 
 export const validateBatchSize = (files: File[]): { valid: boolean; error?: string } => {
-  const MAX_BATCH_SIZE_MB = 30;
+  const MAX_BATCH_SIZE_MB = 20;
   const totalSize = files.reduce((acc, f) => acc + f.size, 0);
   if (totalSize > MAX_BATCH_SIZE_MB * 1024 * 1024) {
     return { valid: false, error: `Total batch size exceeds ${MAX_BATCH_SIZE_MB}MB limit.` };
@@ -80,6 +80,13 @@ export const urlToBase64 = async (url: string): Promise<{ base64: string, mimeTy
     if (!response.ok) throw new Error('Failed to fetch URL');
     
     const blob = await response.blob();
+    
+    // STRICT SIZE CHECK (10MB)
+    const MAX_SIZE_MB = 10;
+    if (blob.size > MAX_SIZE_MB * 1024 * 1024) {
+        throw new Error(`File size from URL exceeds ${MAX_SIZE_MB}MB limit.`);
+    }
+
     let mimeType = blob.type;
     
     // Fallback for generic types: If MIME is generic, try to deduce from URL extension first

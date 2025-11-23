@@ -1,7 +1,6 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ExamMode, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage } from '../types';
-import { validateFile, fileToBase64 } from '../utils/fileValidation';
+import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
 import { sanitizeInput } from '../utils/security';
 import { t } from '../utils/translations';
@@ -78,6 +77,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   const [scanError, setScanError] = useState<string | null>(null);
   const [instructions, setInstructions] = useState('');
   const [instructionError, setInstructionError] = useState<string | null>(null);
+  const [urlInput, setUrlInput] = useState('');
   
   const [hoveredFile, setHoveredFile] = useState<{file: FileData, x: number, y: number} | null>(null);
   
@@ -123,9 +123,22 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
   const processNewFiles = async (fileList: FileList | null) => {
       if (!fileList || fileList.length === 0) return;
+
+      const MAX_BATCH_SIZE_MB = 20;
+      // Approximate existing size from base64 (3/4 length)
+      const currentTotalSize = files.reduce((acc, f) => acc + (f.base64.length * 0.75), 0);
+      const newFiles = Array.from(fileList);
+      const newFilesSize = newFiles.reduce((acc, f) => acc + f.size, 0);
+
+      // Strict Batch Limit Check
+      if ((currentTotalSize + newFilesSize) > MAX_BATCH_SIZE_MB * 1024 * 1024) {
+           setScanError(`Batch limit exceeded. Total files cannot exceed ${MAX_BATCH_SIZE_MB}MB.`);
+           return;
+      }
+
       setIsScanning(true);
       setScanError(null);
-      const newFiles = Array.from(fileList);
+      
       const successfulFiles: Array<FileData> = [];
 
       for (let i = 0; i < newFiles.length; i++) {
@@ -155,36 +168,92 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       setIsScanning(false);
   };
 
+  const processUrl = async (url: string) => {
+      setIsScanning(true);
+      setScanError(null);
+      try {
+          const { base64, mimeType, name } = await urlToBase64(url);
+          
+          // Calculate size
+          const newFileSize = base64.length * 0.75; 
+          const currentTotalSize = files.reduce((acc, f) => acc + (f.base64.length * 0.75), 0);
+          const MAX_BATCH_SIZE_MB = 20;
+
+          if ((currentTotalSize + newFileSize) > MAX_BATCH_SIZE_MB * 1024 * 1024) {
+               throw new Error(`Batch limit exceeded. Total cannot exceed ${MAX_BATCH_SIZE_MB}MB.`);
+          }
+          
+          const hash = `url_${Date.now()}_${name}`;
+          onAppendFiles([{ base64, mime: mimeType, name, hash }]);
+          setUrlInput(''); // Clear input if successful
+      } catch (err: any) {
+          setScanError(err.message);
+      }
+      setIsScanning(false);
+  };
+
+  const handleUrlSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(urlInput && !isScanning) processUrl(urlInput);
+  };
+
+  // Global Paste Handler for this component
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+        if (isScanning) return;
+        
+        if (e.clipboardData && e.clipboardData.files.length > 0) {
+            e.preventDefault();
+            processNewFiles(e.clipboardData.files);
+        } else {
+             const text = e.clipboardData?.getData('text');
+             if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+                 e.preventDefault();
+                 processUrl(text.trim());
+             }
+        }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [files, isScanning]); 
+
+  // Drag and Drop Handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isScanning) {
+        processNewFiles(e.dataTransfer.files);
+    }
+  };
+
   const updatePreviewPosition = (target: Element, file: FileData) => {
       const rect = target.getBoundingClientRect();
-      // Use visualViewport if available for better mobile accuracy, fallback to window
       const viewportWidth = window.visualViewport?.width || window.innerWidth;
       const viewportHeight = window.visualViewport?.height || window.innerHeight;
       
-      const TOOLTIP_WIDTH = Math.min(320, viewportWidth - 30); // Dynamic width for small screens
-      const TOOLTIP_HEIGHT = 350; // Approx height
+      const TOOLTIP_WIDTH = Math.min(320, viewportWidth - 30);
+      const TOOLTIP_HEIGHT = 350;
       const PADDING = 10;
 
       let left = rect.right + PADDING;
       let top = rect.top;
 
-      // RTL handling
       if (lang === 'ar') {
            left = rect.left - TOOLTIP_WIDTH - PADDING;
-           if (left < PADDING) left = rect.right + PADDING; // Flip if hits left edge
+           if (left < PADDING) left = rect.right + PADDING;
       } else {
-          // LTR handling
-          // If tooltip goes off right edge, flip to left
           if (left + TOOLTIP_WIDTH > viewportWidth) {
               left = rect.left - TOOLTIP_WIDTH - PADDING;
           }
-          // If still off screen (left), simply clamp to left edge
           if (left < PADDING) left = PADDING;
       }
       
-      // Vertical clamping
       if (top + TOOLTIP_HEIGHT > viewportHeight) {
-          // Shift up to align bottom with viewport bottom (minus padding)
           top = viewportHeight - TOOLTIP_HEIGHT - PADDING;
       }
       if (top < PADDING) top = PADDING;
@@ -198,7 +267,6 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   };
 
   const handleTouchStartFile = (e: React.TouchEvent, file: FileData) => {
-      // e.preventDefault(); // Prevents scroll, handled nicely by onTouchEnd clearing it
       updatePreviewPosition(e.currentTarget, file);
   };
 
@@ -282,6 +350,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
         <div 
             onClick={!isScanning ? handleAddFileClick : undefined}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
             className={`border-2 border-dashed border-gray-300 dark:border-terminal-gray p-4 text-center cursor-pointer hover:bg-gray-200 dark:hover:bg-terminal-dimGreen/20 transition-colors ${isScanning ? 'opacity-50 cursor-wait' : ''}`}
         >
             <input 
@@ -300,6 +370,33 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                     <> <span>+</span> {t('add_more', lang)} </>
                 )}
             </div>
+            <p className="text-[10px] text-gray-400 dark:text-terminal-dimGreen mt-2 font-mono uppercase tracking-wide">
+                Max 10MB/File • 20MB Total
+            </p>
+        </div>
+
+        {/* URL Input Area */}
+        <div className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-800">
+            <form onSubmit={handleUrlSubmit} className="flex gap-2">
+                <input 
+                    type="url"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="https://example.com/file.pdf"
+                    className="flex-grow bg-white dark:bg-black border border-gray-300 dark:border-gray-700 p-2 text-xs font-mono outline-none focus:border-terminal-green rounded-sm dark:text-white"
+                    disabled={isScanning}
+                />
+                <button 
+                    type="submit"
+                    disabled={!urlInput || isScanning}
+                    className="px-3 py-1 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 text-[10px] font-bold uppercase rounded-sm disabled:opacity-50 transition-colors"
+                >
+                    {t('fetch', lang)}
+                </button>
+            </form>
+             <p className="text-[9px] text-gray-400 dark:text-gray-500 mt-1">
+                 Paste URL (CTRL+V) or Image directly to add.
+             </p>
         </div>
         
         {scanError && (

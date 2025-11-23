@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType, UILanguage } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
@@ -41,7 +42,6 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
   const currentQ = questions[currentIndex];
   const isOneWay = settings.mode === ExamMode.ONE_WAY;
-  const isLastQuestion = currentIndex === questions.length - 1;
 
   // Check if saved on mount or index change
   useEffect(() => {
@@ -217,6 +217,34 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   if (currentQ.codeSnippet && !hasCodeBlockInText && displayText.includes(currentQ.codeSnippet)) {
      displayText = displayText.replace(currentQ.codeSnippet, '').trim();
   }
+
+  // Action Button Renderer (integrated into footer)
+  const renderActionButton = () => {
+    if (settings.mode === ExamMode.TWO_WAY && !showFeedback) {
+        return (
+          <button
+              onClick={checkAnswerTwoWay}
+              disabled={isGrading || !!inputError}
+              className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen disabled:opacity-50 shadow text-sm uppercase rounded transition-colors"
+          >
+              {isGrading ? t('validating', lang) : t('check', lang)}
+          </button>
+        );
+    }
+    
+    if (currentIndex === questions.length - 1) {
+        return (
+          <button 
+              onClick={handleFinish}
+              disabled={!!inputError}
+              className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen shadow text-sm tracking-wider disabled:opacity-50 uppercase rounded transition-colors"
+          >
+              {t('submit', lang)}
+          </button>
+        );
+    }
+    return null;
+  };
 
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
@@ -442,36 +470,18 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                 </svg>
              </button>
 
-             {/* CENTER ACTION (Submit/Check) - Allows both on last question in 2-way mode */}
-             <div className="flex-grow flex justify-center px-4 gap-3">
-                 {settings.mode === ExamMode.TWO_WAY && !showFeedback && (
-                    <button
-                        onClick={checkAnswerTwoWay}
-                        disabled={isGrading || !!inputError}
-                        className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen disabled:opacity-50 shadow text-sm uppercase rounded transition-colors whitespace-nowrap"
-                    >
-                        {isGrading ? t('validating', lang) : t('check', lang)}
-                    </button>
-                 )}
-
-                 {isLastQuestion && (
-                    <button 
-                        onClick={handleFinish}
-                        disabled={!!inputError}
-                        className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen shadow text-sm tracking-wider disabled:opacity-50 uppercase rounded transition-colors whitespace-nowrap"
-                    >
-                        {t('submit', lang)}
-                    </button>
-                 )}
+             {/* CENTER ACTION (Submit/Check) */}
+             <div className="flex-grow flex justify-center px-4">
+                 {renderActionButton()}
              </div>
 
              {/* NEXT BUTTON */}
              <button 
                 onClick={nextQuestion}
-                disabled={isLastQuestion} // Disabled on last question visually
+                disabled={currentIndex === questions.length - 1} // Disabled on last question visually, submit button handles it
                 className={`
                     flex items-center justify-center p-3 md:p-4 rounded-full transition-all group active:scale-95
-                    ${isLastQuestion
+                    ${currentIndex === questions.length - 1
                         ? 'opacity-0 pointer-events-none' // Hide instead of disable to keep layout balanced
                         : 'text-terminal-green hover:bg-terminal-green/10 cursor-pointer'
                     }

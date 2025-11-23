@@ -1,5 +1,3 @@
-
-
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64, validateBatchSize } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -204,6 +202,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
             {globalStatus === 'PROCESSING' 
              ? t('executing_protocols', lang)
              : "Drag & Drop PDF, PNG, JPG here or Click to Browse"}
+          </p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-2">
+            Max 10MB per file / 20MB Total
           </p>
         </div>
 

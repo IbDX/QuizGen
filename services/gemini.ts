@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage } from "../types";
 
@@ -136,18 +137,11 @@ const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: 
     const BASE_INSTRUCTION = `
     ${langInstruction}
 
-    **ROLE**: You are an expert technical exam generator.
-
     **PHASE 1: GLOBAL CONTEXT SCAN**
-    - Analyze ALL attached files from start to finish.
+    - First, analyze ALL attached files from start to finish.
+    - Understand the document layout, question numbering, and answer keys (if present).
     - Identify EVERY question in the document. Do not skip any.
     - Preserve C++ syntax like pointers (*ptr) and references (&ref). Do not interpret them as Markdown italics.
-    
-    **PHASE 2: MATH FORMATTING**
-    - Use **LaTeX** for all mathematical equations.
-    - Inline math: Wrap in single dollar signs (e.g. $x^2 + y = 10$).
-    - Block math: Wrap in double dollar signs (e.g. $$ \sum_{i=0}^n i $$).
-    - **CRITICAL**: Do not use other math delimiters like \(...\) or \[...\]. Use only $ and $$.
     `;
 
     switch (preference) {
@@ -155,7 +149,7 @@ const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: 
             return `
             ${BASE_INSTRUCTION}
             
-            **PHASE 3: FORCED MCQ TRANSFORMATION**
+            **PHASE 2: FORCED MCQ TRANSFORMATION**
             You MUST output EVERY question as "type": "MCQ". 
             If a question is NOT originally an MCQ, you must creatively transform it.
 
@@ -182,7 +176,7 @@ const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: 
             return `
             ${BASE_INSTRUCTION}
             
-            **PHASE 3: FORCED CODING TRANSFORMATION**
+            **PHASE 2: FORCED CODING TRANSFORMATION**
             You MUST output EVERY question as "type": "CODING".
             
             **TRANSFORMATION RULES:**
@@ -205,7 +199,7 @@ const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: 
             return `
             ${BASE_INSTRUCTION}
             
-            **PHASE 3: FORCED TRACING TRANSFORMATION**
+            **PHASE 2: FORCED TRACING TRANSFORMATION**
             You MUST output EVERY question as "type": "TRACING".
             
             **TRANSFORMATION RULES:**
@@ -225,7 +219,7 @@ const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: 
             return `
             ${BASE_INSTRUCTION}
             
-            **PHASE 3: STRICT FIDELITY EXTRACTION**
+            **PHASE 2: STRICT FIDELITY EXTRACTION**
             Extract questions exactly as they appear. Do NOT change their type.
 
             1. **MCQ**: If visual options (A,B,C,D) or True/False exist -> Type: "MCQ".
@@ -240,7 +234,7 @@ const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: 
             return `
             ${BASE_INSTRUCTION}
             
-            **PHASE 3: SMART CLASSIFICATION**
+            **PHASE 2: SMART CLASSIFICATION**
             Analyze each question and assign the most appropriate type for learning.
 
             1. **MCQ**: Use if options are present. (Priority #1)
@@ -334,7 +328,6 @@ export const generateExamFromWrongAnswers = async (originalQuestions: Question[]
           - Do not force specific types (MCQ/Coding/Tracing). Use the best format for the concept.
           - Ensure code snippets are correctly formatted.
           - Focus on clearing up misconceptions shown by failing the original questions.
-          - Use LaTeX for math.
         `;
     
         const response = await ai.models.generateContent({
