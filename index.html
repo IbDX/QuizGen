@@ -20,7 +20,8 @@
                 dimGreen: 'var(--color-term-dim-green)',
                 gray: 'var(--color-term-gray)',
                 light: 'var(--color-term-light)',
-                alert: 'var(--color-term-alert)'
+                alert: 'var(--color-term-alert)',
+                glass: 'var(--color-term-glass)'
               }
             }
           },
@@ -32,39 +33,42 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <style>
       :root {
-        /* Default / Light Mode placeholders (though mostly unused due to dark: prefix) */
-        --color-term-black: #0c0c0c;
-        --color-term-green: #00ff41;
-        --color-term-dim-green: #008F11;
-        --color-term-gray: #1a1a1a;
-        --color-term-light: #e0e0e0;
-        --color-term-alert: #ff3333;
+        /* Default / Light Mode */
+        --color-term-black: #ffffff;
+        --color-term-green: #2563eb; /* Blue-600 for light mode primary */
+        --color-term-dim-green: #dbeafe; /* Blue-100 */
+        --color-term-gray: #f3f4f6;
+        --color-term-light: #1f2937;
+        --color-term-alert: #dc2626;
+        --color-term-glass: rgba(255, 255, 255, 0.9);
       }
 
       /* Terminal Dark Theme */
       .dark {
         --color-term-black: #0c0c0c;
-        --color-term-green: #00ff41;
+        --color-term-green: #00ff41; /* Hacker Green */
         --color-term-dim-green: #008F11;
         --color-term-gray: #1a1a1a;
         --color-term-light: #e0e0e0;
         --color-term-alert: #ff3333;
+        --color-term-glass: rgba(12, 12, 12, 0.95);
       }
 
       /* Palestine Theme (Dark Variant) */
       .theme-palestine {
-        /* Soft Deep Black */
-        --color-term-black: #050505; 
-        /* Emerald/Flag Green */
-        --color-term-green: #10b981; 
+        /* Deep Black Background */
+        --color-term-black: #000000; 
+        /* Flag Green for Primary Actions/Text */
+        --color-term-green: #007A3D; 
         /* Darker Green for accents */
-        --color-term-dim-green: #047857;
+        --color-term-dim-green: #004422;
         /* Dark Gray for cards */
-        --color-term-gray: #171717;
-        /* Soft White */
-        --color-term-light: #f5f5f5;
-        /* Crimson/Flag Red */
-        --color-term-alert: #e11d48;
+        --color-term-gray: #111111;
+        /* White for reading text */
+        --color-term-light: #FFFFFF;
+        /* Flag Red for Alerts/Errors/Borders */
+        --color-term-alert: #CE1126;
+        --color-term-glass: rgba(0, 0, 0, 0.95);
       }
 
       body {
@@ -101,7 +105,7 @@
 }
 </script>
 </head>
-  <body class="bg-gray-100 dark:bg-terminal-black text-gray-900 dark:text-terminal-green transition-colors duration-200 min-h-screen">
+  <body class="bg-gray-100 dark:bg-terminal-black text-gray-900 dark:text-terminal-light transition-colors duration-500 min-h-screen">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>

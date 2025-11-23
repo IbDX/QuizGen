@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
@@ -142,17 +141,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             isCorrect = userAnswer.answer === currentQ.correctOptionIndex;
             feedback = isCorrect ? "Correct!" : `Incorrect.\n${currentQ.explanation}`;
         } else {
-            // Fallback for malformed MCQ (text input)
-             // Simple string match for tracing/malformed mcq, normalized
             const userTxt = String(userAnswer.answer).trim().toLowerCase();
-            // We can't easily check against correctOptionIndex here without options text, 
-            // but we assume if options are missing, strict grading is hard.
-            // So we rely on the explanation.
             feedback = `**Answer Analysis:**\n${currentQ.explanation}`;
-            isCorrect = true; // Giving benefit of doubt or purely informational in this edge case
+            isCorrect = true; 
         }
     } else if (currentQ.type === QuestionType.TRACING) {
-      // Simple string match for tracing, normalized
       const userTxt = String(userAnswer.answer).trim().toLowerCase();
       const correctTxt = (currentQ.tracingOutput || "").trim().toLowerCase();
       isCorrect = userTxt === correctTxt;
@@ -163,7 +156,6 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       feedback = result.feedback;
     }
 
-    // Update answer with correctness
     setAnswers(prev => {
         const newMap = new Map(prev);
         newMap.set(currentQ.id, { ...userAnswer, isCorrect, feedback });
@@ -213,10 +205,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
   const progressPercentage = Math.round((answers.size / questions.length) * 100);
   
-  // Determine if we show standard MCQ UI or Fallback Input
   const isStandardMCQ = currentQ.type === QuestionType.MCQ && currentQ.options && currentQ.options.length > 0;
 
-  // Logic to avoid duplicate code windows:
   const hasCodeBlockInText = currentQ.text.includes('```');
   
   let displayText = currentQ.text;
@@ -224,11 +214,39 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
      displayText = displayText.replace(currentQ.codeSnippet, '').trim();
   }
 
+  // Action Button Renderer (integrated into footer)
+  const renderActionButton = () => {
+    if (settings.mode === ExamMode.TWO_WAY && !showFeedback) {
+        return (
+          <button
+              onClick={checkAnswerTwoWay}
+              disabled={isGrading || !!inputError}
+              className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen disabled:opacity-50 shadow text-sm uppercase rounded transition-colors"
+          >
+              {isGrading ? 'VALIDATING...' : 'CHECK'}
+          </button>
+        );
+    }
+    
+    if (currentIndex === questions.length - 1) {
+        return (
+          <button 
+              onClick={handleFinish}
+              disabled={!!inputError}
+              className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen shadow text-sm tracking-wider disabled:opacity-50 uppercase rounded transition-colors"
+          >
+              SUBMIT
+          </button>
+        );
+    }
+    return null;
+  };
+
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
       
       {/* Anchor for Scroll To Top */}
-      <div ref={topRef} className="scroll-mt-28"></div>
+      <div ref={topRef} className="scroll-mt-32"></div>
 
       {/* Progress Bar */}
       <div className="mb-4">
@@ -236,17 +254,17 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
           <span>EXECUTION_PROGRESS</span>
           <span>{progressPercentage}% [{answers.size}/{questions.length}]</span>
         </div>
-        <div className="w-full bg-gray-200 dark:bg-[#1a1a1a] h-1.5 border border-gray-300 dark:border-gray-700 overflow-hidden">
+        <div className="w-full bg-gray-200 dark:bg-terminal-gray h-1.5 border border-gray-300 dark:border-terminal-gray overflow-hidden">
           <div 
-            className="bg-blue-600 dark:bg-terminal-green h-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(59,130,246,0.5)] dark:shadow-[0_0_8px_rgba(0,255,65,0.5)]"
+            className="bg-terminal-green h-full transition-all duration-500 ease-out shadow-[0_0_8px_var(--color-term-green)]"
             style={{ width: `${progressPercentage}%` }}
           ></div>
         </div>
       </div>
 
       {/* HUD */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 p-4 border border-gray-300 dark:border-terminal-dimGreen bg-white dark:bg-gray-900 shadow-sm gap-4">
-         {/* Question Navigation Bar - Stacked & Larger on Mobile */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 p-4 border border-gray-300 dark:border-terminal-green bg-white dark:bg-terminal-black shadow-sm gap-4">
+         {/* Question Navigation Bubbles */}
          <div className="flex flex-wrap gap-2 justify-center">
             {questions.map((_, idx) => {
                 const isAnswered = answers.has(questions[idx].id);
@@ -257,12 +275,12 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                         onClick={() => jumpToQuestion(idx)}
                         disabled={isOneWay}
                         className={`
-                            w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border transition-all touch-manipulation
+                            w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs font-bold border transition-all touch-manipulation
                             ${isCurrent 
-                                ? 'bg-blue-600 text-white border-blue-600 scale-110 shadow-lg' 
+                                ? 'bg-terminal-green text-terminal-black border-terminal-green scale-110 shadow-lg' 
                                 : isAnswered 
-                                    ? `bg-gray-200 dark:bg-terminal-dimGreen text-gray-700 dark:text-black border-gray-300 dark:border-terminal-green ${isOneWay ? 'opacity-50 cursor-not-allowed' : ''}` 
-                                    : `bg-transparent text-gray-400 border-gray-300 dark:border-gray-700 ${!isOneWay && 'hover:border-blue-400'}`
+                                    ? `bg-gray-200 dark:bg-terminal-dimGreen text-gray-700 dark:text-terminal-black border-gray-300 dark:border-terminal-dimGreen ${isOneWay ? 'opacity-50 cursor-not-allowed' : ''}` 
+                                    : `bg-transparent text-gray-400 dark:text-terminal-green border-gray-300 dark:border-terminal-gray ${!isOneWay && 'hover:border-terminal-green'}`
                             }
                             ${isOneWay ? 'cursor-not-allowed' : ''}
                         `}
@@ -273,38 +291,38 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             })}
          </div>
 
-        <div className={`text-xl font-mono whitespace-nowrap ${settings.timeLimitMinutes > 0 && timeLeft < 60 ? 'text-red-500 animate-pulse' : ''}`}>
+        <div className={`text-xl font-mono whitespace-nowrap ${settings.timeLimitMinutes > 0 && timeLeft < 60 ? 'text-terminal-alert animate-pulse' : 'text-terminal-green'}`}>
            TIME: {settings.timeLimitMinutes > 0 ? formatTime(timeLeft) : "UNLIMITED"}
         </div>
       </div>
 
       {/* Question Card */}
-      <div className="flex-grow border border-gray-300 dark:border-terminal-green p-4 md:p-8 bg-white dark:bg-black relative overflow-hidden shadow-xl flex flex-col">
+      <div className="flex-grow border border-gray-300 dark:border-terminal-green p-4 md:p-8 bg-white dark:bg-terminal-black relative overflow-hidden shadow-xl flex flex-col transition-colors duration-300">
         
-        {/* Header Row: Question # and Metadata/Controls (Flexbox prevents overlap) */}
+        {/* Header Row */}
         <div className="flex justify-between items-start mb-4 w-full">
-            <span className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">
+            <span className="text-sm text-gray-500 dark:text-terminal-green font-mono mt-1 opacity-70">
                 QUESTION {currentIndex + 1}
             </span>
 
             <div className="flex items-center gap-2">
                 <button 
                     onClick={handleToggleSave}
-                    className={`transition-colors hover:scale-110 ${savedState ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
+                    className={`transition-colors hover:scale-110 ${savedState ? 'text-terminal-alert' : 'text-gray-300 dark:text-gray-700 hover:text-terminal-alert'}`}
                     title={savedState ? "Remove from Library" : "Save to Library"}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                     </svg>
                 </button>
-                <span className="text-[10px] font-bold uppercase tracking-widest bg-gray-200 dark:bg-terminal-dimGreen text-black px-2 py-1 rounded-sm whitespace-nowrap">
+                <span className="text-[10px] font-bold uppercase tracking-widest bg-gray-200 dark:bg-terminal-dimGreen text-black dark:text-terminal-light px-2 py-1 rounded-sm whitespace-nowrap">
                     {currentQ.type}
                 </span>
             </div>
         </div>
         
         <div className="mb-6 relative z-0 flex-grow">
-             <div className="text-base md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-gray-100 break-words">
+             <div className="text-base md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-terminal-light break-words">
                <MarkdownRenderer content={displayText} className="inline-block w-full" />
              </div>
         </div>
@@ -316,7 +334,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         {/* Inputs based on type */}
         <div className="mt-8 mb-8" key={currentQ.id}>
           {inputError && (
-              <div className="mb-4 p-2 border border-red-500 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2 animate-bounce">
+              <div className="mb-4 p-2 border border-terminal-alert bg-red-100 dark:bg-terminal-alert/10 text-terminal-alert text-xs font-bold flex items-center gap-2 animate-bounce">
                   <span>⚠️ SECURITY ALERT:</span>
                   <span>{inputError}</span>
               </div>
@@ -327,10 +345,10 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
               {currentQ.options!.map((opt, idx) => (
                 <label 
                   key={idx}
-                  className={`flex items-center p-3 md:p-4 border cursor-pointer transition-colors group relative min-h-[3.5rem] touch-manipulation
+                  className={`flex items-center p-3 md:p-4 border cursor-pointer transition-colors group relative min-h-[3.5rem] touch-manipulation rounded
                     ${getAnswerValue() === idx 
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md' 
-                        : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900'
+                        ? 'border-terminal-green bg-terminal-green/10 shadow-md' 
+                        : 'border-gray-300 dark:border-terminal-gray hover:bg-gray-50 dark:hover:bg-terminal-gray/50'
                     }
                   `}
                 >
@@ -338,11 +356,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                   <div className={`
                         w-6 h-6 rounded-full border-2 mr-4 flex items-center justify-center flex-shrink-0 transition-colors
                         ${getAnswerValue() === idx 
-                            ? 'border-blue-500' 
-                            : 'border-gray-400 dark:border-gray-600 group-hover:border-blue-400'
+                            ? 'border-terminal-green' 
+                            : 'border-gray-400 dark:border-gray-600 group-hover:border-terminal-green'
                         }
                   `}>
-                        {getAnswerValue() === idx && <div className="w-3 h-3 rounded-full bg-blue-500"></div>}
+                        {getAnswerValue() === idx && <div className="w-3 h-3 rounded-full bg-terminal-green"></div>}
                   </div>
 
                   <input 
@@ -353,16 +371,15 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                     className="hidden"
                     disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
                   />
-                  <span className="text-sm md:text-base w-full break-words">
+                  <span className="text-sm md:text-base w-full break-words dark:text-terminal-light">
                       <MarkdownRenderer content={opt} />
                   </span>
                 </label>
               ))}
             </div>
           ) : (currentQ.type === QuestionType.MCQ && (
-            /* Fallback for Open Ended / Short Answer or Malformed MCQ */
              <div className="space-y-2">
-                <div className="text-xs text-gray-500 font-bold mb-1 flex items-center gap-2 uppercase tracking-wider">
+                <div className="text-xs text-gray-500 dark:text-terminal-green font-bold mb-1 flex items-center gap-2 uppercase tracking-wider">
                    <span>✎ SHORT ANSWER / OPEN RESPONSE</span>
                 </div>
                 <input 
@@ -370,7 +387,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                   value={String(getAnswerValue())} 
                   onChange={(e) => handleAnswer(e.target.value)}
                   placeholder="Type your answer here..."
-                  className="w-full bg-gray-50 dark:bg-[#0c0c0c] border border-gray-300 dark:border-gray-600 p-3 md:p-4 font-mono focus:border-blue-500 outline-none text-base md:text-lg rounded"
+                  className="w-full bg-gray-50 dark:bg-terminal-black border border-gray-300 dark:border-terminal-gray p-3 md:p-4 font-mono focus:border-terminal-green outline-none text-base md:text-lg rounded dark:text-terminal-light"
                   disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
                 />
              </div>
@@ -378,26 +395,26 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
           {currentQ.type === QuestionType.TRACING && (
              <div className="space-y-2">
-                <label className="text-sm font-bold opacity-70 font-mono">&gt; OUTPUT_TERMINAL:</label>
+                <label className="text-sm font-bold opacity-70 font-mono dark:text-terminal-green">&gt; OUTPUT_TERMINAL:</label>
                 <input 
                   type="text" 
                   value={String(getAnswerValue())} 
                   onChange={(e) => handleAnswer(e.target.value)}
                   placeholder="Type output..."
                   maxLength={200}
-                  className="w-full bg-gray-50 dark:bg-[#0c0c0c] border border-gray-300 dark:border-gray-600 p-3 md:p-4 font-mono focus:border-blue-500 outline-none text-base md:text-lg"
+                  className="w-full bg-gray-50 dark:bg-terminal-black border border-gray-300 dark:border-terminal-gray p-3 md:p-4 font-mono focus:border-terminal-green outline-none text-base md:text-lg dark:text-terminal-light"
                   disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
                 />
              </div>
           )}
 
           {currentQ.type === QuestionType.CODING && (
-            <div className="space-y-2 border border-gray-300 dark:border-gray-700">
-               <div className="bg-gray-200 dark:bg-gray-800 px-2 py-1 text-xs font-bold flex justify-between">
+            <div className="space-y-2 border border-gray-300 dark:border-terminal-gray">
+               <div className="bg-gray-200 dark:bg-terminal-gray px-2 py-1 text-xs font-bold flex justify-between dark:text-terminal-light">
                    <span>EDITOR</span>
                    <span className="text-[10px] opacity-70">MAX 5000 CHARS</span>
                </div>
-               <div className="min-h-[200px] bg-gray-50 dark:bg-[#0c0c0c]">
+               <div className="min-h-[200px] bg-gray-50 dark:bg-terminal-black">
                  <Editor
                     value={String(getAnswerValue())}
                     onValueChange={code => handleAnswer(code)}
@@ -417,68 +434,59 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
         {/* Two Way Feedback Area */}
         {showFeedback && (
-            <div className={`mb-6 p-4 md:p-6 border-l-4 animate-fade-in ${answers.get(currentQ.id)?.isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'}`}>
-                <h4 className={`font-bold mb-3 text-lg ${answers.get(currentQ.id)?.isCorrect ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+            <div className={`mb-6 p-4 md:p-6 border-l-4 animate-fade-in ${answers.get(currentQ.id)?.isCorrect ? 'border-terminal-green bg-terminal-green/10' : 'border-terminal-alert bg-terminal-alert/10'}`}>
+                <h4 className={`font-bold mb-3 text-lg ${answers.get(currentQ.id)?.isCorrect ? 'text-terminal-green' : 'text-terminal-alert'}`}>
                     {answers.get(currentQ.id)?.isCorrect ? "✓ CORRECT" : "✕ INCORRECT"}
                 </h4>
                 <MarkdownRenderer content={currentFeedback} />
             </div>
         )}
 
-      </div>
+        {/* --- CANVAS NAVIGATION & ACTIONS --- */}
+        <div className="mt-8 pt-4 border-t border-gray-200 dark:border-terminal-gray flex flex-row items-center justify-between">
+             
+             {/* PREV BUTTON */}
+             <button 
+                onClick={prevQuestion} 
+                disabled={currentIndex === 0 || isOneWay}
+                className={`
+                    flex items-center justify-center p-3 md:p-4 rounded-full transition-all group active:scale-95
+                    ${currentIndex === 0 || isOneWay 
+                        ? 'opacity-30 cursor-not-allowed text-gray-400' 
+                        : 'text-terminal-green hover:bg-terminal-green/10 cursor-pointer'
+                    }
+                `}
+                title="Previous Question"
+             >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-10 md:w-10 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                </svg>
+             </button>
 
-      {/* Navigation Footer */}
-      <div className="mt-6 flex flex-col md:flex-row justify-between gap-4">
-        {/* PREV BUTTON: Arrow on Mobile, Text on Desktop */}
-        <button 
-          onClick={prevQuestion} 
-          disabled={currentIndex === 0 || isOneWay}
-          className={`
-            px-6 py-4 md:py-3 border border-gray-300 dark:border-gray-600 font-bold text-sm transition-all w-full md:w-auto flex items-center justify-center
-            ${currentIndex === 0 || isOneWay ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}
-          `}
-        >
-          <span className="hidden md:inline">&lt; PREV</span>
-          <span className="md:hidden">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-              </svg>
-          </span>
-        </button>
+             {/* CENTER ACTION (Submit/Check) */}
+             <div className="flex-grow flex justify-center px-4">
+                 {renderActionButton()}
+             </div>
 
-        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-            {settings.mode === ExamMode.TWO_WAY && !showFeedback && (
-                <button
-                    onClick={checkAnswerTwoWay}
-                    disabled={isGrading || !!inputError}
-                    className="px-6 py-4 md:py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 shadow-lg shadow-blue-500/30 text-sm w-full md:w-auto uppercase"
-                >
-                    {isGrading ? 'VALIDATING...' : 'CHECK ANSWER'}
-                </button>
-            )}
-
-            {currentIndex === questions.length - 1 ? (
-            <button 
-                onClick={handleFinish}
-                disabled={!!inputError}
-                className="px-8 py-4 md:py-3 bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg shadow-green-500/30 text-sm tracking-wider disabled:opacity-50 w-full md:w-auto uppercase"
-            >
-                SUBMIT EXAM
-            </button>
-            ) : (
-            <button 
+             {/* NEXT BUTTON */}
+             <button 
                 onClick={nextQuestion}
-                className="px-6 py-4 md:py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-800 font-bold text-sm w-full md:w-auto flex items-center justify-center"
-            >
-                <span className="hidden md:inline">NEXT &gt;</span>
-                <span className="md:hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                    </svg>
-                </span>
-            </button>
-            )}
+                disabled={currentIndex === questions.length - 1} // Disabled on last question visually, submit button handles it
+                className={`
+                    flex items-center justify-center p-3 md:p-4 rounded-full transition-all group active:scale-95
+                    ${currentIndex === questions.length - 1
+                        ? 'opacity-0 pointer-events-none' // Hide instead of disable to keep layout balanced
+                        : 'text-terminal-green hover:bg-terminal-green/10 cursor-pointer'
+                    }
+                `}
+                title="Next Question"
+             >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-10 md:w-10 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+             </button>
         </div>
+
       </div>
     </div>
   );
