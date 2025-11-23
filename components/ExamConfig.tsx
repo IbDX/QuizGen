@@ -143,11 +143,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       setIsScanning(false);
   };
 
-  const handleMouseEnterFile = (e: React.MouseEvent, file: FileData) => {
-      // Disable hover preview on touch/mobile devices implicitly
-      if (window.matchMedia('(pointer: coarse)').matches) return;
-
-      const rect = e.currentTarget.getBoundingClientRect();
+  const updatePreviewPosition = (target: Element, file: FileData) => {
+      const rect = target.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       
@@ -180,6 +177,16 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       });
   };
 
+  const handleMouseEnterFile = (e: React.MouseEvent, file: FileData) => {
+      // Disable hover preview on touch/mobile devices implicitly by checking coarse pointer
+      if (window.matchMedia('(pointer: coarse)').matches) return;
+      updatePreviewPosition(e.currentTarget, file);
+  };
+
+  const handleTouchStartFile = (e: React.TouchEvent, file: FileData) => {
+      updatePreviewPosition(e.currentTarget, file);
+  };
+
   const handleMouseLeaveFile = () => {
       setHoveredFile(null);
   };
@@ -199,7 +206,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       {/* File Preview Tooltip */}
       {hoveredFile && (
           <div 
-            className="fixed z-50 bg-gray-100 dark:bg-black border-2 border-terminal-green shadow-2xl p-2 pointer-events-none animate-fade-in hidden md:block"
+            className="fixed z-50 bg-gray-100 dark:bg-black border-2 border-terminal-green shadow-2xl p-2 pointer-events-none animate-fade-in"
             style={{ 
                 top: hoveredFile.y,
                 left: hoveredFile.x,
@@ -245,6 +252,9 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                     className="font-mono text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-3 md:p-2 flex items-center justify-between group hover:border-terminal-green hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors relative cursor-help"
                     onMouseEnter={(e) => handleMouseEnterFile(e, f)}
                     onMouseLeave={handleMouseLeaveFile}
+                    onTouchStart={(e) => handleTouchStartFile(e, f)}
+                    onTouchEnd={handleMouseLeaveFile}
+                    onTouchMove={handleMouseLeaveFile} // Hide if scrolling
                 >
                     <div className="flex items-center gap-2 overflow-hidden">
                         <span className="opacity-50 text-xs text-gray-500 shrink-0">[{i+1}]</span>
