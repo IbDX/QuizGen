@@ -142,6 +142,13 @@ const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: 
     - Understand the document layout, question numbering, and answer keys (if present).
     - Identify EVERY question in the document. Do not skip any.
     - Preserve C++ syntax like pointers (*ptr) and references (&ref). Do not interpret them as Markdown italics.
+
+    **MATH FORMATTING RULES:**
+    - Use **LaTeX** for ALL mathematical expressions.
+    - **Inline Math:** Wrap in single dollar signs, e.g., $x^2 + y = 5$.
+    - **Block Math:** Wrap in double dollar signs, e.g., $$\\int_0^\\infty f(x) dx$$.
+    - Ensure all variables (x, y, n) and math symbols are inside LaTeX delimiters.
+    - DO NOT use plain text math (like x^2) without delimiters.
     `;
 
     switch (preference) {
@@ -328,6 +335,7 @@ export const generateExamFromWrongAnswers = async (originalQuestions: Question[]
           - Do not force specific types (MCQ/Coding/Tracing). Use the best format for the concept.
           - Ensure code snippets are correctly formatted.
           - Focus on clearing up misconceptions shown by failing the original questions.
+          - Use LaTeX for math ($...$ for inline, $$...$$ for block).
         `;
     
         const response = await ai.models.generateContent({

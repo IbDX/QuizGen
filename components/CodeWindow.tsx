@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from 'react';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-javascript';
@@ -59,7 +60,7 @@ export const CodeWindow: React.FC<CodeWindowProps> = ({ code, title = "code" }) 
   };
 
   return (
-    <div className="rounded-lg overflow-hidden shadow-2xl my-6 border border-gray-700 bg-[#1e1e1e] group relative">
+    <div className="rounded-lg overflow-hidden shadow-2xl my-6 border border-gray-700 bg-[#1e1e1e] group relative" dir="ltr">
       {/* Window Header */}
       <div className="bg-[#252526] px-4 py-2 flex items-center justify-between border-b border-black">
         <div className="flex gap-2">
