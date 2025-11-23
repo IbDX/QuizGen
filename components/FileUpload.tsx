@@ -1,13 +1,17 @@
 
+
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
 import { sanitizeInput } from '../utils/security';
+import { t } from '../utils/translations';
+import { UILanguage } from '../types';
 
 interface FileUploadProps {
   onFilesAccepted: (files: Array<{base64: string, mime: string, name: string, hash: string}>) => void;
   onLoadDemo: () => void;
   isFullWidth: boolean;
+  lang?: UILanguage;
 }
 
 interface ProcessingLog {
@@ -16,7 +20,7 @@ interface ProcessingLog {
     error?: string;
 }
 
-export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadDemo, isFullWidth }) => {
+export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadDemo, isFullWidth, lang = 'en' }) => {
   const [logs, setLogs] = useState<ProcessingLog[]>([]);
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -174,13 +178,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           </div>
 
           <h3 className="text-lg md:text-xl font-bold uppercase">
-            {globalStatus === 'PROCESSING' ? 'ANALYZING BATCH...' : 'SECURE FILE UPLOAD'}
+            {globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('secure_upload', lang)}
           </h3>
           
           <p className="text-xs md:text-sm opacity-70 font-mono">
             {globalStatus === 'PROCESSING' 
-             ? 'Executing Security Protocols on individual files...'
-             : 'Tap to Select or Drag & Drop Multiple PDFs/Images'}
+             ? t('executing_protocols', lang)
+             : t('tap_to_select', lang)}
           </p>
         </div>
 
@@ -213,7 +217,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
 
       <div className="flex items-center my-6">
           <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
-          <span className="px-4 text-[10px] md:text-xs text-gray-500 font-mono uppercase">OR VIA NETWORK</span>
+          <span className="px-4 text-[10px] md:text-xs text-gray-500 font-mono uppercase">{t('or_via_network', lang)}</span>
           <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
       </div>
 
@@ -231,7 +235,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
              disabled={!urlInput || globalStatus !== 'IDLE'}
              className="w-full sm:w-auto px-6 py-3 md:py-0 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50 rounded-sm"
           >
-            FETCH
+            {t('fetch', lang)}
           </button>
       </form>
 
@@ -251,16 +255,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
               </div>
               
               <div className="flex-grow text-center sm:text-left w-full">
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100">QUICK DIAGNOSTIC TEST</h4>
+                  <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100">{t('quick_test', lang)}</h4>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                      Run an instant simulation using a sample C++ pointer analysis document. No upload required.
+                      {t('demo_desc', lang)}
                   </p>
                   <button 
                      onClick={onLoadDemo}
                      disabled={globalStatus !== 'IDLE'}
                      className="px-6 py-3 md:py-2 bg-terminal-green text-black font-bold text-sm hover:bg-green-400 transition-colors w-full sm:w-auto uppercase tracking-wider disabled:opacity-50 rounded-sm"
                   >
-                      LOAD DEMO
+                      {t('load_demo', lang)}
                   </button>
               </div>
           </div>

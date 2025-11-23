@@ -19,6 +19,9 @@ export enum ExamMode {
   TWO_WAY = 'TWO_WAY'  // Immediate feedback allowed
 }
 
+export type OutputLanguage = 'en' | 'ar';
+export type UILanguage = 'en' | 'ar';
+
 export interface Question {
   id: string;
   type: QuestionType;
@@ -42,6 +45,7 @@ export interface ExamSettings {
   timeLimitMinutes: number;
   mode: ExamMode;
   formatPreference: QuestionFormatPreference;
+  outputLanguage: OutputLanguage;
 }
 
 export interface LeaderboardEntry {

@@ -1,5 +1,7 @@
+
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType } from '../types';
+import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType, UILanguage } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
 import { saveQuestion, isQuestionSaved, removeQuestion } from '../services/library';
 import { CodeWindow } from './CodeWindow';
@@ -9,15 +11,17 @@ import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
+import { t } from '../utils/translations';
 
 interface ExamRunnerProps {
   questions: Question[];
   settings: ExamSettings;
   onComplete: (answers: UserAnswer[]) => void;
   isFullWidth: boolean;
+  lang: UILanguage;
 }
 
-export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onComplete, isFullWidth }) => {
+export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onComplete, isFullWidth, lang }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Map<string, UserAnswer>>(new Map());
   const [timeLeft, setTimeLeft] = useState(settings.timeLimitMinutes * 60);
@@ -223,7 +227,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
               disabled={isGrading || !!inputError}
               className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen disabled:opacity-50 shadow text-sm uppercase rounded transition-colors"
           >
-              {isGrading ? 'VALIDATING...' : 'CHECK'}
+              {isGrading ? t('validating', lang) : t('check', lang)}
           </button>
         );
     }
@@ -235,7 +239,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
               disabled={!!inputError}
               className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen shadow text-sm tracking-wider disabled:opacity-50 uppercase rounded transition-colors"
           >
-              SUBMIT
+              {t('submit', lang)}
           </button>
         );
     }
@@ -251,7 +255,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       {/* Progress Bar */}
       <div className="mb-4">
         <div className="flex justify-between text-[10px] font-bold font-mono mb-1 text-gray-500 dark:text-gray-400 tracking-widest">
-          <span>EXECUTION_PROGRESS</span>
+          <span>{t('execution_progress', lang)}</span>
           <span>{progressPercentage}% [{answers.size}/{questions.length}]</span>
         </div>
         <div className="w-full bg-gray-200 dark:bg-terminal-gray h-1.5 border border-gray-300 dark:border-terminal-gray overflow-hidden">
@@ -292,7 +296,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
          </div>
 
         <div className={`text-xl font-mono whitespace-nowrap ${settings.timeLimitMinutes > 0 && timeLeft < 60 ? 'text-terminal-alert animate-pulse' : 'text-terminal-green'}`}>
-           TIME: {settings.timeLimitMinutes > 0 ? formatTime(timeLeft) : "UNLIMITED"}
+           {t('time_remaining', lang)}: {settings.timeLimitMinutes > 0 ? formatTime(timeLeft) : "∞"}
         </div>
       </div>
 
@@ -302,7 +306,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         {/* Header Row */}
         <div className="flex justify-between items-start mb-4 w-full">
             <span className="text-sm text-gray-500 dark:text-terminal-green font-mono mt-1 opacity-70">
-                QUESTION {currentIndex + 1}
+                {t('question', lang)} {currentIndex + 1}
             </span>
 
             <div className="flex items-center gap-2">
@@ -328,14 +332,17 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         </div>
 
         {currentQ.codeSnippet && !hasCodeBlockInText && (
-          <CodeWindow code={currentQ.codeSnippet} />
+          // FORCE LTR FOR CODE BLOCKS EVEN IN RTL MODE
+          <div dir="ltr" className="w-full text-left">
+              <CodeWindow code={currentQ.codeSnippet} />
+          </div>
         )}
 
         {/* Inputs based on type */}
         <div className="mt-8 mb-8" key={currentQ.id}>
           {inputError && (
               <div className="mb-4 p-2 border border-terminal-alert bg-red-100 dark:bg-terminal-alert/10 text-terminal-alert text-xs font-bold flex items-center gap-2 animate-bounce">
-                  <span>⚠️ SECURITY ALERT:</span>
+                  <span>⚠️ {t('security_alert', lang)}:</span>
                   <span>{inputError}</span>
               </div>
           )}
@@ -354,7 +361,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                 >
                    {/* Custom Radio UI */}
                   <div className={`
-                        w-6 h-6 rounded-full border-2 mr-4 flex items-center justify-center flex-shrink-0 transition-colors
+                        w-6 h-6 rounded-full border-2 mr-4 rtl:mr-0 rtl:ml-4 flex items-center justify-center flex-shrink-0 transition-colors
                         ${getAnswerValue() === idx 
                             ? 'border-terminal-green' 
                             : 'border-gray-400 dark:border-gray-600 group-hover:border-terminal-green'
@@ -380,13 +387,12 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
           ) : (currentQ.type === QuestionType.MCQ && (
              <div className="space-y-2">
                 <div className="text-xs text-gray-500 dark:text-terminal-green font-bold mb-1 flex items-center gap-2 uppercase tracking-wider">
-                   <span>✎ SHORT ANSWER / OPEN RESPONSE</span>
+                   <span>✎ {t('short_answer', lang)}</span>
                 </div>
                 <input 
                   type="text" 
                   value={String(getAnswerValue())} 
                   onChange={(e) => handleAnswer(e.target.value)}
-                  placeholder="Type your answer here..."
                   className="w-full bg-gray-50 dark:bg-terminal-black border border-gray-300 dark:border-terminal-gray p-3 md:p-4 font-mono focus:border-terminal-green outline-none text-base md:text-lg rounded dark:text-terminal-light"
                   disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
                 />
@@ -395,15 +401,15 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
           {currentQ.type === QuestionType.TRACING && (
              <div className="space-y-2">
-                <label className="text-sm font-bold opacity-70 font-mono dark:text-terminal-green">&gt; OUTPUT_TERMINAL:</label>
+                <label className="text-sm font-bold opacity-70 font-mono dark:text-terminal-green" dir="ltr">&gt; {t('output_terminal', lang)}:</label>
                 <input 
                   type="text" 
                   value={String(getAnswerValue())} 
                   onChange={(e) => handleAnswer(e.target.value)}
-                  placeholder="Type output..."
                   maxLength={200}
                   className="w-full bg-gray-50 dark:bg-terminal-black border border-gray-300 dark:border-terminal-gray p-3 md:p-4 font-mono focus:border-terminal-green outline-none text-base md:text-lg dark:text-terminal-light"
                   disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
+                  dir="ltr" // Output Tracing is technically always code/English
                 />
              </div>
           )}
@@ -411,10 +417,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
           {currentQ.type === QuestionType.CODING && (
             <div className="space-y-2 border border-gray-300 dark:border-terminal-gray">
                <div className="bg-gray-200 dark:bg-terminal-gray px-2 py-1 text-xs font-bold flex justify-between dark:text-terminal-light">
-                   <span>EDITOR</span>
-                   <span className="text-[10px] opacity-70">MAX 5000 CHARS</span>
+                   <span>{t('editor', lang)}</span>
+                   <span className="text-[10px] opacity-70">{t('max_chars', lang)}</span>
                </div>
-               <div className="min-h-[200px] bg-gray-50 dark:bg-terminal-black">
+               {/* Force LTR for Code Editor */}
+               <div className="min-h-[200px] bg-gray-50 dark:bg-terminal-black text-left" dir="ltr">
                  <Editor
                     value={String(getAnswerValue())}
                     onValueChange={code => handleAnswer(code)}
@@ -456,9 +463,9 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                         : 'text-terminal-green hover:bg-terminal-green/10 cursor-pointer'
                     }
                 `}
-                title="Previous Question"
+                title={t('prev', lang)}
              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-10 md:w-10 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-10 md:w-10 group-hover:-translate-x-1 transition-transform rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                 </svg>
              </button>
@@ -479,9 +486,9 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                         : 'text-terminal-green hover:bg-terminal-green/10 cursor-pointer'
                     }
                 `}
-                title="Next Question"
+                title={t('next', lang)}
              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-10 md:w-10 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-10 md:w-10 group-hover:translate-x-1 transition-transform rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                 </svg>
              </button>

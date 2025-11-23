@@ -1,17 +1,20 @@
 
 
+
 import React, { useState, useEffect } from 'react';
-import { Question, QuestionType, SavedExam } from '../types';
+import { Question, QuestionType, SavedExam, UILanguage } from '../types';
 import { getLibrary, removeQuestion, getSavedExams, removeExam } from '../services/library';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
+import { t } from '../utils/translations';
 
 interface QuestionLibraryProps {
     isFullWidth: boolean;
     onLoadExam?: (questions: Question[]) => void;
+    lang?: UILanguage;
 }
 
-export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, onLoadExam }) => {
+export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, onLoadExam, lang = 'en' }) => {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [exams, setExams] = useState<SavedExam[]>([]);
     const [filter, setFilter] = useState<string>('ALL');
@@ -46,8 +49,8 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
         <div className={`mx-auto transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>
             <div className="flex flex-col md:flex-row items-center justify-between mb-8 border-b border-gray-300 dark:border-gray-700 pb-4 gap-4">
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
-                    <span className="text-blue-600 dark:text-blue-400 mr-2">📚</span>
-                    LIBRARY
+                    <span className="text-blue-600 dark:text-blue-400 mx-2">📚</span>
+                    {t('library', lang)}
                 </h2>
                 
                 {/* TAB SWITCHER */}
@@ -56,13 +59,13 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                         onClick={() => setActiveTab('QUESTIONS')}
                         className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${activeTab === 'QUESTIONS' ? 'bg-white dark:bg-black shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}
                     >
-                        SAVED QUESTIONS ({questions.length})
+                        {t('saved_questions', lang)} ({questions.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('EXAMS')}
                         className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${activeTab === 'EXAMS' ? 'bg-white dark:bg-black shadow-sm text-purple-600 dark:text-purple-400' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}
                     >
-                        SAVED EXAMS ({exams.length})
+                        {t('saved_exams', lang)} ({exams.length})
                     </button>
                 </div>
             </div>
@@ -86,8 +89,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                     {questions.length === 0 ? (
                         <div className="text-center py-20 opacity-50">
                             <div className="text-4xl mb-4">📂</div>
-                            <p>QUESTION LIBRARY IS EMPTY</p>
-                            <p className="text-sm">Save individual questions during an exam.</p>
+                            <p>{t('library_empty', lang)}</p>
                         </div>
                     ) : (
                         <div className="space-y-8 pb-20">
@@ -99,10 +101,10 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                                 }
                                 
                                 return (
-                                    <div key={q.id} className="p-6 border-l-4 border-blue-500 bg-white dark:bg-gray-900 shadow-lg relative group">
+                                    <div key={q.id} className="p-6 border-l-4 rtl:border-l-0 rtl:border-r-4 border-blue-500 bg-white dark:bg-gray-900 shadow-lg relative group">
                                          <button 
                                             onClick={() => handleDeleteQuestion(q.id)}
-                                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                                            className="absolute top-4 right-4 rtl:right-auto rtl:left-4 text-gray-400 hover:text-red-500 transition-colors"
                                             title="Remove from Library"
                                          >
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -121,11 +123,13 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                                          </div>
             
                                          {q.codeSnippet && !hasCodeBlockInText && (
-                                             <CodeWindow code={q.codeSnippet} />
+                                             <div dir="ltr" className="text-left">
+                                                 <CodeWindow code={q.codeSnippet} />
+                                             </div>
                                          )}
             
                                          <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded mt-4 border border-blue-100 dark:border-gray-800">
-                                            <h4 className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 mb-2">Analysis / Solution</h4>
+                                            <h4 className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 mb-2">{t('analysis', lang)}</h4>
                                             <div className="text-sm">
                                                 {q.type === QuestionType.MCQ && q.options && q.correctOptionIndex !== undefined && (
                                                     <div className="mb-2 font-bold">
@@ -152,8 +156,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                     {exams.length === 0 ? (
                         <div className="text-center py-20 opacity-50">
                             <div className="text-4xl mb-4">💾</div>
-                            <p>NO SAVED EXAMS</p>
-                            <p className="text-sm">Finish an exam and click 'Save Full Exam' to see it here.</p>
+                            <p>{t('no_saved_exams', lang)}</p>
                         </div>
                     ) : (
                         <div className="grid gap-6 pb-20">
@@ -183,7 +186,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                                         onClick={() => handleLoadExam(exam)}
                                         className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold uppercase tracking-widest text-sm transition-colors"
                                     >
-                                        LOAD & RETAKE EXAM
+                                        {t('load_retake', lang)}
                                     </button>
                                 </div>
                             ))}

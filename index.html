@@ -12,6 +12,7 @@
           extend: {
             fontFamily: {
               mono: ['"Fira Code"', '"Courier New"', 'Courier', 'monospace'],
+              sans: ['"Roboto Mono"', '"Cairo"', 'sans-serif'], // Added Cairo for Arabic
             },
             colors: {
               terminal: {
@@ -28,7 +29,7 @@
         },
       };
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&family=Roboto+Mono:wght@400;700&family=Cairo:wght@400;700&display=swap" rel="stylesheet">
     <!-- PrismJS Theme -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <style>
@@ -91,7 +92,7 @@
       }
 
       body {
-        font-family: 'Fira Code', monospace;
+        font-family: 'Fira Code', 'Cairo', monospace;
       }
       /* Default Custom Scrollbar (Terminal/Light) */
       ::-webkit-scrollbar {

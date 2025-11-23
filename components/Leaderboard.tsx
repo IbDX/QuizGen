@@ -1,8 +1,13 @@
 
-import React, { useEffect, useState } from 'react';
-import { LeaderboardEntry } from '../types';
 
-export const Leaderboard: React.FC = () => {
+import React, { useEffect, useState } from 'react';
+import { LeaderboardEntry, UILanguage } from '../types';
+
+interface LeaderboardProps {
+    lang: UILanguage;
+}
+
+export const Leaderboard: React.FC<LeaderboardProps> = ({ lang }) => {
   const [scores, setScores] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
@@ -22,7 +27,7 @@ export const Leaderboard: React.FC = () => {
   return (
     <div className="w-full max-w-md mx-auto mt-8 border border-gray-300 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-lg">
       <h3 className="text-center font-bold border-b border-gray-300 dark:border-gray-700 pb-2 mb-4 tracking-wider text-sm">
-        ★ TOP AGENTS ★
+        ★ {lang === 'ar' ? 'أفضل العملاء' : 'TOP AGENTS'} ★
       </h3>
       <div className="space-y-2">
         {scores.map((entry, i) => (

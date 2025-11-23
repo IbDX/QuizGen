@@ -1,6 +1,8 @@
 
+
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { Question, QuestionType, QuestionFormatPreference } from "../types";
+import { Question, QuestionType, QuestionFormatPreference, OutputLanguage } from "../types";
 
 // Helper to generate schema based on preference
 const getExamSchema = (preference: QuestionFormatPreference): Schema => {
@@ -108,8 +110,22 @@ const deduplicateQuestions = (questions: Question[]): Question[] => {
   return uniqueQuestions;
 };
 
-const getSystemInstruction = (preference: QuestionFormatPreference): string => {
+const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: OutputLanguage): string => {
+    const langInstruction = outputLang === 'ar' 
+        ? `
+        **LANGUAGE REQUIREMENT: TECHNICAL ARABIC**
+        - You MUST generate the "text" (Question), "options", and "explanation" in **Arabic**.
+        - However, **ALL CODE SNIPPETS, VARIABLE NAMES, and PROGRAMMING SYNTAX MUST REMAIN IN ENGLISH**.
+        - Use standard computer science terminology in Arabic (e.g., use 'مصفوفة' for Array, 'دالة' for Function, 'مؤشر' for Pointer) but keep the code strictly English.
+        - Example: "ما هي مخرجات الكود التالي؟" instead of "What is the output?".
+        - Do NOT translate code keywords (e.g., 'int', 'void', 'for', 'if').
+        `
+        : `**LANGUAGE REQUIREMENT: ENGLISH**
+           - Generate all content in English.`;
+
     const BASE_INSTRUCTION = `
+    ${langInstruction}
+
     **PHASE 1: GLOBAL CONTEXT SCAN**
     - First, analyze ALL attached files from start to finish.
     - Understand the document layout, question numbering, and answer keys (if present).
@@ -223,6 +239,7 @@ const getSystemInstruction = (preference: QuestionFormatPreference): string => {
 export const generateExam = async (
     files: { base64: string, mimeType: string }[], 
     preference: QuestionFormatPreference = QuestionFormatPreference.MIXED,
+    outputLanguage: OutputLanguage = 'en',
     instructions?: string
 ): Promise<Question[]> => {
   try {
@@ -230,7 +247,7 @@ export const generateExam = async (
     
     const modelId = 'gemini-2.5-flash'; 
 
-    const systemPrompt = getSystemInstruction(preference);
+    const systemPrompt = getSystemInstruction(preference, outputLanguage);
 
     const userPrompt = `
       Analyze the attached **${files.length} file(s)**.

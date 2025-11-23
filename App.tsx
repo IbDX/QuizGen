@@ -1,6 +1,7 @@
 
 
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
 import { ExamConfig } from './components/ExamConfig';
@@ -9,9 +10,10 @@ import { Results } from './components/Results';
 import { Leaderboard } from './components/Leaderboard';
 import { QuestionLibrary } from './components/QuestionLibrary';
 import { LoadingScreen } from './components/LoadingScreen';
-import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference } from './types';
+import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference, UILanguage } from './types';
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 import { generateExamPDF } from './utils/pdfGenerator';
+import { t } from './utils/translations';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('UPLOAD');
@@ -26,9 +28,16 @@ const App: React.FC = () => {
   
   // Global Settings passed down
   const [autoHideFooter, setAutoHideFooter] = useState(true);
+  const [uiLanguage, setUiLanguage] = useState<UILanguage>('en');
   
   // State for Duplicate File Modal
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
+
+  // Apply Direction based on Language
+  useEffect(() => {
+    document.documentElement.dir = uiLanguage === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = uiLanguage;
+  }, [uiLanguage]);
 
   const handleFilesAccepted = (files: Array<{base64: string; mime: string; name: string; hash: string}>) => {
     // Deduplicate within the incoming batch itself
@@ -140,14 +149,18 @@ int main() {
     if (uploadedFiles.length === 0) return;
     setSettings(examSettings);
     setAppState('GENERATING');
-    setLoadingMsg(`ESTABLISHING NEURAL LINK... ANALYZING ${uploadedFiles.length} SOURCE DOCUMENT(S)...`);
+    // We could translate this loading msg too, but it's dynamic
+    setLoadingMsg(uiLanguage === 'ar' 
+        ? `جاري التحليل... ${uploadedFiles.length} ملفات...` 
+        : `ESTABLISHING NEURAL LINK... ANALYZING ${uploadedFiles.length} SOURCE DOCUMENT(S)...`
+    );
 
     try {
       // Map uploadedFiles to the format expected by generateExam
       const filePayloads = uploadedFiles.map(f => ({ base64: f.base64, mimeType: f.mime }));
       
-      // Pass the format preference to the generator
-      const generatedQuestions = await generateExam(filePayloads, examSettings.formatPreference);
+      // Pass the format preference AND Output Language to the generator
+      const generatedQuestions = await generateExam(filePayloads, examSettings.formatPreference, examSettings.outputLanguage);
       
       if (generatedQuestions.length === 0) throw new Error("No questions generated");
       setQuestions(generatedQuestions);
@@ -187,7 +200,8 @@ int main() {
       setSettings({
           timeLimitMinutes: 0,
           mode: ExamMode.ONE_WAY,
-          formatPreference: QuestionFormatPreference.ORIGINAL
+          formatPreference: QuestionFormatPreference.ORIGINAL,
+          outputLanguage: uiLanguage === 'ar' ? 'ar' : 'en' // guess
       });
       setIsLibraryOpen(false);
       setAppState('EXAM');
@@ -195,7 +209,7 @@ int main() {
 
   const handleRemediation = async (wrongIds: string[]) => {
     setAppState('GENERATING');
-    setLoadingMsg('ANALYZING FAILURE POINTS... GENERATING TACTICAL REMEDIATION EXAM...');
+    setLoadingMsg(uiLanguage === 'ar' ? 'تحليل نقاط الضعف...' : 'ANALYZING FAILURE POINTS... GENERATING TACTICAL REMEDIATION EXAM...');
     try {
       const newQuestions = await generateExamFromWrongAnswers(questions, wrongIds);
       setQuestions(newQuestions);
@@ -237,7 +251,7 @@ int main() {
   const getMobileActions = (): MobileAction[] => {
       if (appState === 'UPLOAD') {
           return [
-              { label: 'LOAD DEMO EXAM', onClick: handleDemoLoad, variant: 'primary' }
+              { label: t('load_demo', uiLanguage), onClick: handleDemoLoad, variant: 'primary' }
           ];
       }
 
@@ -253,14 +267,14 @@ int main() {
           }).map(q => q.id);
 
           const actions: MobileAction[] = [
-             { label: 'DOWNLOAD PDF REPORT', onClick: handleDownloadPDF, variant: 'warning' },
-             { label: 'RETAKE EXAM', onClick: handleRetake, variant: 'primary' },
-             { label: 'RESTART SYSTEM', onClick: handleRestart, variant: 'default' }
+             { label: t('pdf_report', uiLanguage), onClick: handleDownloadPDF, variant: 'warning' },
+             { label: t('retake', uiLanguage), onClick: handleRetake, variant: 'primary' },
+             { label: t('restart', uiLanguage), onClick: handleRestart, variant: 'default' }
           ];
 
           if (wrongIds.length > 0) {
               actions.unshift({ 
-                  label: `REMEDIATE WEAKNESS (${wrongIds.length})`, 
+                  label: `${t('remediate', uiLanguage)} (${wrongIds.length})`, 
                   onClick: () => handleRemediation(wrongIds),
                   variant: 'purple'
               });
@@ -281,6 +295,8 @@ int main() {
       autoHideFooter={autoHideFooter}
       onToggleAutoHideFooter={() => setAutoHideFooter(!autoHideFooter)}
       mobileActions={getMobileActions()}
+      uiLanguage={uiLanguage}
+      onSetUiLanguage={setUiLanguage}
     >
       {/* Duplicate Warning Modal */}
       {duplicateFiles.length > 0 && (
@@ -320,7 +336,11 @@ int main() {
 
       {/* Overlay Library if Open */}
       {isLibraryOpen && (
-          <QuestionLibrary isFullWidth={isFullWidth} onLoadExam={handleLoadSavedExam} />
+          <QuestionLibrary 
+            isFullWidth={isFullWidth} 
+            onLoadExam={handleLoadSavedExam} 
+            lang={uiLanguage}
+          />
       )}
 
       {/* Main App State - Hidden when Library is open to preserve state (timer, inputs) */}
@@ -331,8 +351,9 @@ int main() {
                 onFilesAccepted={handleFilesAccepted} 
                 onLoadDemo={handleDemoLoad}
                 isFullWidth={isFullWidth}
+                lang={uiLanguage}
               />
-              <Leaderboard />
+              <Leaderboard lang={uiLanguage}/>
             </>
           )}
 
@@ -343,6 +364,7 @@ int main() {
                 onAppendFiles={handleAppendFiles}
                 files={uploadedFiles}
                 isFullWidth={isFullWidth}
+                lang={uiLanguage}
             />
           )}
 
@@ -350,6 +372,7 @@ int main() {
             <LoadingScreen 
                 message={loadingMsg} 
                 fileNames={uploadedFiles.map(f => f.name)}
+                lang={uiLanguage}
             />
           )}
 
@@ -359,6 +382,7 @@ int main() {
               settings={settings} 
               onComplete={handleExamComplete} 
               isFullWidth={isFullWidth}
+              lang={uiLanguage}
             />
           )}
 
@@ -371,6 +395,7 @@ int main() {
               onGenerateRemediation={handleRemediation}
               isFullWidth={isFullWidth}
               autoHideFooter={autoHideFooter}
+              lang={uiLanguage}
             />
           )}
       </div>

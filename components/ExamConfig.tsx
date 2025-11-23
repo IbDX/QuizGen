@@ -1,7 +1,10 @@
+
+
 import React, { useState, useRef, useEffect } from 'react';
-import { ExamMode, ExamSettings, QuestionFormatPreference } from '../types';
+import { ExamMode, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage } from '../types';
 import { validateFile, fileToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
+import { t } from '../utils/translations';
 
 interface FileData {
     base64: string;
@@ -16,14 +19,15 @@ interface ExamConfigProps {
   onAppendFiles: (files: Array<FileData>) => void;
   files: Array<FileData>;
   isFullWidth: boolean;
+  lang: UILanguage;
 }
 
 const FORMAT_OPTIONS = [
-    { val: QuestionFormatPreference.MIXED, label: 'AUTO MIX', desc: 'Best Fit', fullLabel: 'AUTO MIX (Best Fit)' },
-    { val: QuestionFormatPreference.ORIGINAL, label: 'ORIGINAL', desc: 'Source Type', fullLabel: 'ORIGINAL (Source Type)' },
-    { val: QuestionFormatPreference.MCQ, label: 'MCQ ONLY', desc: 'Force MCQ', fullLabel: 'MCQ ONLY (Force MCQ)' },
-    { val: QuestionFormatPreference.TRACING, label: 'TRACING', desc: 'Code Output', fullLabel: 'TRACING (Code Output)' },
-    { val: QuestionFormatPreference.CODING, label: 'CODING', desc: 'Code Write', fullLabel: 'CODING (Code Write)' },
+    { val: QuestionFormatPreference.MIXED, label: 'AUTO MIX', desc: 'Best Fit' },
+    { val: QuestionFormatPreference.ORIGINAL, label: 'ORIGINAL', desc: 'Source Type' },
+    { val: QuestionFormatPreference.MCQ, label: 'MCQ ONLY', desc: 'Force MCQ' },
+    { val: QuestionFormatPreference.TRACING, label: 'TRACING', desc: 'Code Output' },
+    { val: QuestionFormatPreference.CODING, label: 'CODING', desc: 'Code Write' },
 ];
 
 const PdfPreview: React.FC<{ base64: string }> = ({ base64 }) => {
@@ -64,17 +68,24 @@ const PdfPreview: React.FC<{ base64: string }> = ({ base64 }) => {
     );
 };
 
-export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, onAppendFiles, files, isFullWidth }) => {
+export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, onAppendFiles, files, isFullWidth, lang }) => {
   const [timeLimit, setTimeLimit] = useState<number>(30);
   const [isTimed, setIsTimed] = useState<boolean>(true);
   const [mode, setMode] = useState<ExamMode>(ExamMode.ONE_WAY);
   const [formatPref, setFormatPref] = useState<QuestionFormatPreference>(QuestionFormatPreference.ORIGINAL);
+  const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>('en'); // Default to En
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   
   const [hoveredFile, setHoveredFile] = useState<{file: FileData, x: number, y: number} | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+      // If UI language changes to Arabic, default output to Arabic for convenience
+      if (lang === 'ar') setOutputLanguage('ar');
+      else setOutputLanguage('en');
+  }, [lang]);
 
   useEffect(() => {
       if (window.innerWidth < 768) {
@@ -86,7 +97,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       onStart({
           timeLimitMinutes: isTimed ? timeLimit : 0,
           mode,
-          formatPreference: formatPref
+          formatPreference: formatPref,
+          outputLanguage // Pass selected language to generator
       });
   };
 
@@ -137,10 +149,15 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       const PADDING = 15;
 
       let left = rect.right + PADDING;
-      if (left + TOOLTIP_WIDTH > viewportWidth) {
+      if (lang === 'ar') { // Flip logic for RTL
           left = rect.left - TOOLTIP_WIDTH - PADDING;
+          if (left < PADDING) left = rect.right + PADDING; // Fallback
+      } else {
+          if (left + TOOLTIP_WIDTH > viewportWidth) {
+              left = rect.left - TOOLTIP_WIDTH - PADDING;
+          }
+          if (left < PADDING) left = PADDING;
       }
-      if (left < PADDING) left = PADDING;
 
       let top = rect.top;
       if (top + TOOLTIP_MAX_HEIGHT > viewportHeight) {
@@ -182,7 +199,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
               ) : hoveredFile.file.mime === 'application/pdf' ? (
                   <PdfPreview base64={hoveredFile.file.base64} />
               ) : hoveredFile.file.mime.startsWith('text/') ? (
-                   <pre className="w-[280px] max-h-[300px] overflow-hidden text-[9px] bg-[#1e1e1e] text-gray-300 p-2 font-mono">
+                   <pre className="w-[280px] max-h-[300px] overflow-hidden text-[9px] bg-[#1e1e1e] text-gray-300 p-2 font-mono" dir="ltr">
                        {decodeBase64Text(hoveredFile.file.base64).slice(0, 500)}...
                    </pre>
               ) : (
@@ -192,13 +209,14 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
           </div>
       )}
 
-      <h2 className="text-xl md:text-2xl font-bold mb-6 border-b border-gray-300 dark:border-terminal-gray pb-2">
-        <span className="text-blue-600 dark:text-terminal-green">&gt;</span> <span className="text-gray-900 dark:text-terminal-light">CONFIGURATION</span>
+      <h2 className="text-xl md:text-2xl font-bold mb-6 border-b border-gray-300 dark:border-terminal-gray pb-2 flex items-center gap-2">
+        <span className="text-blue-600 dark:text-terminal-green rtl:rotate-180">&gt;</span> 
+        <span className="text-gray-900 dark:text-terminal-light">{t('configuration', lang)}</span>
       </h2>
 
       <div className="mb-6 bg-gray-100 dark:bg-gray-900/50 p-4 border border-gray-300 dark:border-terminal-gray">
         <div className="flex justify-between items-center mb-3">
-            <p className="text-xs text-gray-500 dark:text-terminal-green uppercase tracking-wider font-bold">Target Sources ({files.length})</p>
+            <p className="text-xs text-gray-500 dark:text-terminal-green uppercase tracking-wider font-bold">{t('target_sources', lang)} ({files.length})</p>
         </div>
         
         <ul className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar mb-4 relative">
@@ -245,9 +263,9 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
             />
             <div className="text-sm md:text-xs font-bold text-gray-500 dark:text-terminal-green uppercase flex items-center justify-center gap-2">
                 {isScanning ? (
-                    <> <span className="animate-spin">↻</span> SCANNING... </>
+                    <> <span className="animate-spin">↻</span> {t('scanning', lang)} </>
                 ) : (
-                    <> <span>+</span> ADD MORE FILES </>
+                    <> <span>+</span> {t('add_more', lang)} </>
                 )}
             </div>
         </div>
@@ -260,15 +278,37 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       </div>
 
       <div className="mb-6 space-y-6">
+        {/* Output Language Selection */}
+        <div>
+            <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('output_lang', lang)}</label>
+            <div className="grid grid-cols-2 gap-2">
+                <button
+                    onClick={() => setOutputLanguage('en')}
+                    className={`p-3 border text-center font-bold text-sm transition-all ${outputLanguage === 'en' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 dark:border-gray-700 dark:text-gray-400'}`}
+                >
+                    ENGLISH (Default)
+                </button>
+                <button
+                    onClick={() => setOutputLanguage('ar')}
+                    className={`p-3 border text-center font-bold text-sm transition-all font-sans ${outputLanguage === 'ar' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 dark:border-gray-700 dark:text-gray-400'}`}
+                >
+                    العربية (Technical)
+                </button>
+            </div>
+            <p className="text-[10px] mt-1 text-gray-500 dark:text-gray-400">
+                {outputLanguage === 'ar' ? "Exam questions will be in Arabic, but code and syntax remain in English." : "Exam generated entirely in English."}
+            </p>
+        </div>
+
         <div className="hidden md:block">
-            <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">OUTPUT_FORMAT_OVERRIDE</label>
+            <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('output_format', lang)}</label>
             <div className="grid grid-cols-5 gap-2">
                 {FORMAT_OPTIONS.map((opt) => (
                     <button
                         key={opt.val}
                         onClick={() => setFormatPref(opt.val)}
                         className={`
-                            p-2 border text-left transition-all relative overflow-hidden
+                            p-2 border text-left transition-all relative overflow-hidden rtl:text-right
                             ${formatPref === opt.val 
                                 ? 'border-terminal-green bg-terminal-green/10 text-terminal-green' 
                                 : 'border-gray-300 dark:border-terminal-gray opacity-60 hover:opacity-100 dark:text-gray-400'
@@ -283,14 +323,13 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
         </div>
 
         <div>
-          <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">MODE_SELECT</label>
+          <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('mode_select', lang)}</label>
           <div className="hidden md:flex flex-col gap-2">
             {[ExamMode.ONE_WAY, ExamMode.TWO_WAY].map((m) => (
                  <label key={m} className={`flex items-center p-3 border cursor-pointer transition-colors ${mode === m ? 'border-blue-500 dark:border-terminal-green bg-blue-50 dark:bg-terminal-green/10' : 'border-gray-300 dark:border-terminal-gray'}`}>
-                    <input type="radio" name="mode" value={m} checked={mode === m} onChange={() => setMode(m)} className="mr-3 accent-terminal-green" />
+                    <input type="radio" name="mode" value={m} checked={mode === m} onChange={() => setMode(m)} className="mr-3 accent-terminal-green rtl:ml-3 rtl:mr-0" />
                     <div>
                         <span className="font-bold dark:text-terminal-light">{m === ExamMode.ONE_WAY ? 'ONE_WAY (Standard)' : 'TWO_WAY (Interactive)'}</span>
-                        <p className="text-xs opacity-70 dark:text-gray-400">{m === ExamMode.ONE_WAY ? 'Submit all answers at end.' : 'Check answers immediately.'}</p>
                     </div>
                 </label>
             ))}
@@ -310,10 +349,10 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
         <div>
           <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-bold text-gray-900 dark:text-terminal-light">TIME_ALLOCATION</label>
+            <label className="text-sm font-bold text-gray-900 dark:text-terminal-light">{t('time_alloc', lang)}</label>
             <label className="flex items-center gap-2 cursor-pointer text-sm select-none p-2">
                 <input type="checkbox" checked={isTimed} onChange={(e) => setIsTimed(e.target.checked)} className="accent-terminal-green w-5 h-5" />
-                <span className={isTimed ? "text-gray-900 dark:text-terminal-light" : "text-gray-500"}>ENABLE TIMER</span>
+                <span className={isTimed ? "text-gray-900 dark:text-terminal-light" : "text-gray-500"}>{t('enable_timer', lang)}</span>
             </label>
           </div>
           
@@ -325,7 +364,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                     className="w-full h-4 md:h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-500 dark:accent-terminal-green touch-pan-x"
                     disabled={!isTimed}
                 />
-                <span className="font-mono text-xl w-20 text-right dark:text-terminal-green">
+                <span className="font-mono text-xl w-20 text-right dark:text-terminal-green rtl:text-left">
                     {isTimed ? `${timeLimit}m` : '∞'}
                 </span>
             </div>
@@ -338,7 +377,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
         disabled={isScanning}
         className="w-full py-4 md:py-3 bg-gray-900 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-black font-bold text-lg md:text-base uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
       >
-        [ INITIATE_EXAM ]
+        [ {t('initiate_exam', lang)} ]
       </button>
     </div>
   );
