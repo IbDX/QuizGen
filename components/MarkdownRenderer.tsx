@@ -55,8 +55,10 @@ export const processInlineMarkdown = (text: string) => {
     // We use a placeholder approach to prevent HTML escaping from breaking LaTeX output
     const mathBlocks: { id: string, html: string }[] = [];
     
-    // 1. Extract Block Math $$...$$
-    let temp = text.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
+    let temp = text;
+
+    // 0. Extract Block Math \[ ... \] (Gemini preference for block)
+    temp = temp.replace(/\\\[([\s\S]+?)\\\]/g, (match, formula) => {
         const id = `MATHBLOCK_${Math.random().toString(36).substr(2, 9)}`;
         try {
             const html = katex.renderToString(formula, { displayMode: true, throwOnError: false });
@@ -67,7 +69,31 @@ export const processInlineMarkdown = (text: string) => {
         }
     });
 
-    // 2. Extract Inline Math $...$
+    // 1. Extract Block Math $$...$$
+    temp = temp.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
+        const id = `MATHBLOCK_${Math.random().toString(36).substr(2, 9)}`;
+        try {
+            const html = katex.renderToString(formula, { displayMode: true, throwOnError: false });
+            mathBlocks.push({ id, html });
+            return id;
+        } catch (e) {
+            return match;
+        }
+    });
+
+    // 2. Extract Inline Math \( ... \) (Gemini preference for inline)
+    temp = temp.replace(/\\\(([\s\S]+?)\\\)/g, (match, formula) => {
+        const id = `MATHINLINE_${Math.random().toString(36).substr(2, 9)}`;
+        try {
+            const html = katex.renderToString(formula, { displayMode: false, throwOnError: false });
+            mathBlocks.push({ id, html });
+            return id;
+        } catch (e) {
+            return match;
+        }
+    });
+
+    // 3. Extract Inline Math $...$
     temp = temp.replace(/\$([^$\n]+?)\$/g, (match, formula) => {
         const id = `MATHINLINE_${Math.random().toString(36).substr(2, 9)}`;
         try {
@@ -79,7 +105,7 @@ export const processInlineMarkdown = (text: string) => {
         }
     });
 
-    // 3. Basic Markdown & Sanitization
+    // 4. Basic Markdown & Sanitization
     let processed = temp
         // Basic HTML Escape
         .replace(/&/g, "&amp;")
@@ -98,7 +124,7 @@ export const processInlineMarkdown = (text: string) => {
             '<span class="font-mono text-[0.9em] bg-gray-200 dark:bg-[#1e1e1e] text-red-600 dark:text-terminal-green px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 break-words box-decoration-clone">$1</span>'
         );
 
-    // 4. Restore Math Blocks
+    // 5. Restore Math Blocks
     mathBlocks.forEach(block => {
         processed = processed.replace(block.id, block.html);
     });
