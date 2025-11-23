@@ -1,6 +1,4 @@
-
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generateLoadingTips } from '../services/gemini';
 import { UILanguage } from '../types';
 
@@ -78,38 +76,134 @@ const CONTEXT_TIPS: Record<string, string[]> = {
   ]
 };
 
-// ... (Mini Games code remains unchanged) ...
-// For brevity, skipping the full game logic as it is visualization and direction-neutral.
-// Assuming DPad and Game Components are defined here as before.
-
-// --- HELPER: MOBILE D-PAD ---
+// --- D-PAD COMPONENT ---
+// Emits events: UP, DOWN, LEFT, RIGHT
 const DPad = ({ onDir }: { onDir: (dir: string) => void }) => {
     return (
-        <div className="relative w-40 h-40 flex items-center justify-center select-none touch-none mt-4">
-             <div className="absolute inset-0 bg-gray-200 dark:bg-[#1a1a1a] rounded-[2rem] shadow-xl border-4 border-gray-300 dark:border-gray-700"></div>
-             <div className="absolute inset-4 bg-gray-300 dark:bg-black rounded-full shadow-inner opacity-50"></div>
-             <div className="relative w-28 h-28 filter drop-shadow-lg">
-                 <div className="absolute top-[34%] left-0 w-full h-[32%] bg-[#111] rounded-sm shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] z-10"></div>
-                 <div className="absolute left-[34%] top-0 w-[32%] h-full bg-[#111] rounded-sm shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] z-10"></div>
-                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-br from-[#222] to-black rounded-full shadow-inner z-20">
-                     <div className="absolute inset-1.5 bg-[#111] rounded-full opacity-80"></div>
-                 </div>
-                 {/* Visual Arrows ... */}
-                 {/* Hit Areas ... */}
-                 <button className="absolute top-0 left-[34%] w-[32%] h-1/2 z-30 outline-none active:bg-white/10 rounded-t-sm" onPointerDown={(e) => { e.preventDefault(); onDir('UP'); }}></button>
-                 <button className="absolute bottom-0 left-[34%] w-[32%] h-1/2 z-30 outline-none active:bg-white/10 rounded-b-sm" onPointerDown={(e) => { e.preventDefault(); onDir('DOWN'); }}></button>
-                 <button className="absolute left-0 top-[34%] w-1/2 h-[32%] z-30 outline-none active:bg-white/10 rounded-l-sm" onPointerDown={(e) => { e.preventDefault(); onDir('LEFT'); }}></button>
-                 <button className="absolute right-0 top-[34%] w-1/2 h-[32%] z-30 outline-none active:bg-white/10 rounded-r-sm" onPointerDown={(e) => { e.preventDefault(); onDir('RIGHT'); }}></button>
+        <div className="relative w-40 h-40 flex items-center justify-center select-none touch-none mt-4 scale-90 md:scale-100">
+             {/* Base Casing */}
+             <div className="absolute inset-0 bg-[#e0e0e0] dark:bg-[#202020] rounded-[2.5rem] shadow-xl border-b-8 border-gray-400 dark:border-[#111]"></div>
+             
+             {/* Inner Recess */}
+             <div className="absolute inset-3 bg-[#ccc] dark:bg-[#151515] rounded-[2rem] shadow-[inset_0_2px_8px_rgba(0,0,0,0.4)]"></div>
+             
+             {/* The Cross Controller */}
+             <div className="relative w-28 h-28 filter drop-shadow-md cursor-pointer">
+                 {/* Vertical Bar */}
+                 <div className="absolute top-0 left-[34%] w-[32%] h-full bg-[#333] dark:bg-[#080808] rounded-md shadow-md"></div>
+                 {/* Horizontal Bar */}
+                 <div className="absolute top-[34%] left-0 w-full h-[32%] bg-[#333] dark:bg-[#080808] rounded-md shadow-md"></div>
+                 
+                 {/* Center Pivot */}
+                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-gradient-to-br from-[#444] to-[#111] rounded-full shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)] z-20"></div>
+
+                 {/* Directional Arrows (Visual) */}
+                 <div className="absolute top-2 left-1/2 -translate-x-1/2 text-gray-500 text-[10px] pointer-events-none z-20">▲</div>
+                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-gray-500 text-[10px] pointer-events-none z-20">▼</div>
+                 <div className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px] pointer-events-none z-20">◀</div>
+                 <div className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px] pointer-events-none z-20">▶</div>
+
+                 {/* Hit Areas (Invisible Buttons) */}
+                 <button className="absolute top-0 left-[34%] w-[32%] h-1/2 z-30 active:bg-white/10 rounded-t-md" onPointerDown={(e) => { e.preventDefault(); onDir('UP'); }}></button>
+                 <button className="absolute bottom-0 left-[34%] w-[32%] h-1/2 z-30 active:bg-white/10 rounded-b-md" onPointerDown={(e) => { e.preventDefault(); onDir('DOWN'); }}></button>
+                 <button className="absolute left-0 top-[34%] w-1/2 h-[32%] z-30 active:bg-white/10 rounded-l-md" onPointerDown={(e) => { e.preventDefault(); onDir('LEFT'); }}></button>
+                 <button className="absolute right-0 top-[34%] w-1/2 h-[32%] z-30 active:bg-white/10 rounded-r-md" onPointerDown={(e) => { e.preventDefault(); onDir('RIGHT'); }}></button>
              </div>
         </div>
     );
 };
 
-// ... SnakeGame, XO, SokobanGame, MemoryGame definitions (omitted for brevity, assume they are present) ...
-const SnakeGame = () => <div className="text-xs text-center text-gray-500">SNAKE GAME (Placeholder for brevity)</div>;
-const XO = () => <div className="text-xs text-center text-gray-500">XO GAME (Placeholder for brevity)</div>;
-const SokobanGame = () => <div className="text-xs text-center text-gray-500">SOKOBAN (Placeholder for brevity)</div>;
-const MemoryGame = () => <div className="text-xs text-center text-gray-500">MEMORY (Placeholder for brevity)</div>;
+// --- MINI GAMES ---
+
+const SnakeGame: React.FC<{ externalDir?: string }> = ({ externalDir }) => {
+    const GRID_SIZE = 20;
+    const [snake, setSnake] = useState([{x: 10, y: 10}]);
+    const [food, setFood] = useState({x: 15, y: 5});
+    const [dir, setDir] = useState({x: 1, y: 0});
+    const [gameOver, setGameOver] = useState(false);
+    const [score, setScore] = useState(0);
+
+    const resetGame = () => {
+        setSnake([{x: 10, y: 10}]);
+        setFood({x: 15, y: 5});
+        setDir({x: 1, y: 0});
+        setGameOver(false);
+        setScore(0);
+    };
+
+    useEffect(() => {
+        if(externalDir) {
+            switch(externalDir) {
+                case 'UP': if(dir.y === 0) setDir({x: 0, y: -1}); break;
+                case 'DOWN': if(dir.y === 0) setDir({x: 0, y: 1}); break;
+                case 'LEFT': if(dir.x === 0) setDir({x: -1, y: 0}); break;
+                case 'RIGHT': if(dir.x === 0) setDir({x: 1, y: 0}); break;
+            }
+        }
+    }, [externalDir]);
+
+    useEffect(() => {
+        if (gameOver) return;
+        const move = setInterval(() => {
+            setSnake((prev) => {
+                const head = { ...prev[0] };
+                head.x += dir.x;
+                head.y += dir.y;
+
+                // Wall Collision
+                if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+                    setGameOver(true);
+                    return prev;
+                }
+                // Self Collision
+                if (prev.some(seg => seg.x === head.x && seg.y === head.y)) {
+                    setGameOver(true);
+                    return prev;
+                }
+
+                const newSnake = [head, ...prev];
+                
+                if (head.x === food.x && head.y === food.y) {
+                    setScore(s => s + 1);
+                    setFood({
+                        x: Math.floor(Math.random() * GRID_SIZE),
+                        y: Math.floor(Math.random() * GRID_SIZE)
+                    });
+                } else {
+                    newSnake.pop();
+                }
+                return newSnake;
+            });
+        }, 150);
+        return () => clearInterval(move);
+    }, [dir, food, gameOver]);
+
+    return (
+        <div className="flex flex-col items-center">
+            <div className="mb-2 font-mono text-xs flex justify-between w-full px-4">
+                <span>SCORE: {score}</span>
+                {gameOver && <span className="text-red-500 font-bold cursor-pointer" onClick={resetGame}>GAME OVER - TAP TO RETRY</span>}
+            </div>
+            <div className="relative bg-black border-4 border-gray-600 w-48 h-48 sm:w-60 sm:h-60 grid" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`, gridTemplateRows: `repeat(${GRID_SIZE}, 1fr)` }}>
+                {Array.from({length: GRID_SIZE*GRID_SIZE}).map((_, i) => {
+                    const x = i % GRID_SIZE;
+                    const y = Math.floor(i / GRID_SIZE);
+                    const isSnake = snake.some(s => s.x === x && s.y === y);
+                    const isHead = snake[0].x === x && snake[0].y === y;
+                    const isFood = food.x === x && food.y === y;
+                    return (
+                        <div key={i} className={`w-full h-full ${isHead ? 'bg-green-400' : isSnake ? 'bg-green-700' : isFood ? 'bg-red-500 rounded-full' : 'bg-[#111]'}`}></div>
+                    )
+                })}
+            </div>
+        </div>
+    );
+};
+
+// Placeholder games for variety
+const XO: React.FC = () => <div className="text-xs text-center text-gray-500 flex items-center justify-center h-48 border border-dashed w-48">XO GAME (Coming Soon)</div>;
+const SokobanGame: React.FC = () => <div className="text-xs text-center text-gray-500 flex items-center justify-center h-48 border border-dashed w-48">SOKOBAN (Coming Soon)</div>;
+const MemoryGame: React.FC = () => <div className="text-xs text-center text-gray-500 flex items-center justify-center h-48 border border-dashed w-48">MEMORY (Coming Soon)</div>;
 
 
 interface LoadingScreenProps {
@@ -121,12 +215,19 @@ interface LoadingScreenProps {
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames = [], lang }) => {
   const [tipIndex, setTipIndex] = useState(0);
   const [gameIndex, setGameIndex] = useState(0);
+  const [dPadInput, setDPadInput] = useState<string>('');
   
   const [activeTips, setActiveTips] = useState<string[]>([]);
   const [isFetchingTips, setIsFetchingTips] = useState(false);
 
+  const handleDir = (dir: string) => {
+      setDPadInput(dir);
+      // clear quickly to allow re-trigger
+      setTimeout(() => setDPadInput(''), 100);
+  };
+
   const GAMES = [
-      <SnakeGame key="snake" />, 
+      <SnakeGame key="snake" externalDir={dPadInput} />, 
       <XO key="xo" />, 
       <SokobanGame key="sokoban" />,
       <MemoryGame key="memory" />
@@ -165,7 +266,8 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
   }, [fileNames]);
 
   useEffect(() => {
-      setGameIndex(Math.floor(Math.random() * GAMES.length));
+      // Default to Snake (Index 0)
+      setGameIndex(0);
       const interval = setInterval(() => {
           setTipIndex(prev => (prev + 1) % activeTips.length);
       }, 5000); 
@@ -183,38 +285,55 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, fileNames
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-xl mx-auto p-4 md:p-6 space-y-6 md:space-y-8 animate-fade-in">
+    <div className="flex flex-col items-center justify-center min-h-[70vh] w-full max-w-xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in">
+      
+      {/* Loading Spinner & Message */}
       <div className="text-center space-y-4">
-         <div className="w-16 h-16 md:w-20 md:h-20 mx-auto relative">
+         <div className="w-12 h-12 md:w-16 md:h-16 mx-auto relative">
             <div className="absolute inset-0 border-4 border-t-terminal-green border-r-transparent border-b-terminal-green border-l-transparent rounded-full animate-spin"></div>
             <div className="absolute inset-2 border-4 border-t-transparent border-r-blue-500 border-b-transparent border-l-blue-500 rounded-full animate-spin-slow opacity-70"></div>
          </div>
-         <h2 className="font-mono text-lg md:text-xl font-bold animate-pulse text-terminal-green px-2">{message}</h2>
+         <h2 className="font-mono text-base md:text-lg font-bold animate-pulse text-terminal-green px-2">{message}</h2>
       </div>
 
-      <div className="w-full bg-gray-100 dark:bg-[#1a1a1a] p-4 border-l-4 border-blue-500 shadow-md transition-all duration-500">
+      {/* Tip Box */}
+      <div className="w-full bg-gray-100 dark:bg-[#1a1a1a] p-3 border-l-4 border-blue-500 shadow-md transition-all duration-500">
           <div className="flex justify-between items-center mb-1">
              <div className="text-[10px] font-bold text-gray-400 uppercase">
                 {isFetchingTips ? (lang === 'ar' ? 'جاري التوليد...' : 'GENERATING_FRESH_TIPS...') : (lang === 'ar' ? 'تلميح ذكي' : 'CONTEXT_AWARE_HINT')}
              </div>
-             {isFetchingTips && <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>}
+             {isFetchingTips && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping"></div>}
           </div>
-          <p className="font-mono text-xs md:text-sm text-gray-700 dark:text-gray-300 min-h-[3rem] flex items-center flex-wrap">
+          <p className="font-mono text-xs text-gray-700 dark:text-gray-300 min-h-[2.5rem] flex items-center flex-wrap">
               {activeTips.length > 0 && formatTip(activeTips[tipIndex])}
           </p>
       </div>
 
-      <div className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-black p-4 md:p-6 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 bg-gray-200 dark:bg-gray-800 px-3 py-1 text-[10px] font-bold tracking-widest">
-              WAITING_ROOM_MODULE.EXE
+      {/* Game Console */}
+      <div className="w-full bg-gray-200 dark:bg-[#111] p-4 rounded-xl shadow-2xl border-b-8 border-gray-400 dark:border-black flex flex-col items-center">
+          <div className="w-full bg-[#9ead86] border-4 border-gray-500 p-2 rounded shadow-inner mb-2 font-mono flex flex-col items-center">
+               <div className="text-[10px] text-gray-700 font-bold w-full text-center border-b border-gray-600/20 mb-1 pb-1">Z+ PORTABLE SYSTEM</div>
+               {GAMES[gameIndex]}
           </div>
-          <div className="mt-4 flex justify-center min-h-[280px] md:min-h-[220px] items-center" dir="ltr">
-              {GAMES[gameIndex]}
-          </div>
-          <div className="absolute bottom-1 right-2 flex gap-1 z-20">
-              <button onClick={() => setGameIndex((i) => (i + 1) % GAMES.length)} className="text-[9px] text-gray-600 hover:text-terminal-green p-2">
-                  NEXT_GAME &gt;
-              </button>
+
+          <div className="w-full flex justify-between items-center px-4">
+               {/* Controls */}
+               <DPad onDir={handleDir} />
+
+               {/* Action Buttons */}
+               <div className="flex flex-col gap-3 mt-4">
+                    <div className="flex gap-4 rotate-12">
+                        <button className="w-10 h-10 bg-red-600 rounded-full shadow-[0_4px_0_#990000] active:shadow-none active:translate-y-1 active:bg-red-700"></button>
+                        <button 
+                            className="w-10 h-10 bg-blue-600 rounded-full shadow-[0_4px_0_#000099] active:shadow-none active:translate-y-1 active:bg-blue-700"
+                            onClick={() => setGameIndex((i) => (i + 1) % GAMES.length)}
+                        ></button>
+                    </div>
+                    <div className="text-[9px] text-gray-500 font-bold flex gap-8 ml-2">
+                        <span>B</span>
+                        <span>A</span>
+                    </div>
+               </div>
           </div>
       </div>
     </div>

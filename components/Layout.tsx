@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { BackgroundEffect } from './BackgroundEffect';
 import { UILanguage } from '../types';
@@ -28,22 +26,19 @@ interface LayoutProps {
 
 export type ThemeOption = 'light' | 'dark' | 'palestine';
 
-// ... (CURSORS SVGs and base64 helper remain exactly the same as previous file content, omitting for brevity to focus on changes) ...
-// 1. DEFAULT (Arrow)
+// ... (CURSORS SVGs remain the same)
 const CURSOR_DEFAULT_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M2 2L9 21L12.5 12.5L21 9L2 2Z" fill="#000000" stroke="#00ff41" stroke-width="1.5" stroke-linejoin="round"/>
 </svg>
 `;
 
-// 2. POINTER (Hovering Links)
 const CURSOR_POINTER_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M2 2L9 21L12.5 12.5L21 9L2 2Z" fill="#00ff41" stroke="#003300" stroke-width="1" stroke-linejoin="round"/>
 </svg>
 `;
 
-// 3. TEXT (Inputs)
 const CURSOR_TEXT_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M5 4V2H11V4" stroke="#00ff41" stroke-width="2"/>
@@ -52,7 +47,6 @@ const CURSOR_TEXT_SVG = `
 </svg>
 `;
 
-// 4. WAIT (Loading/Processing) - Pixelated Hourglass
 const CURSOR_WAIT_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M6 2H18V6L12 12L6 6V2Z" fill="#00ff41"/>
@@ -61,7 +55,6 @@ const CURSOR_WAIT_SVG = `
 </svg>
 `;
 
-// 5. NOT ALLOWED (Disabled) - Red Prohibited
 const CURSOR_NOT_ALLOWED_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <circle cx="12" cy="12" r="8" stroke="#ff3333" stroke-width="2"/>
@@ -69,7 +62,6 @@ const CURSOR_NOT_ALLOWED_SVG = `
 </svg>
 `;
 
-// 6. GRAB (Draggable) - Open Robotic Hand
 const CURSOR_GRAB_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M12 2C12 2 11 5 11 8V13H8V8C8 5 7 2 7 2" stroke="#00ff41" stroke-width="2"/>
@@ -78,7 +70,6 @@ const CURSOR_GRAB_SVG = `
 </svg>
 `;
 
-// 7. GRABBING (Dragging) - Closed Robotic Hand
 const CURSOR_GRABBING_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <rect x="7" y="7" width="10" height="10" rx="2" fill="#00ff41"/>
@@ -87,7 +78,6 @@ const CURSOR_GRABBING_SVG = `
 </svg>
 `;
 
-// 8. CROSSHAIR (Precision)
 const CURSOR_CROSSHAIR_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M12 2V22M2 12H22" stroke="#00ff41" stroke-width="1"/>
@@ -112,7 +102,7 @@ const FONT_OPTIONS = [
     { name: 'Fira Code', value: "'Fira Code', monospace" },
     { name: 'JetBrains Mono', value: "'JetBrains Mono', monospace" },
     { name: 'Roboto Mono', value: "'Roboto Mono', monospace" },
-    { name: 'Cairo (Arabic)', value: "'Cairo', sans-serif" }, // Added Cairo
+    { name: 'Cairo (Arabic)', value: "'Cairo', sans-serif" },
     { name: 'Courier New', value: "'Courier New', Courier, monospace" },
 ];
 
@@ -190,18 +180,27 @@ export const Layout: React.FC<LayoutProps> = ({
   const footerBorderStyle = isPalestine
     ? { borderTopWidth: '2px', borderImage: 'linear-gradient(to right, #007A3D, #FFFFFF, #CE1126) 1' }
     : {};
+  
+  // Dynamic Background Gradient for Palestine Theme to avoid flat dark grey
+  const palestineBgStyle = isPalestine ? {
+      background: 'radial-gradient(circle at 50% 50%, #2a2a2a 0%, #1a1a1a 100%)'
+  } : {};
 
   return (
-    <div className={`min-h-screen flex flex-col font-mono selection:bg-terminal-green selection:text-terminal-black ${useCustomCursor ? 'custom-cursor' : ''} relative overflow-x-hidden`} dir={uiLanguage === 'ar' ? 'rtl' : 'ltr'}>
+    <div 
+        className={`min-h-screen flex flex-col font-mono selection:bg-terminal-green selection:text-terminal-black ${useCustomCursor ? 'custom-cursor' : ''} relative overflow-x-hidden transition-colors duration-500`} 
+        dir={uiLanguage === 'ar' ? 'rtl' : 'ltr'}
+        style={palestineBgStyle}
+    >
       
       {enableBackgroundAnim && <BackgroundEffect theme={theme} />}
 
       {useCustomCursor && (
         <style>{`
-          /* ... (Styles omitted for brevity, keeping existing logic) ... */
           .custom-cursor { cursor: url('${CURSORS.default}') 2 2, auto !important; }
           .custom-cursor a, .custom-cursor button:not(:disabled) { cursor: url('${CURSORS.pointer}') 2 2, pointer !important; }
-          .custom-cursor input[type="text"] { cursor: url('${CURSORS.text}') 12 12, text !important; }
+          .custom-cursor input[type="text"], .custom-cursor textarea { cursor: url('${CURSORS.text}') 12 12, text !important; }
+          .custom-cursor .cursor-wait { cursor: url('${CURSORS.wait}') 12 12, wait !important; }
         `}</style>
       )}
 
@@ -241,10 +240,23 @@ export const Layout: React.FC<LayoutProps> = ({
                     className="relative group outline-none focus:outline-none"
                     title={t('home', uiLanguage)}
                 >
-                    <div className={`absolute -inset-1 rounded-full blur opacity-20 group-hover:opacity-60 transition duration-500 animate-pulse ${isPalestine ? 'bg-terminal-alert' : 'bg-terminal-green'}`}></div>
-                    <div className={`relative flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-black border-2 transition-all duration-300 overflow-hidden ${isPalestine ? 'border-terminal-alert shadow-[0_0_10px_rgba(206,17,38,0.3)]' : 'border-terminal-green shadow-[0_0_10px_rgba(0,255,65,0.3)] group-hover:border-white'}`}>
-                        <span className={`font-bold text-xl md:text-2xl italic font-mono transition-colors z-10 ${isPalestine ? 'text-white' : 'text-white group-hover:text-terminal-green'}`}>Z+</span>
-                    </div>
+                    {/* Enhanced Logo Container for Palestine Theme */}
+                    {isPalestine ? (
+                        <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-red-600 via-white to-green-600 blur opacity-50 animate-pulse rounded-full"></div>
+                            <div className="relative z-10 w-full h-full bg-black flex items-center justify-center border border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+                                <span className="font-bold text-xl md:text-2xl italic font-mono text-white">Z+</span>
+                            </div>
+                        </div>
+                    ) : (
+                        // Standard Terminal Theme Logo
+                        <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
+                            <div className="absolute -inset-1 bg-terminal-green blur opacity-30 group-hover:opacity-60 transition duration-500 animate-pulse rounded-sm"></div>
+                            <div className="relative z-10 w-full h-full bg-black border-2 border-terminal-green flex items-center justify-center shadow-[0_0_8px_rgba(0,255,65,0.4)] transition-all group-hover:border-white">
+                                <span className="font-bold text-xl md:text-2xl italic font-mono text-white group-hover:text-terminal-green transition-colors">Z+</span>
+                            </div>
+                        </div>
+                    )}
                 </button>
             </div>
             
@@ -395,7 +407,7 @@ export const Layout: React.FC<LayoutProps> = ({
                         <div className="grid grid-cols-3 gap-2">
                              <button onClick={() => setTheme('light')} className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'light' ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 bg-gray-100 text-gray-600'}`}>LIGHT</button>
                              <button onClick={() => setTheme('dark')} className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'dark' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-700 bg-black text-gray-500'}`}>TERMINAL</button>
-                             <button onClick={() => setTheme('palestine')} className={`p-2 border rounded text-xs font-bold transition-all relative overflow-hidden ${theme === 'palestine' ? 'border-red-500 text-white' : 'border-gray-700 bg-black text-gray-500'}`} style={theme === 'palestine' ? { background: 'linear-gradient(135deg, #202020 0%, #007A3D 100%)' } : {}}>PALESTINE</button>
+                             <button onClick={() => setTheme('palestine')} className={`p-2 border rounded text-xs font-bold transition-all relative overflow-hidden ${theme === 'palestine' ? 'border-red-500 text-white' : 'border-gray-700 bg-black text-gray-500'}`} style={theme === 'palestine' ? { background: 'linear-gradient(135deg, #CE1126 0%, #007A3D 100%)' } : {}}>PALESTINE</button>
                         </div>
                     </div>
 

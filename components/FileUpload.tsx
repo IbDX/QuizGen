@@ -1,5 +1,3 @@
-
-
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -111,9 +109,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     
     try {
        const { base64, mimeType, name } = await urlToBase64(urlInput);
-       // Fake hash for URL based downloads since we don't have the File object readily for hashing in the same flow
-       // In a real scenario, urlToBase64 would calculate hash too.
-       // For now, we assume uniqueness by name or generate a simple hash of the base64
        const hash = `url_hash_${Date.now()}_${name}`; 
        
        setLogs([{ name: name, status: 'SUCCESS' }]);
@@ -143,14 +138,38 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
 
   return (
     <div className={`w-full mx-auto mt-4 md:mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none' : 'max-w-2xl'}`}>
+      
+      {/* MOBILE UPLOAD BUTTON (Solid, no dashed border) */}
+      <div className="md:hidden">
+          <button
+            onClick={() => globalStatus === 'IDLE' && fileInputRef.current?.click()}
+            className={`
+                w-full p-8 rounded-lg shadow-lg flex flex-col items-center justify-center gap-4 transition-all active:scale-95
+                ${globalStatus === 'PROCESSING' 
+                    ? 'bg-yellow-100 border-2 border-yellow-500' 
+                    : 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-blue-500/30'
+                }
+            `}
+          >
+              <div className="text-4xl">
+                  {globalStatus === 'PROCESSING' ? <span className="animate-spin inline-block">⏳</span> : '📂'}
+              </div>
+              <div className="text-xl font-bold uppercase tracking-wider">
+                  {globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('tap_to_select', lang)}
+              </div>
+          </button>
+      </div>
+
+      {/* DESKTOP UPLOAD ZONE (Dashed border, drag & drop) */}
       <div 
         className={`
-          border-2 border-dashed transition-all p-6 md:p-10 text-center cursor-pointer relative overflow-hidden rounded-lg
+          hidden md:block
+          border-2 border-dashed transition-all p-10 text-center cursor-pointer relative overflow-hidden rounded-lg group
           ${isDragging 
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.02]' 
             : globalStatus === 'PROCESSING'
                 ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10 cursor-wait'
-                : 'border-gray-400 dark:border-terminal-green hover:border-blue-400 dark:hover:border-white'
+                : 'border-gray-400 dark:border-terminal-green hover:border-blue-400 dark:hover:border-white hover:bg-gray-50 dark:hover:bg-terminal-green/5'
           }
         `}
         onDragOver={onDragOver}
@@ -158,18 +177,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
         onDrop={onDrop}
         onClick={() => globalStatus === 'IDLE' && fileInputRef.current?.click()}
       >
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          className="hidden" 
-          accept=".pdf,.jpg,.jpeg,.png"
-          multiple // ENABLE MULTIPLE FILES
-          onChange={(e) => handleFiles(e.target.files)}
-          disabled={globalStatus !== 'IDLE'}
-        />
-        
         <div className="space-y-3 relative z-10">
-          <div className="text-3xl md:text-4xl">
+          <div className="text-4xl transition-transform group-hover:scale-110 duration-300">
              {globalStatus === 'PROCESSING' ? (
                  <span className="inline-block animate-spin">🛡️</span>
              ) : (
@@ -177,14 +186,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
              )}
           </div>
 
-          <h3 className="text-lg md:text-xl font-bold uppercase">
+          <h3 className="text-xl font-bold uppercase dark:text-terminal-light">
             {globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('secure_upload', lang)}
           </h3>
           
-          <p className="text-xs md:text-sm opacity-70 font-mono">
+          <p className="text-sm opacity-70 font-mono dark:text-gray-400">
             {globalStatus === 'PROCESSING' 
              ? t('executing_protocols', lang)
-             : t('tap_to_select', lang)}
+             : "Drag & Drop PDF, PNG, JPG here or Click to Browse"}
           </p>
         </div>
 
@@ -194,21 +203,30 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
         )}
       </div>
 
+      <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          accept=".pdf,.jpg,.jpeg,.png"
+          multiple 
+          onChange={(e) => handleFiles(e.target.files)}
+          disabled={globalStatus !== 'IDLE'}
+      />
+
       {/* Processing Logs */}
       {logs.length > 0 && (
-          <div className="mt-6 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 p-4 rounded shadow-inner font-mono text-xs">
+          <div className="mt-6 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 p-4 rounded shadow-inner font-mono text-xs animate-fade-in">
               <div className="text-xs font-bold uppercase text-gray-500 mb-2 border-b pb-1">Session Log</div>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                   {logs.map((log, i) => (
                       <div key={i} className="flex justify-between items-center">
-                          <span className="truncate max-w-[60%] md:max-w-[70%]">{log.name}</span>
+                          <span className="truncate max-w-[60%] md:max-w-[70%] text-gray-700 dark:text-gray-300">{log.name}</span>
                           <div className="flex items-center gap-2">
                               {log.status === 'PENDING' && <span className="text-gray-500">WAITING</span>}
                               {log.status === 'SCANNING' && <span className="text-blue-500 animate-pulse">SCANNING...</span>}
                               {log.status === 'SUCCESS' && <span className="text-green-500 font-bold">✓ SAFE</span>}
                               {log.status === 'FAILED' && <span className="text-red-500 font-bold">✕ BLOCKED</span>}
                           </div>
-                          {log.error && <div className="w-full text-red-400 italic pl-2 hidden md:block">{log.error}</div>}
                       </div>
                   ))}
               </div>
@@ -225,7 +243,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           <input 
             type="url" 
             placeholder="https://example.com/document.pdf" 
-            className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-3 md:p-3 font-mono text-sm outline-none focus:border-terminal-green rounded-sm"
+            className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-3 md:p-3 font-mono text-sm outline-none focus:border-terminal-green rounded-sm dark:text-white"
             value={urlInput}
             onChange={handleUrlChange}
             disabled={globalStatus !== 'IDLE'}
@@ -233,7 +251,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           <button 
              type="submit"
              disabled={!urlInput || globalStatus !== 'IDLE'}
-             className="w-full sm:w-auto px-6 py-3 md:py-0 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50 rounded-sm"
+             className="w-full sm:w-auto px-6 py-3 md:py-0 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50 rounded-sm dark:text-gray-200"
           >
             {t('fetch', lang)}
           </button>
@@ -262,7 +280,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                   <button 
                      onClick={onLoadDemo}
                      disabled={globalStatus !== 'IDLE'}
-                     className="px-6 py-3 md:py-2 bg-terminal-green text-black font-bold text-sm hover:bg-green-400 transition-colors w-full sm:w-auto uppercase tracking-wider disabled:opacity-50 rounded-sm"
+                     className="px-6 py-3 md:py-2 bg-terminal-green text-black font-bold text-sm hover:bg-green-400 transition-colors w-full sm:w-auto uppercase tracking-wider disabled:opacity-50 rounded-sm shadow-md"
                   >
                       {t('load_demo', lang)}
                   </button>

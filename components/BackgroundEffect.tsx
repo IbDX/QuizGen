@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { ThemeOption } from './Layout';
 
@@ -31,7 +30,6 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
       canvas.height = window.innerHeight;
       
       columns = Math.ceil(canvas.width / fontSize);
-      // Initialize drops with random starting y positions to reduce "curtain" effect at start
       drops = Array(columns).fill(0).map(() => Math.random() * -100);
     };
 
@@ -40,13 +38,12 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
       const isPalestine = theme === 'palestine';
       const isLight = theme === 'light';
 
-      // Trail effect: Paint over with low opacity background
-      // Dark Mode: Black with very slight opacity (long trails)
-      // Light Mode: Gray/White with higher opacity (cleaner look)
       if (isLight) {
           ctx.fillStyle = 'rgba(243, 244, 246, 0.1)';
+      } else if (isPalestine) {
+          // Slightly softer trail for Palestine theme
+          ctx.fillStyle = 'rgba(20, 20, 20, 0.1)'; 
       } else {
-          // Both Dark and Palestine use dark backgrounds
           ctx.fillStyle = 'rgba(5, 5, 5, 0.05)';
       }
       
@@ -55,29 +52,24 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
       ctx.font = `${fontSize}px monospace`;
 
       for (let i = 0; i < drops.length; i++) {
-        // Randomize character
         const text = charArray[Math.floor(Math.random() * charArray.length)];
         
-        // Color Selection Logic
         if (isLight) {
-            ctx.fillStyle = '#888'; // Subtle gray
+            ctx.fillStyle = '#888';
         } else if (isPalestine) {
-            // Mix of Flag Colors: Green, Red, White
             const rand = Math.random();
             if (rand > 0.66) {
-                ctx.fillStyle = '#007A3D'; // Official Flag Green
+                ctx.fillStyle = 'rgba(0, 122, 61, 0.8)'; // Green
             } else if (rand > 0.33) {
-                ctx.fillStyle = '#CE1126'; // Official Flag Red
+                ctx.fillStyle = 'rgba(206, 17, 38, 0.8)'; // Red
             } else {
-                ctx.fillStyle = '#FFFFFF'; // White
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // White
             }
         } else {
-            // Standard Terminal Dark Mode
-           // Randomly make some characters brighter/white for "glint" effect
            if (Math.random() > 0.98) {
                ctx.fillStyle = '#FFF';
            } else {
-               ctx.fillStyle = '#00ff41'; // Terminal Green
+               ctx.fillStyle = '#00ff41'; 
            }
         }
 
@@ -86,8 +78,6 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
 
         ctx.fillText(text, x, y);
 
-        // Reset drop to top randomly after it has crossed screen
-        // Adding randomness to the reset threshold makes the rain look more organic
         if (y > canvas.height && Math.random() > 0.975) {
           drops[i] = 0;
         }
@@ -98,7 +88,6 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
       animationFrameId = requestAnimationFrame(draw);
     };
 
-    // Init
     resize();
     draw();
 

@@ -1,5 +1,3 @@
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ExamMode, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage } from '../types';
 import { validateFile, fileToBase64 } from '../utils/fileValidation';
@@ -279,18 +277,18 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
       <div className="mb-6 space-y-6">
         {/* Output Language Selection */}
-        <div>
+        <div className="bg-gray-50 dark:bg-terminal-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded">
             <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('output_lang', lang)}</label>
             <div className="grid grid-cols-2 gap-2">
                 <button
                     onClick={() => setOutputLanguage('en')}
-                    className={`p-3 border text-center font-bold text-sm transition-all ${outputLanguage === 'en' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 dark:border-gray-700 dark:text-gray-400'}`}
+                    className={`p-3 border text-center font-bold text-sm transition-all rounded ${outputLanguage === 'en' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 bg-white dark:bg-black dark:border-gray-700 dark:text-gray-400'}`}
                 >
                     ENGLISH (Default)
                 </button>
                 <button
                     onClick={() => setOutputLanguage('ar')}
-                    className={`p-3 border text-center font-bold text-sm transition-all font-sans ${outputLanguage === 'ar' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 dark:border-gray-700 dark:text-gray-400'}`}
+                    className={`p-3 border text-center font-bold text-sm transition-all rounded font-sans ${outputLanguage === 'ar' ? 'bg-terminal-green text-black border-terminal-green' : 'border-gray-300 bg-white dark:bg-black dark:border-gray-700 dark:text-gray-400'}`}
                 >
                     العربية (Technical)
                 </button>
@@ -300,7 +298,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
             </p>
         </div>
 
-        <div className="hidden md:block">
+        <div className="hidden md:block bg-gray-50 dark:bg-terminal-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded">
             <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('output_format', lang)}</label>
             <div className="grid grid-cols-5 gap-2">
                 {FORMAT_OPTIONS.map((opt) => (
@@ -308,10 +306,10 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                         key={opt.val}
                         onClick={() => setFormatPref(opt.val)}
                         className={`
-                            p-2 border text-left transition-all relative overflow-hidden rtl:text-right
+                            p-2 border text-left transition-all relative overflow-hidden rtl:text-right rounded
                             ${formatPref === opt.val 
                                 ? 'border-terminal-green bg-terminal-green/10 text-terminal-green' 
-                                : 'border-gray-300 dark:border-terminal-gray opacity-60 hover:opacity-100 dark:text-gray-400'
+                                : 'border-gray-300 bg-white dark:bg-black dark:border-terminal-gray opacity-60 hover:opacity-100 dark:text-gray-400'
                             }
                         `}
                     >
@@ -322,14 +320,14 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
             </div>
         </div>
 
-        <div>
+        <div className="bg-gray-50 dark:bg-terminal-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded">
           <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('mode_select', lang)}</label>
           <div className="hidden md:flex flex-col gap-2">
             {[ExamMode.ONE_WAY, ExamMode.TWO_WAY].map((m) => (
-                 <label key={m} className={`flex items-center p-3 border cursor-pointer transition-colors ${mode === m ? 'border-blue-500 dark:border-terminal-green bg-blue-50 dark:bg-terminal-green/10' : 'border-gray-300 dark:border-terminal-gray'}`}>
+                 <label key={m} className={`flex items-center p-3 border cursor-pointer transition-colors rounded ${mode === m ? 'border-blue-500 dark:border-terminal-green bg-blue-50 dark:bg-terminal-green/10' : 'bg-white dark:bg-black border-gray-300 dark:border-terminal-gray'}`}>
                     <input type="radio" name="mode" value={m} checked={mode === m} onChange={() => setMode(m)} className="mr-3 accent-terminal-green rtl:ml-3 rtl:mr-0" />
                     <div>
-                        <span className="font-bold dark:text-terminal-light">{m === ExamMode.ONE_WAY ? 'ONE_WAY (Standard)' : 'TWO_WAY (Interactive)'}</span>
+                        <span className="font-bold text-gray-800 dark:text-terminal-light">{m === ExamMode.ONE_WAY ? 'ONE_WAY (Standard)' : 'TWO_WAY (Interactive)'}</span>
                     </div>
                 </label>
             ))}
@@ -339,15 +337,16 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
              <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value as ExamMode)}
-                className="w-full p-4 bg-gray-50 dark:bg-terminal-black border border-gray-300 dark:border-terminal-gray font-mono text-base focus:border-terminal-green outline-none appearance-none rounded-none dark:text-terminal-light"
+                className="w-full p-4 bg-white dark:bg-black text-gray-900 dark:text-terminal-light border border-gray-300 dark:border-terminal-gray font-mono text-base focus:border-terminal-green outline-none appearance-none rounded"
              >
-                <option value={ExamMode.ONE_WAY}>ONE_WAY (Standard)</option>
-                <option value={ExamMode.TWO_WAY}>TWO_WAY (Interactive)</option>
+                <option value={ExamMode.ONE_WAY} className="bg-white dark:bg-black">ONE_WAY (Standard)</option>
+                <option value={ExamMode.TWO_WAY} className="bg-white dark:bg-black">TWO_WAY (Interactive)</option>
              </select>
+             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">▼</div>
           </div>
         </div>
 
-        <div>
+        <div className="bg-gray-50 dark:bg-terminal-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded">
           <div className="flex justify-between items-center mb-2">
             <label className="text-sm font-bold text-gray-900 dark:text-terminal-light">{t('time_alloc', lang)}</label>
             <label className="flex items-center gap-2 cursor-pointer text-sm select-none p-2">
@@ -375,7 +374,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       <button 
         onClick={handleStart}
         disabled={isScanning}
-        className="w-full py-4 md:py-3 bg-gray-900 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-black font-bold text-lg md:text-base uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+        className="w-full py-4 md:py-3 bg-gray-900 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-black font-bold text-lg md:text-base uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg rounded"
       >
         [ {t('initiate_exam', lang)} ]
       </button>
