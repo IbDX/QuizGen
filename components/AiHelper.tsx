@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { getAiHelperResponse } from '../services/gemini';
 import { UILanguage } from '../types';
 import { t } from '../utils/translations';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface AiHelperProps {
     lang: UILanguage;
@@ -68,13 +69,17 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang }) => {
                         {messages.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`
-                                    max-w-[85%] p-3 rounded-lg text-sm leading-relaxed shadow-sm
+                                    max-w-[85%] p-3 rounded-lg text-sm leading-relaxed shadow-sm overflow-hidden
                                     ${m.role === 'user' 
                                         ? 'bg-blue-600 text-white rounded-br-none' 
                                         : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'
                                     }
                                 `}>
-                                    {m.text}
+                                    {m.role === 'ai' ? (
+                                        <MarkdownRenderer content={m.text} className="!text-sm !space-y-2" />
+                                    ) : (
+                                        m.text
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -128,8 +133,13 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                 ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    // Custom Bot Face Icon
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-8 md:w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2a2 2 0 0 1 2 2v2h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4V4a2 2 0 0 1 2-2z" />
+                        <path d="M9 15h6" />
+                        <path d="M9 11v.01" />
+                        <path d="M15 11v.01" />
+                        <line x1="12" y1="2" x2="12" y2="4" />
                     </svg>
                 )}
             </button>
