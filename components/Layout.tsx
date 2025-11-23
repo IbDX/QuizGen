@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BackgroundEffect } from './BackgroundEffect';
 
@@ -185,6 +184,18 @@ export const Layout: React.FC<LayoutProps> = ({
       }
   };
 
+  // Helper for Theme-Specific Styles
+  const isPalestine = theme === 'palestine';
+
+  // Gradient Borders for Palestine Theme (Red - White - Green)
+  const headerBorderStyle = isPalestine 
+    ? { borderBottomWidth: '2px', borderImage: 'linear-gradient(to right, #CE1126, #FFFFFF, #007A3D) 1' } 
+    : {};
+    
+  const footerBorderStyle = isPalestine
+    ? { borderTopWidth: '2px', borderImage: 'linear-gradient(to right, #007A3D, #FFFFFF, #CE1126) 1' }
+    : {};
+
   return (
     <div className={`min-h-screen flex flex-col font-mono selection:bg-terminal-green selection:text-terminal-black ${useCustomCursor ? 'custom-cursor' : ''} relative overflow-x-hidden`}>
       
@@ -283,6 +294,7 @@ export const Layout: React.FC<LayoutProps> = ({
             translate-y-0
             ${isMobileMenuOpen ? '' : (isHeaderVisible ? 'md:translate-y-0' : 'md:-translate-y-full')}
         `}
+        style={headerBorderStyle}
         onMouseLeave={handleMouseLeaveHeader}
         onMouseEnter={handleMouseEnterHeader}
       >
@@ -294,10 +306,11 @@ export const Layout: React.FC<LayoutProps> = ({
                 className="relative group outline-none focus:outline-none"
                 title="Return to Main Menu"
             >
-                <div className="absolute -inset-1 bg-terminal-green rounded-full blur opacity-20 group-hover:opacity-60 transition duration-500 animate-pulse"></div>
-                <div className="relative flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-black border-2 border-terminal-green group-hover:border-white transition-all duration-300 shadow-[0_0_10px_rgba(0,255,65,0.3)] group-hover:shadow-[0_0_20px_rgba(0,255,65,0.8)] group-hover:scale-110 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-terminal-green/10 to-transparent translate-y-[-100%] group-hover:translate-y-[100%] transition-transform duration-700"></div>
-                    <span className="font-bold text-xl md:text-2xl italic font-mono text-white group-hover:text-terminal-green transition-colors z-10">Z+</span>
+                {/* Logo Glow - Red if Palestine, Green otherwise */}
+                <div className={`absolute -inset-1 rounded-full blur opacity-20 group-hover:opacity-60 transition duration-500 animate-pulse ${isPalestine ? 'bg-terminal-alert' : 'bg-terminal-green'}`}></div>
+                <div className={`relative flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-black border-2 transition-all duration-300 overflow-hidden ${isPalestine ? 'border-terminal-alert shadow-[0_0_10px_rgba(206,17,38,0.3)] group-hover:shadow-[0_0_20px_rgba(206,17,38,0.8)]' : 'border-terminal-green shadow-[0_0_10px_rgba(0,255,65,0.3)] group-hover:shadow-[0_0_20px_rgba(0,255,65,0.8)] group-hover:border-white'}`}>
+                    <div className={`absolute inset-0 bg-gradient-to-b from-transparent to-transparent translate-y-[-100%] group-hover:translate-y-[100%] transition-transform duration-700 ${isPalestine ? 'via-terminal-alert/20' : 'via-terminal-green/10'}`}></div>
+                    <span className={`font-bold text-xl md:text-2xl italic font-mono transition-colors z-10 ${isPalestine ? 'text-white group-hover:text-terminal-alert' : 'text-white group-hover:text-terminal-green'}`}>Z+</span>
                 </div>
             </button>
             </div>
@@ -413,7 +426,10 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </main>
 
-      <footer className="p-4 text-center text-xs text-gray-500 dark:text-gray-600 border-t border-gray-300 dark:border-gray-800 z-10 relative bg-gray-100/50 dark:bg-black/50 backdrop-blur-sm">
+      <footer 
+        className="p-4 text-center text-xs text-gray-500 dark:text-gray-600 border-t border-gray-300 dark:border-gray-800 z-10 relative bg-gray-100/50 dark:bg-black/50 backdrop-blur-sm"
+        style={footerBorderStyle}
+      >
         STATUS: ONLINE | SYSTEM: READY | V1.4.6 | VIRUSTOTAL: ACTIVE
       </footer>
 
@@ -456,7 +472,7 @@ export const Layout: React.FC<LayoutProps> = ({
                              <button
                                 onClick={() => setTheme('palestine')}
                                 className={`p-2 border rounded text-xs font-bold transition-all relative overflow-hidden ${theme === 'palestine' ? 'border-red-500 text-white' : 'border-gray-700 bg-black text-gray-500'}`}
-                                style={theme === 'palestine' ? { background: 'linear-gradient(135deg, #000 0%, #10b981 100%)' } : {}}
+                                style={theme === 'palestine' ? { background: 'linear-gradient(135deg, #202020 0%, #007A3D 100%)' } : {}}
                              >
                                  PALESTINE
                              </button>

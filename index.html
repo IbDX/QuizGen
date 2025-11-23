@@ -54,27 +54,46 @@
         --color-term-glass: rgba(12, 12, 12, 0.95);
       }
 
-      /* Palestine Theme (Dark Variant) */
+      /* Palestine Theme (Soft Dark Variant) */
       .theme-palestine {
-        /* Deep Black Background */
-        --color-term-black: #000000; 
-        /* Flag Green for Primary Actions/Text */
+        /* Soft Charcoal Background (Between Light and Pitch Black) */
+        --color-term-black: #202020; 
+        /* Flag Green for Primary Actions */
         --color-term-green: #007A3D; 
         /* Darker Green for accents */
         --color-term-dim-green: #004422;
-        /* Dark Gray for cards */
-        --color-term-gray: #111111;
-        /* White for reading text */
+        /* Lighter Gray for cards/containers */
+        --color-term-gray: #333333;
+        /* Pure White for reading text (High Contrast) */
         --color-term-light: #FFFFFF;
-        /* Flag Red for Alerts/Errors/Borders */
+        /* Flag Red for Alerts/Errors */
         --color-term-alert: #CE1126;
-        --color-term-glass: rgba(0, 0, 0, 0.95);
+        --color-term-glass: rgba(32, 32, 32, 0.95);
+      }
+
+      /* Global Overrides for Palestine Theme Elements */
+      /* Text Selection: Red Background, White Text */
+      .theme-palestine ::selection {
+        background-color: var(--color-term-alert);
+        color: #ffffff;
+      }
+      
+      /* Scrollbars: Dark Track, Red Thumb, White Border */
+      .theme-palestine ::-webkit-scrollbar-track {
+        background: var(--color-term-black);
+      }
+      .theme-palestine ::-webkit-scrollbar-thumb {
+        background: var(--color-term-alert); /* Red */
+        border: 1px solid #ffffff; /* White */
+      }
+      .theme-palestine ::-webkit-scrollbar-thumb:hover {
+        background: #ff3333;
       }
 
       body {
         font-family: 'Fira Code', monospace;
       }
-      /* Custom Scrollbar for Terminal Look */
+      /* Default Custom Scrollbar (Terminal/Light) */
       ::-webkit-scrollbar {
         width: 10px;
       }
