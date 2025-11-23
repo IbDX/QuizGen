@@ -86,7 +86,7 @@ const SnakeGame = () => {
   const [dir, setDir] = useState({ x: 1, y: 0 });
   const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
-  const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
+  const gameLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const generateFood = () => {
     return {

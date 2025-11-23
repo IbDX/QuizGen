@@ -144,6 +144,9 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   };
 
   const handleMouseEnterFile = (e: React.MouseEvent, file: FileData) => {
+      // Disable hover preview on touch/mobile devices implicitly
+      if (window.matchMedia('(pointer: coarse)').matches) return;
+
       const rect = e.currentTarget.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
@@ -243,11 +246,11 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                     onMouseEnter={(e) => handleMouseEnterFile(e, f)}
                     onMouseLeave={handleMouseLeaveFile}
                 >
-                    <div className="flex items-center gap-2 truncate">
-                        <span className="opacity-50 text-xs text-gray-500">[{i+1}]</span>
-                        <span className="truncate text-terminal-green max-w-[150px] md:max-w-none">{f.name}</span>
+                    <div className="flex items-center gap-2 overflow-hidden">
+                        <span className="opacity-50 text-xs text-gray-500 shrink-0">[{i+1}]</span>
+                        <span className="truncate text-terminal-green max-w-[140px] md:max-w-[300px]">{f.name}</span>
                         {/* Mini icon indicator */}
-                        <span className="text-[9px] px-1 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 uppercase">
+                        <span className="text-[9px] px-1 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 uppercase shrink-0">
                             {f.mime.includes('pdf') ? 'PDF' : f.mime.includes('image') ? 'IMG' : 'TXT'}
                         </span>
                     </div>
@@ -256,7 +259,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                             e.stopPropagation(); // Prevent triggering generic click if any
                             onRemoveFile(i);
                         }}
-                        className="text-gray-400 hover:text-red-500 transition-colors p-2 md:p-1"
+                        className="text-gray-400 hover:text-red-500 transition-colors p-2 md:p-1 shrink-0"
                         title="Remove File"
                     >
                         ✕
@@ -422,7 +425,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                 step="5" 
                 value={timeLimit} 
                 onChange={(e) => setTimeLimit(parseInt(e.target.value))}
-                className="w-full h-4 md:h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-500"
+                className="w-full h-4 md:h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-500 touch-pan-x"
                 disabled={!isTimed}
                 />
                 <span className="font-mono text-xl w-20 text-right">

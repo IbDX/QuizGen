@@ -227,37 +227,37 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       {isFailure && (
           <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-20 dark:opacity-10">
               <div className="absolute top-0 left-0 w-full h-full bg-red-500/20 animate-pulse"></div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-600 font-black text-[10rem] md:text-[20rem] -rotate-12 select-none opacity-10 whitespace-nowrap">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-600 font-black text-[6rem] md:text-[20rem] -rotate-12 select-none opacity-10 whitespace-nowrap">
                   FAILED
               </div>
           </div>
       )}
 
-      <div className="text-center mb-12 border-b border-gray-300 dark:border-gray-800 pb-8 relative z-10">
+      <div className="text-center mb-8 md:mb-12 border-b border-gray-300 dark:border-gray-800 pb-8 relative z-10">
         
         {/* Header Banner */}
         {isFailure ? (
-             <div className="bg-red-600 text-white py-2 font-bold tracking-[0.5em] uppercase mb-8 animate-pulse shadow-[0_0_20px_rgba(220,38,38,0.6)]">
+             <div className="bg-red-600 text-white py-2 font-bold tracking-[0.2em] md:tracking-[0.5em] uppercase mb-8 animate-pulse shadow-[0_0_20px_rgba(220,38,38,0.6)] text-sm md:text-base">
                  ⚠ CRITICAL SYSTEM FAILURE ⚠
              </div>
         ) : isPerfect ? (
-             <div className="bg-yellow-500 text-black py-2 font-bold tracking-[0.5em] uppercase mb-8 shadow-[0_0_20px_rgba(234,179,8,0.6)] animate-pulse">
+             <div className="bg-yellow-500 text-black py-2 font-bold tracking-[0.2em] md:tracking-[0.5em] uppercase mb-8 shadow-[0_0_20px_rgba(234,179,8,0.6)] animate-pulse text-sm md:text-base">
                  ★ PERFECTION ACHIEVED ★
              </div>
         ) : (
-            <h2 className="text-4xl font-bold mb-6">ASSESSMENT COMPLETE</h2>
+            <h2 className="text-2xl md:text-4xl font-bold mb-6">ASSESSMENT COMPLETE</h2>
         )}
 
         <div className="flex items-center justify-center gap-6 mb-6 relative">
             <div className="text-center">
-                <div className={`text-6xl font-mono mb-1 ${isFailure ? 'animate-bounce text-red-600' : score >= 70 ? "text-green-500" : "text-red-500"}`}>
+                <div className={`text-5xl md:text-6xl font-mono mb-1 ${isFailure ? 'animate-bounce text-red-600' : score >= 70 ? "text-green-500" : "text-red-500"}`}>
                     {score}%
                 </div>
                 <div className="text-sm text-gray-500">FINAL SCORE</div>
             </div>
-            <div className="h-16 w-px bg-gray-300 dark:bg-gray-700"></div>
+            <div className="h-12 md:h-16 w-px bg-gray-300 dark:bg-gray-700"></div>
             <div className="text-center relative">
-                <div className={`text-6xl font-mono font-bold mb-1 ${['A+','A','A-','B+','B'].includes(grade) ? 'text-blue-500' : ['C+','C','C-'].includes(grade) ? 'text-yellow-500' : 'text-red-600'}`}>
+                <div className={`text-5xl md:text-6xl font-mono font-bold mb-1 ${['A+','A','A-','B+','B'].includes(grade) ? 'text-blue-500' : ['C+','C','C-'].includes(grade) ? 'text-yellow-500' : 'text-red-600'}`}>
                     {grade}
                 </div>
                 <div className="text-sm text-gray-500">GRADE</div>
@@ -276,21 +276,21 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         </div>
 
         {/* Mobile-Only Publishing Section (Since Footer is hidden on mobile) */}
-        <div className="md:hidden mb-6 flex flex-col items-center gap-3">
+        <div className="md:hidden mb-6 flex flex-col items-center gap-3 w-full px-4">
              {!isPublished && !isFailure && (
-                 <div className="flex gap-2 w-full max-w-xs">
+                 <div className="flex gap-2 w-full max-w-sm">
                     <input 
                         type="text" 
                         placeholder="AGENT_NAME" 
                         value={userName}
                         onChange={handleNameChange}
                         maxLength={20}
-                        className={`bg-gray-100 dark:bg-gray-900 border ${nameError ? 'border-red-500' : 'border-gray-400'} p-2 text-sm font-mono outline-none focus:border-blue-500 flex-grow`}
+                        className={`bg-gray-100 dark:bg-gray-900 border ${nameError ? 'border-red-500' : 'border-gray-400'} p-3 text-sm font-mono outline-none focus:border-blue-500 flex-grow rounded-sm`}
                     />
                     <button 
                         onClick={handlePublish}
                         disabled={!userName || !!nameError}
-                        className="px-4 py-2 bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs"
+                        className="px-4 py-2 bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs rounded-sm"
                     >
                         SAVE
                     </button>
@@ -315,14 +315,14 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         {wrongIds.length > 0 && (
             <button 
                 onClick={() => setShowWeakPoints(!showWeakPoints)}
-                className="text-xs font-bold uppercase tracking-widest underline text-blue-500 hover:text-blue-400"
+                className="text-xs font-bold uppercase tracking-widest underline text-blue-500 hover:text-blue-400 p-2"
             >
                 {showWeakPoints ? 'HIDE ANALYSIS' : 'VIEW WEAK POINTS'}
             </button>
         )}
         
         {showWeakPoints && wrongIds.length > 0 && (
-            <div className="mt-6 max-w-2xl mx-auto bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 p-6 rounded animate-fade-in">
+            <div className="mt-6 max-w-2xl mx-auto bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 p-4 md:p-6 rounded animate-fade-in">
                 <h4 className="font-bold text-red-600 dark:text-red-400 mb-4 text-sm uppercase tracking-wider text-center">
                     Areas for Improvement & Resources
                 </h4>
@@ -330,19 +330,19 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                     {Object.entries(wrongTopics).map(([topic, count]) => {
                         const resources = getTopicResources(topic);
                         return (
-                            <div key={topic} className="flex flex-col md:flex-row md:items-center justify-between bg-white dark:bg-black p-3 rounded border border-gray-200 dark:border-gray-800 shadow-sm">
-                                <div className="flex items-center gap-3 mb-2 md:mb-0">
+                            <div key={topic} className="flex flex-col md:flex-row md:items-center justify-between bg-white dark:bg-black p-3 rounded border border-gray-200 dark:border-gray-800 shadow-sm gap-2">
+                                <div className="flex items-center gap-3">
                                     <span className="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs font-bold px-2 py-1 rounded-full">
                                         {count} missed
                                     </span>
                                     <span className="font-mono font-bold text-sm">{topic}</span>
                                 </div>
-                                <div className="flex gap-2 text-xs font-bold">
+                                <div className="flex gap-2 text-xs font-bold w-full md:w-auto mt-2 md:mt-0">
                                     <a 
                                         href={resources.video} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                                        className="flex-1 md:flex-none justify-center flex items-center gap-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
@@ -353,7 +353,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                                         href={resources.read} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                                        className="flex-1 md:flex-none justify-center flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                                             <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
@@ -379,28 +379,28 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
           }
 
           return (
-            <div key={item.question.id} className={`p-6 border-l-4 ${item.isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'} bg-white dark:bg-gray-900 shadow-md rounded-r-lg relative`}>
+            <div key={item.question.id} className={`p-4 md:p-6 border-l-4 ${item.isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-red-500 bg-red-50 dark:bg-red-900/10'} bg-white dark:bg-gray-900 shadow-md rounded-r-lg relative`}>
                 <button 
                     onClick={() => toggleSave(item.question)}
-                    className={`absolute top-4 right-4 p-1 transition-colors hover:scale-110 ${savedQuestions[item.question.id] ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
+                    className={`absolute top-2 right-2 md:top-4 md:right-4 p-2 transition-colors hover:scale-110 ${savedQuestions[item.question.id] ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
                     title={savedQuestions[item.question.id] ? "Remove from Library" : "Save to Library"}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-5 md:w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                     </svg>
                 </button>
 
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-gray-800 pr-8">
+                <div className="flex justify-between items-start md:items-center mb-4 pb-4 border-b border-gray-200 dark:border-gray-800 pr-8">
                 <div className="flex flex-col">
                     <h3 className="font-bold text-lg">Question {idx + 1}</h3>
                     <span className="text-xs opacity-50 uppercase text-gray-500">{item.question.type} • {item.question.topic}</span>
                 </div>
-                <span className={`text-xs font-bold px-3 py-1 rounded-full ${item.isCorrect ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                <span className={`text-[10px] md:text-xs font-bold px-2 md:px-3 py-1 rounded-full ${item.isCorrect ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
                     {item.isCorrect ? 'PASSED' : 'FAILED'}
                 </span>
                 </div>
                 
-                <div className="mb-6 text-lg font-medium text-gray-800 dark:text-gray-200">
+                <div className="mb-6 text-base md:text-lg font-medium text-gray-800 dark:text-gray-200">
                     <MarkdownRenderer content={displayText} />
                 </div>
 

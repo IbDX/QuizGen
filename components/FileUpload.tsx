@@ -138,10 +138,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
   };
 
   return (
-    <div className={`w-full mx-auto mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none' : 'max-w-2xl'}`}>
+    <div className={`w-full mx-auto mt-4 md:mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none' : 'max-w-2xl'}`}>
       <div 
         className={`
-          border-2 border-dashed transition-all p-10 text-center cursor-pointer relative overflow-hidden
+          border-2 border-dashed transition-all p-6 md:p-10 text-center cursor-pointer relative overflow-hidden rounded-lg
           ${isDragging 
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
             : globalStatus === 'PROCESSING'
@@ -164,8 +164,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           disabled={globalStatus !== 'IDLE'}
         />
         
-        <div className="space-y-4 relative z-10">
-          <div className="text-4xl">
+        <div className="space-y-3 relative z-10">
+          <div className="text-3xl md:text-4xl">
              {globalStatus === 'PROCESSING' ? (
                  <span className="inline-block animate-spin">🛡️</span>
              ) : (
@@ -173,14 +173,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
              )}
           </div>
 
-          <h3 className="text-xl font-bold uppercase">
+          <h3 className="text-lg md:text-xl font-bold uppercase">
             {globalStatus === 'PROCESSING' ? 'ANALYZING BATCH...' : 'SECURE FILE UPLOAD'}
           </h3>
           
-          <p className="text-sm opacity-70 font-mono">
+          <p className="text-xs md:text-sm opacity-70 font-mono">
             {globalStatus === 'PROCESSING' 
              ? 'Executing Security Protocols on individual files...'
-             : 'Drag & Drop Multiple PDFs/Images (VirusTotal Integrated)'}
+             : 'Tap to Select or Drag & Drop Multiple PDFs/Images'}
           </p>
         </div>
 
@@ -197,14 +197,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
               <div className="space-y-2 max-h-40 overflow-y-auto">
                   {logs.map((log, i) => (
                       <div key={i} className="flex justify-between items-center">
-                          <span className="truncate max-w-[70%]">{log.name}</span>
+                          <span className="truncate max-w-[60%] md:max-w-[70%]">{log.name}</span>
                           <div className="flex items-center gap-2">
                               {log.status === 'PENDING' && <span className="text-gray-500">WAITING</span>}
                               {log.status === 'SCANNING' && <span className="text-blue-500 animate-pulse">SCANNING...</span>}
                               {log.status === 'SUCCESS' && <span className="text-green-500 font-bold">✓ SAFE</span>}
                               {log.status === 'FAILED' && <span className="text-red-500 font-bold">✕ BLOCKED</span>}
                           </div>
-                          {log.error && <div className="w-full text-red-400 italic pl-2">{log.error}</div>}
+                          {log.error && <div className="w-full text-red-400 italic pl-2 hidden md:block">{log.error}</div>}
                       </div>
                   ))}
               </div>
@@ -213,15 +213,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
 
       <div className="flex items-center my-6">
           <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
-          <span className="px-4 text-xs text-gray-500 font-mono uppercase">OR VIA NETWORK</span>
+          <span className="px-4 text-[10px] md:text-xs text-gray-500 font-mono uppercase">OR VIA NETWORK</span>
           <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
       </div>
 
-      <form onSubmit={handleUrlSubmit} className="flex gap-2">
+      <form onSubmit={handleUrlSubmit} className="flex flex-col sm:flex-row gap-2">
           <input 
             type="url" 
             placeholder="https://example.com/document.pdf" 
-            className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-4 md:p-3 font-mono text-base md:text-sm outline-none focus:border-terminal-green"
+            className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-3 md:p-3 font-mono text-sm outline-none focus:border-terminal-green rounded-sm"
             value={urlInput}
             onChange={handleUrlChange}
             disabled={globalStatus !== 'IDLE'}
@@ -229,7 +229,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           <button 
              type="submit"
              disabled={!urlInput || globalStatus !== 'IDLE'}
-             className="px-6 md:px-4 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50"
+             className="w-full sm:w-auto px-6 py-3 md:py-0 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50 rounded-sm"
           >
             FETCH
           </button>
@@ -239,9 +239,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
       <div className="flex flex-col items-center mt-6">
           <div className="h-px bg-gray-300 dark:bg-gray-700 w-full mb-6"></div>
           
-          <div className="bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-4 rounded-lg flex flex-col md:flex-row items-center gap-6 hover:border-terminal-green transition-colors group w-full">
+          <div className="bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-4 rounded-lg flex flex-col sm:flex-row items-center gap-4 md:gap-6 hover:border-terminal-green transition-colors group w-full">
               {/* Placeholder Image for Demo Card */}
-              <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden rounded border border-gray-400 dark:border-gray-600 group-hover:scale-105 transition-transform">
+              <div className="relative w-full sm:w-24 h-32 sm:h-24 flex-shrink-0 overflow-hidden rounded border border-gray-400 dark:border-gray-600 group-hover:scale-105 transition-transform">
                  <img 
                     src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=150&h=150&q=80" 
                     alt="Demo Source" 
@@ -250,7 +250,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                  <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
               </div>
               
-              <div className="flex-grow text-center md:text-left">
+              <div className="flex-grow text-center sm:text-left w-full">
                   <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100">QUICK DIAGNOSTIC TEST</h4>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                       Run an instant simulation using a sample C++ pointer analysis document. No upload required.
@@ -258,7 +258,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                   <button 
                      onClick={onLoadDemo}
                      disabled={globalStatus !== 'IDLE'}
-                     className="px-6 py-2 bg-terminal-green text-black font-bold text-sm hover:bg-green-400 transition-colors w-full md:w-auto uppercase tracking-wider disabled:opacity-50"
+                     className="px-6 py-3 md:py-2 bg-terminal-green text-black font-bold text-sm hover:bg-green-400 transition-colors w-full sm:w-auto uppercase tracking-wider disabled:opacity-50 rounded-sm"
                   >
                       LOAD DEMO
                   </button>

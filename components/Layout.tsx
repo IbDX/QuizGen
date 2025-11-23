@@ -336,7 +336,7 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
 
         {/* MOBILE MENU DROPDOWN */}
-        <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out bg-gray-100 dark:bg-black border-b border-gray-300 dark:border-terminal-green ${isMobileMenuOpen ? 'max-h-[75vh] opacity-100 shadow-2xl overflow-y-auto' : 'max-h-0 opacity-0'}`}>
+        <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out bg-gray-100 dark:bg-black border-b border-gray-300 dark:border-terminal-green ${isMobileMenuOpen ? 'max-h-[85vh] opacity-100 shadow-2xl overflow-y-auto' : 'max-h-0 opacity-0'}`}>
             <div className="flex flex-col p-4 gap-2">
                  <button 
                     onClick={() => { onHome(); setIsMobileMenuOpen(false); }}
@@ -390,21 +390,21 @@ export const Layout: React.FC<LayoutProps> = ({
       </main>
 
       <footer className="p-4 text-center text-xs text-gray-500 dark:text-gray-600 border-t border-gray-300 dark:border-gray-800 z-10 relative bg-gray-100/50 dark:bg-black/50 backdrop-blur-sm">
-        STATUS: ONLINE | SYSTEM: READY | V1.4.5 | VIRUSTOTAL: ACTIVE
+        STATUS: ONLINE | SYSTEM: READY | V1.4.6 | VIRUSTOTAL: ACTIVE
       </footer>
 
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 cursor-default">
-            <div className="bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-terminal-green w-full max-w-md shadow-2xl p-6 animate-fade-in relative">
+            <div className="bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-terminal-green w-full max-w-md shadow-2xl p-6 animate-fade-in relative max-h-[90vh] overflow-hidden flex flex-col">
                 <button 
                     onClick={() => setShowSettings(false)}
-                    className="absolute top-2 right-2 text-gray-500 hover:text-red-500"
+                    className="absolute top-2 right-2 text-gray-500 hover:text-red-500 z-10 bg-white dark:bg-gray-900 rounded-full p-1"
                 >
                     ✕
                 </button>
                 
-                <h2 className="text-xl font-bold mb-6 border-b border-gray-300 dark:border-gray-700 pb-2 flex items-center gap-2 text-gray-800 dark:text-terminal-green">
+                <h2 className="text-xl font-bold mb-6 border-b border-gray-300 dark:border-gray-700 pb-2 flex items-center gap-2 text-gray-800 dark:text-terminal-green shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -412,7 +412,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     SYSTEM PREFERENCES
                 </h2>
 
-                <div className="space-y-6 text-gray-800 dark:text-gray-200 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+                <div className="space-y-6 text-gray-800 dark:text-gray-200 overflow-y-auto custom-scrollbar pr-2 flex-grow">
                     {/* Font Family Selection */}
                     <div>
                         <label className="block text-sm font-bold mb-2 uppercase text-gray-600 dark:text-terminal-green">System Font</label>
@@ -529,7 +529,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
                 <button 
                     onClick={() => setShowSettings(false)}
-                    className="w-full mt-8 py-3 bg-gray-800 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold uppercase transition-colors"
+                    className="w-full mt-6 py-3 bg-gray-800 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold uppercase transition-colors shrink-0"
                 >
                     SAVE & CLOSE
                 </button>
