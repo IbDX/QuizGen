@@ -1,6 +1,7 @@
 
+
 import React, { useRef, useState, useEffect } from 'react';
-import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
+import { validateFile, fileToBase64, urlToBase64, validateBatchSize } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
 import { sanitizeInput } from '../utils/security';
 import { t } from '../utils/translations';
@@ -41,6 +42,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     if (!fileList || fileList.length === 0) return;
     
     const newFiles = Array.from(fileList);
+
+    // 0. Batch Size Check
+    const batchCheck = validateBatchSize(newFiles);
+    if (!batchCheck.valid) {
+        setLogs([{ name: "BATCH UPLOAD", status: 'FAILED', error: batchCheck.error }]);
+        return;
+    }
+    
     setGlobalStatus('PROCESSING');
     
     // Initialize logs for these files
@@ -259,7 +268,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
             disabled={globalStatus !== 'IDLE'}
           />
           <button 
-             type="submit"
+             type="submit" 
              disabled={!urlInput || globalStatus !== 'IDLE'}
              className="w-full sm:w-auto px-6 py-3 md:py-0 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50 rounded-sm dark:text-gray-200"
           >

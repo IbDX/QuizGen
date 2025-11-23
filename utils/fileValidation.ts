@@ -17,6 +17,15 @@ export const validateFile = async (file: File): Promise<{ valid: boolean; error?
   return { valid: true, mimeType: detectedMime };
 };
 
+export const validateBatchSize = (files: File[]): { valid: boolean; error?: string } => {
+  const MAX_BATCH_SIZE_MB = 30;
+  const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+  if (totalSize > MAX_BATCH_SIZE_MB * 1024 * 1024) {
+    return { valid: false, error: `Total batch size exceeds ${MAX_BATCH_SIZE_MB}MB limit.` };
+  }
+  return { valid: true };
+};
+
 const checkMagicBytes = async (file: File): Promise<string | null> => {
   return new Promise((resolve) => {
     const reader = new FileReader();

@@ -1,5 +1,6 @@
 import React from 'react';
 import { CodeWindow } from './CodeWindow';
+import katex from 'katex';
 
 interface MarkdownRendererProps {
   content: string;
@@ -21,16 +22,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
       {parts.map((part, index) => {
         const mod = index % 3;
 
-        // Case 0: Regular Text
+        // Case 0: Regular Text (which might contain math)
         if (mod === 0) {
           if (!part.trim()) return null;
-          return (
-            <div 
-              key={index} 
-              dangerouslySetInnerHTML={{ __html: processInlineMarkdown(part) }} 
-              className="whitespace-pre-line" // Preserves paragraph breaks
-            />
-          );
+          return <TextWithMath key={index} text={part} />;
         }
 
         // Case 1: Language Identifier (captured but not rendered directly)
@@ -50,6 +45,43 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
   );
 };
 
+const TextWithMath: React.FC<{ text: string }> = ({ text }) => {
+    // Split by block math $$...$$ or inline math $...$
+    // Group 1: Block math $$...$$
+    // Group 2: Inline math $...$ (using non-greedy match, ignoring escaped $)
+    const parts = text.split(/(\$\$[\s\S]*?\$\$|\$(?:\\.|[^$])*?\$)/g);
+
+    return (
+        <div className="whitespace-pre-line">
+            {parts.map((part, i) => {
+                if (part.startsWith('$$') && part.endsWith('$$')) {
+                    const math = part.slice(2, -2);
+                    try {
+                        const html = katex.renderToString(math, { displayMode: true, throwOnError: false });
+                        // dir="ltr" ensures math equation layout is always Left-To-Right even in Arabic interface
+                        return <div key={i} dangerouslySetInnerHTML={{ __html: html }} dir="ltr" className="my-4 overflow-x-auto text-center" />;
+                    } catch (e) {
+                        return <span key={i} className="text-red-500 font-mono">{part}</span>;
+                    }
+                }
+                
+                if (part.startsWith('$') && part.endsWith('$')) {
+                    const math = part.slice(1, -1);
+                    try {
+                        const html = katex.renderToString(math, { displayMode: false, throwOnError: false });
+                        // dir="ltr" ensures math symbols are ordered correctly
+                        return <span key={i} dangerouslySetInnerHTML={{ __html: html }} dir="ltr" className="inline-block mx-1" />;
+                    } catch (e) {
+                        return <span key={i} className="text-red-500 font-mono">{part}</span>;
+                    }
+                }
+
+                return <span key={i} dangerouslySetInnerHTML={{ __html: processInlineMarkdown(part) }} />;
+            })}
+        </div>
+    );
+};
+
 export const processInlineMarkdown = (text: string) => {
     let processed = text
         // Basic HTML Escape
@@ -66,7 +98,7 @@ export const processInlineMarkdown = (text: string) => {
         // Inline Code `text`
         .replace(
             /`([^`]+)`/g, 
-            '<span class="font-mono text-[0.9em] bg-gray-200 dark:bg-[#1e1e1e] text-red-600 dark:text-terminal-green px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 break-words box-decoration-clone">$1</span>'
+            '<span class="font-mono text-[0.9em] bg-gray-200 dark:bg-[#1e1e1e] text-red-600 dark:text-terminal-green px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 break-words box-decoration-clone" dir="ltr">$1</span>'
         );
 
     return processed;
