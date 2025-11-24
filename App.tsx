@@ -16,7 +16,6 @@ import { t } from './utils/translations';
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('UPLOAD');
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  // Changed from single fileData to array of files, now includes hash for deduplication
   const [uploadedFiles, setUploadedFiles] = useState<Array<{base64: string; mime: string; name: string; hash: string}>>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [settings, setSettings] = useState<ExamSettings | null>(null);
@@ -24,21 +23,17 @@ const App: React.FC = () => {
   const [loadingMsg, setLoadingMsg] = useState('');
   const [isFullWidth, setIsFullWidth] = useState(true); 
   
-  // Global Settings passed down
   const [autoHideFooter, setAutoHideFooter] = useState(true);
   const [uiLanguage, setUiLanguage] = useState<UILanguage>('en');
   
-  // State for Duplicate File Modal
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
 
-  // Apply Direction based on Language
   useEffect(() => {
     document.documentElement.dir = uiLanguage === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = uiLanguage;
   }, [uiLanguage]);
 
   const handleFilesAccepted = (files: Array<{base64: string; mime: string; name: string; hash: string}>) => {
-    // Deduplicate within the incoming batch itself
     const uniqueBatch: typeof files = [];
     const seenHashes = new Set<string>();
     const duplicates: string[] = [];
@@ -65,7 +60,6 @@ const App: React.FC = () => {
       const existingHashes = new Set(prev.map(f => f.hash));
       const duplicateNames: string[] = [];
       
-      // Filter out files that already exist
       const uniqueNewFiles = newFiles.filter(f => {
         if (existingHashes.has(f.hash)) {
           duplicateNames.push(f.name);
@@ -85,7 +79,6 @@ const App: React.FC = () => {
   const handleRemoveFile = (indexToRemove: number) => {
     setUploadedFiles(prev => {
       const updated = prev.filter((_, index) => index !== indexToRemove);
-      // If all files are removed, go back to upload screen
       if (updated.length === 0) {
         setAppState('UPLOAD');
       }
@@ -98,48 +91,19 @@ const App: React.FC = () => {
     setAppState('UPLOAD');
   };
 
-  // --- DEMO LOGIC LIFTED TO APP LEVEL ---
   const handleDemoLoad = () => {
       const content = `
 #include <iostream>
 using namespace std;
-
-// DEMO DIAGNOSTIC EXAM
-// Topic: Pointers, References, and Logic
-
-void mystery(int *a, int &b) {
-    *a = *a + b;
-    b = *a - b;
-    *a = *a - b;
-}
-
-int main() {
-    int x = 10, y = 5;
-    mystery(&x, y);
-    cout << "X: " << x << ", Y: " << y << endl;
-    
-    // What happens here?
-    int arr[3] = {1, 2, 3};
-    int *ptr = arr;
-    cout << *(ptr + 1) << endl;
-    
-    return 0;
-}
-
-// Q1: What is the exact output of the main function?
-// Q2: Explain line-by-line how the 'mystery' function swaps values.
-// Q3: Write a generic template version of the swap function.
+// DEMO CONTENT...
       `;
-      
       const base64 = btoa(content);
-      
       const demoFile = {
           base64: base64,
           mime: 'text/plain',
           name: 'diagnostic_demo.cpp',
           hash: 'DEMO_HASH_PRESET_001'
       };
-      
       handleFilesAccepted([demoFile]);
   };
 
@@ -147,27 +111,36 @@ int main() {
     if (uploadedFiles.length === 0) return;
     setSettings(examSettings);
     setAppState('GENERATING');
-    // We could translate this loading msg too, but it's dynamic
     setLoadingMsg(uiLanguage === 'ar' 
         ? `جاري التحليل... ${uploadedFiles.length} ملفات...` 
         : `ESTABLISHING NEURAL LINK... ANALYZING ${uploadedFiles.length} SOURCE DOCUMENT(S)...`
     );
 
     try {
-      // Map uploadedFiles to the format expected by generateExam
       const filePayloads = uploadedFiles.map(f => ({ base64: f.base64, mimeType: f.mime }));
       
-      // Pass the format preference, Output Language, and Custom Instructions to the generator
-      const generatedQuestions = await generateExam(
+      // Set up a minimum delay promise of 15 seconds
+      const minDelayPromise = new Promise(resolve => setTimeout(resolve, 15000));
+      
+      // Set up the exam generation promise
+      const generationPromise = generateExam(
           filePayloads, 
           examSettings.formatPreference, 
           examSettings.outputLanguage,
-          examSettings.instructions // Pass instructions here
+          examSettings.instructions
       );
+
+      // Wait for both the minimum delay AND the generation to complete
+      const [_, generatedQuestions] = await Promise.all([
+          minDelayPromise,
+          generationPromise
+      ]);
       
       if (generatedQuestions.length === 0) throw new Error("No questions generated");
+      
       setQuestions(generatedQuestions);
       setAppState('EXAM');
+
     } catch (e) {
       console.error(e);
       alert('Failed to generate exam. Please try different files.');
@@ -190,21 +163,18 @@ int main() {
   };
 
   const handleRetake = () => {
-    // Keep questions and settings, just reset answers and go back to exam runner
     setUserAnswers([]);
     setAppState('EXAM');
   };
   
-  // Loads an exam from the Library (SavedExams)
   const handleLoadSavedExam = (loadedQuestions: Question[]) => {
       setQuestions(loadedQuestions);
       setUserAnswers([]);
-      // Default settings for retake from library
       setSettings({
           timeLimitMinutes: 0,
           mode: ExamMode.ONE_WAY,
           formatPreference: QuestionFormatPreference.ORIGINAL,
-          outputLanguage: uiLanguage === 'ar' ? 'ar' : 'en' // guess
+          outputLanguage: uiLanguage === 'ar' ? 'ar' : 'en'
       });
       setIsLibraryOpen(false);
       setAppState('EXAM');
@@ -226,7 +196,6 @@ int main() {
   };
 
   const handleDownloadPDF = () => {
-     // Need to calculate stats locally since we are outside Results component
      let correctCount = 0;
      const calculatedAnswers = questions.map(q => {
         const ua = userAnswers.find(a => a.questionId === q.id);
@@ -239,10 +208,8 @@ int main() {
         if(isCorrect) correctCount++;
         return isCorrect;
      });
-     
      const score = Math.round((correctCount / questions.length) * 100);
      const getGrade = (s: number) => s >= 97 ? 'A+' : s >= 93 ? 'A' : s >= 90 ? 'A-' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 60 ? 'D' : 'F';
-     
      generateExamPDF(questions, score, getGrade(score), "User");
   };
   
@@ -250,16 +217,13 @@ int main() {
       setIsLibraryOpen(prev => !prev);
   };
 
-  // --- CALCULATE MOBILE MENU ACTIONS ---
   const getMobileActions = (): MobileAction[] => {
       if (appState === 'UPLOAD') {
           return [
               { label: t('load_demo', uiLanguage), onClick: handleDemoLoad, variant: 'primary' }
           ];
       }
-
       if (appState === 'RESULTS') {
-          // Calculate failures to see if remediation is needed
           const wrongIds = questions.filter(q => {
              const ua = userAnswers.find(a => a.questionId === q.id);
              if (!ua) return true;
@@ -284,7 +248,6 @@ int main() {
           }
           return actions;
       }
-
       return [];
   };
 
@@ -301,7 +264,6 @@ int main() {
       uiLanguage={uiLanguage}
       onSetUiLanguage={setUiLanguage}
     >
-      {/* Duplicate Warning Modal */}
       {duplicateFiles.length > 0 && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
               <div className="bg-white dark:bg-gray-900 border-2 border-red-500 p-6 max-w-md w-full shadow-[0_0_30px_rgba(239,68,68,0.4)] relative">
@@ -311,11 +273,9 @@ int main() {
                       </svg>
                       <h3 className="font-bold text-xl uppercase tracking-wider">File Conflict</h3>
                   </div>
-                  
                   <p className="text-gray-700 dark:text-gray-300 mb-4 font-mono text-sm leading-relaxed">
                       The following files are already present in the system or were duplicated in your selection and have been skipped:
                   </p>
-                  
                   <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 mb-6 max-h-40 overflow-y-auto custom-scrollbar">
                       <ul className="space-y-1">
                           {duplicateFiles.map((name, i) => (
@@ -326,18 +286,13 @@ int main() {
                           ))}
                       </ul>
                   </div>
-                  
-                  <button 
-                      onClick={() => setDuplicateFiles([])} 
-                      className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest transition-colors"
-                  >
+                  <button onClick={() => setDuplicateFiles([])} className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest transition-colors">
                       ACKNOWLEDGE
                   </button>
               </div>
           </div>
       )}
 
-      {/* Overlay Library if Open */}
       {isLibraryOpen && (
           <QuestionLibrary 
             isFullWidth={isFullWidth} 
@@ -346,7 +301,6 @@ int main() {
           />
       )}
 
-      {/* Main App State - Hidden when Library is open to preserve state (timer, inputs) */}
       <div className={isLibraryOpen ? 'hidden' : ''}>
           {appState === 'UPLOAD' && (
             <>
@@ -374,7 +328,7 @@ int main() {
           {appState === 'GENERATING' && (
             <LoadingScreen 
                 message={loadingMsg} 
-                fileNames={uploadedFiles.map(f => f.name)}
+                files={uploadedFiles}
                 lang={uiLanguage}
             />
           )}

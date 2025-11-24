@@ -406,44 +406,47 @@ export const gradeCodingAnswer = async (question: Question, code: string): Promi
   }
 };
 
-// --- NEW FEATURE: DYNAMIC TIP GENERATION ---
-export const generateLoadingTips = async (fileNames: string[], lang: UILanguage = 'en'): Promise<string[]> => {
+// --- DYNAMIC TIP GENERATION ---
+export const generateLoadingTips = async (
+    files: { base64: string, mimeType: string }[],
+    lang: UILanguage = 'en'
+): Promise<string[]> => {
+    if (!files || files.length === 0) return [];
+
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         
-        const context = fileNames.length > 0 ? fileNames.join(', ') : "Programming, Computer Science, and Technology";
-        
-        let prompt = "";
-        if (lang === 'ar') {
-             prompt = `
-                Generate 3 unique, obscure, and interesting technical facts or tips related to: ${context}.
-                
-                Rules:
-                1. **OUTPUT MUST BE IN ARABIC**.
-                2. Keep each tip short (under 25 words).
-                3. If including code, wrap it in backticks and keep the code in English.
-                4. Do not use generic advice. Make it sound like a system log or advanced hint.
-                5. Randomize the topics slightly within the domain.
-            `;
-        } else {
-             prompt = `
-                Generate 3 unique, obscure, and interesting technical facts or tips related to: ${context}.
-                
-                Rules:
-                1. Keep each tip short (under 25 words).
-                2. If including code, wrap it in backticks.
-                3. Do not use generic "Hello World" advice. Make it sound like a system log or advanced hint.
-                4. Randomize the topics slightly within the domain.
-            `;
-        }
+        const contextFiles = files.slice(0, 3).map(file => ({
+            inlineData: {
+                mimeType: file.mimeType,
+                data: file.base64.replace(/\s/g, '')
+            }
+        }));
+
+        const prompt = `
+            **TASK**: Generate Context-Aware Technical Tips.
+            **INPUT**: You are given ${contextFiles.length} file snippets (images or text).
+
+            **ANALYSIS STEPS**:
+            1.  **Analyze Content**: Examine the content of the provided files to identify the primary technical subject matter (e.g., "C++ Pointers", "Calculus: Derivatives", "Data Structures in Java").
+            2.  **Detect Language**: Determine the primary human language used in the text (e.g., English, Arabic).
+            3.  **Generate Tips**: Create a list of 7 to 10 unique, interesting, and non-obvious facts, tips, or concepts related to the identified subject matter.
+
+            **RULES**:
+            1.  **Language Match**: The generated tips MUST be in the same language you detected from the source files.
+            2.  **Relevance**: Tips must be strictly related to the analyzed topic.
+            3.  **Format**: Keep each tip concise (under 30 words). If code is included, wrap it in backticks \`like this\` and keep the code itself in English.
+            4.  **No Meta-Commentary**: Do not mention "Based on my analysis..." or "The topic is...". Just output the tips.
+            5.  **Output**: Return a clean JSON array of strings.
+        `;
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: { parts: [{ text: prompt }] },
+            contents: { parts: [...contextFiles, { text: prompt }] },
             config: {
                 responseMimeType: "application/json",
                 responseSchema: tipsSchema,
-                temperature: 1.0 // High temperature for maximum randomness
+                temperature: 1.0 
             }
         });
 

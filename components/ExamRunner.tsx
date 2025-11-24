@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType, UILanguage } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
@@ -29,34 +28,28 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const [savedState, setSavedState] = useState<boolean>(false);
   const [inputError, setInputError] = useState<string | null>(null);
   
-  // Ref for scrolling
   const topRef = useRef<HTMLDivElement>(null);
-  
-  // Ref to track answers for timer closure
   const answersRef = useRef(answers);
   answersRef.current = answers;
 
-  // For Two Way Mode
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [currentFeedback, setCurrentFeedback] = useState<string>("");
 
   const currentQ = questions[currentIndex];
   const isOneWay = settings.mode === ExamMode.ONE_WAY;
+  const isLastQuestion = currentIndex === questions.length - 1;
 
-  // Check if saved on mount or index change
   useEffect(() => {
       setSavedState(isQuestionSaved(currentQ.id));
-      setInputError(null); // Clear errors on nav
+      setInputError(null);
   }, [currentQ.id]);
 
   useEffect(() => {
-    // Only run timer if timeLimitMinutes is greater than 0
     if (settings.timeLimitMinutes > 0) {
       const timer = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
-            // Use the ref current value to submit the latest answers
             onComplete(Array.from(answersRef.current.values()));
             return 0;
           }
@@ -67,10 +60,9 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     }
   }, [settings.timeLimitMinutes, onComplete]);
 
-  // Scroll helper
   const scrollToTop = () => {
     if (topRef.current) {
-        const yOffset = -120; // Offset for sticky header
+        const yOffset = -120;
         const y = topRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
         window.scrollTo({top: y, behavior: 'smooth'});
     } else {
@@ -79,7 +71,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   };
 
   const handleFinish = () => {
-    if (inputError) return; // Prevent submit if active error
+    if (inputError) return;
     onComplete(Array.from(answers.values()));
   };
 
@@ -101,15 +93,13 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         const validation = validateCodeInput(String(value));
         if (!validation.isValid) {
             setInputError(validation.error || "Invalid Input");
-            // We allow typing but show error, or clamp value
             if (validation.sanitizedValue) validatedValue = validation.sanitizedValue;
         }
     } else if (currentQ.type === QuestionType.TRACING) {
-        // Strict check for tracing
         const validation = sanitizeInput(String(value));
         if (!validation.isValid) {
              setInputError(validation.error || "Invalid Character");
-             return; // Block input
+             return;
         }
         validatedValue = validation.sanitizedValue;
     }
@@ -130,7 +120,6 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     const userAnswer = answers.get(currentQ.id);
     
     if (!userAnswer) {
-        // Show explanation even if no answer
         setCurrentFeedback(`No answer provided.\n\n**Analysis/Solution:**\n${currentQ.explanation}`);
         setShowFeedback(true);
         setIsGrading(false);
@@ -145,7 +134,6 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             isCorrect = userAnswer.answer === currentQ.correctOptionIndex;
             feedback = isCorrect ? "Correct!" : `Incorrect.\n${currentQ.explanation}`;
         } else {
-            const userTxt = String(userAnswer.answer).trim().toLowerCase();
             feedback = `**Answer Analysis:**\n${currentQ.explanation}`;
             isCorrect = true; 
         }
@@ -192,6 +180,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   };
 
   const jumpToQuestion = (index: number) => {
+    if (isOneWay) return;
     setShowFeedback(false);
     setCurrentFeedback("");
     setInputError(null);
@@ -206,11 +195,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   };
 
   const getAnswerValue = () => answers.get(currentQ.id)?.answer ?? "";
-
   const progressPercentage = Math.round((answers.size / questions.length) * 100);
-  
   const isStandardMCQ = currentQ.type === QuestionType.MCQ && currentQ.options && currentQ.options.length > 0;
-
   const hasCodeBlockInText = currentQ.text.includes('```');
   
   let displayText = currentQ.text;
@@ -218,41 +204,10 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
      displayText = displayText.replace(currentQ.codeSnippet, '').trim();
   }
 
-  // Action Button Renderer (integrated into footer)
-  const renderActionButton = () => {
-    if (settings.mode === ExamMode.TWO_WAY && !showFeedback) {
-        return (
-          <button
-              onClick={checkAnswerTwoWay}
-              disabled={isGrading || !!inputError}
-              className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen disabled:opacity-50 shadow text-sm uppercase rounded transition-colors"
-          >
-              {isGrading ? t('validating', lang) : t('check', lang)}
-          </button>
-        );
-    }
-    
-    if (currentIndex === questions.length - 1) {
-        return (
-          <button 
-              onClick={handleFinish}
-              disabled={!!inputError}
-              className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen shadow text-sm tracking-wider disabled:opacity-50 uppercase rounded transition-colors"
-          >
-              {t('submit', lang)}
-          </button>
-        );
-    }
-    return null;
-  };
-
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
-      
-      {/* Anchor for Scroll To Top */}
       <div ref={topRef} className="scroll-mt-32"></div>
 
-      {/* Progress Bar */}
       <div className="mb-4">
         <div className="flex justify-between text-[10px] font-bold font-mono mb-1 text-gray-500 dark:text-gray-400 tracking-widest">
           <span>{t('execution_progress', lang)}</span>
@@ -266,9 +221,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         </div>
       </div>
 
-      {/* HUD */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 p-4 border border-gray-300 dark:border-terminal-green bg-white dark:bg-terminal-black shadow-sm gap-4">
-         {/* Question Navigation Bubbles */}
          <div className="flex flex-wrap gap-2 justify-center">
             {questions.map((_, idx) => {
                 const isAnswered = answers.has(questions[idx].id);
@@ -300,10 +253,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         </div>
       </div>
 
-      {/* Question Card */}
       <div className="flex-grow border border-gray-300 dark:border-terminal-green p-4 md:p-8 bg-white dark:bg-terminal-black relative overflow-hidden shadow-xl flex flex-col transition-colors duration-300">
         
-        {/* Header Row */}
         <div className="flex justify-between items-start mb-4 w-full">
             <span className="text-sm text-gray-500 dark:text-terminal-green font-mono mt-1 opacity-70">
                 {t('question', lang)} {currentIndex + 1}
@@ -332,13 +283,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         </div>
 
         {currentQ.codeSnippet && !hasCodeBlockInText && (
-          // FORCE LTR FOR CODE BLOCKS EVEN IN RTL MODE
           <div dir="ltr" className="w-full text-left">
               <CodeWindow code={currentQ.codeSnippet} />
           </div>
         )}
 
-        {/* Inputs based on type */}
         <div className="mt-8 mb-8" key={currentQ.id}>
           {inputError && (
               <div className="mb-4 p-2 border border-terminal-alert bg-red-100 dark:bg-terminal-alert/10 text-terminal-alert text-xs font-bold flex items-center gap-2 animate-bounce">
@@ -359,7 +308,6 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                     }
                   `}
                 >
-                   {/* Custom Radio UI */}
                   <div className={`
                         w-6 h-6 rounded-full border-2 mr-4 rtl:mr-0 rtl:ml-4 flex items-center justify-center flex-shrink-0 transition-colors
                         ${getAnswerValue() === idx 
@@ -409,7 +357,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                   maxLength={200}
                   className="w-full bg-gray-50 dark:bg-terminal-black border border-gray-300 dark:border-terminal-gray p-3 md:p-4 font-mono focus:border-terminal-green outline-none text-base md:text-lg dark:text-terminal-light"
                   disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
-                  dir="ltr" // Output Tracing is technically always code/English
+                  dir="ltr" 
                 />
              </div>
           )}
@@ -420,7 +368,6 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                    <span>{t('editor', lang)}</span>
                    <span className="text-[10px] opacity-70">{t('max_chars', lang)}</span>
                </div>
-               {/* Force LTR for Code Editor */}
                <div className="min-h-[200px] bg-gray-50 dark:bg-terminal-black text-left" dir="ltr">
                  <Editor
                     value={String(getAnswerValue())}
@@ -439,7 +386,6 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
           )}
         </div>
 
-        {/* Two Way Feedback Area */}
         {showFeedback && (
             <div className={`mb-6 p-4 md:p-6 border-l-4 animate-fade-in ${answers.get(currentQ.id)?.isCorrect ? 'border-terminal-green bg-terminal-green/10' : 'border-terminal-alert bg-terminal-alert/10'}`}>
                 <h4 className={`font-bold mb-3 text-lg ${answers.get(currentQ.id)?.isCorrect ? 'text-terminal-green' : 'text-terminal-alert'}`}>
@@ -449,10 +395,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             </div>
         )}
 
-        {/* --- CANVAS NAVIGATION & ACTIONS --- */}
         <div className="mt-8 pt-4 border-t border-gray-200 dark:border-terminal-gray flex flex-row items-center justify-between">
-             
-             {/* PREV BUTTON */}
              <button 
                 onClick={prevQuestion} 
                 disabled={currentIndex === 0 || isOneWay}
@@ -470,19 +413,35 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                 </svg>
              </button>
 
-             {/* CENTER ACTION (Submit/Check) */}
-             <div className="flex-grow flex justify-center px-4">
-                 {renderActionButton()}
+             <div className="flex-grow flex justify-center px-4 gap-3">
+                 {settings.mode === ExamMode.TWO_WAY && !showFeedback && (
+                    <button
+                        onClick={checkAnswerTwoWay}
+                        disabled={isGrading || !!inputError}
+                        className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen disabled:opacity-50 shadow text-sm uppercase rounded transition-colors whitespace-nowrap"
+                    >
+                        {isGrading ? t('validating', lang) : t('check', lang)}
+                    </button>
+                 )}
+
+                 {isLastQuestion && (
+                    <button 
+                        onClick={handleFinish}
+                        disabled={!!inputError}
+                        className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen shadow text-sm tracking-wider disabled:opacity-50 uppercase rounded transition-colors whitespace-nowrap"
+                    >
+                        {t('submit', lang)}
+                    </button>
+                 )}
              </div>
 
-             {/* NEXT BUTTON */}
              <button 
                 onClick={nextQuestion}
-                disabled={currentIndex === questions.length - 1} // Disabled on last question visually, submit button handles it
+                disabled={isLastQuestion} 
                 className={`
                     flex items-center justify-center p-3 md:p-4 rounded-full transition-all group active:scale-95
-                    ${currentIndex === questions.length - 1
-                        ? 'opacity-0 pointer-events-none' // Hide instead of disable to keep layout balanced
+                    ${isLastQuestion
+                        ? 'opacity-0 pointer-events-none' 
                         : 'text-terminal-green hover:bg-terminal-green/10 cursor-pointer'
                     }
                 `}
