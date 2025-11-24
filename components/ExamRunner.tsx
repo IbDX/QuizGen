@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType, UILanguage } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
@@ -27,6 +29,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const [savedState, setSavedState] = useState<boolean>(false);
   const [inputError, setInputError] = useState<string | null>(null);
   
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+
   const topRef = useRef<HTMLDivElement>(null);
   const answersRef = useRef(answers);
   answersRef.current = answers;
@@ -204,6 +208,13 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
       <div ref={topRef} className="scroll-mt-32"></div>
 
+      {enlargedImage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" onClick={() => setEnlargedImage(null)}>
+              <img src={enlargedImage} alt="Enlarged Visual" className="max-w-full max-h-full object-contain rounded border border-gray-700" />
+              <button className="absolute top-4 right-4 text-white text-2xl font-bold p-2 hover:text-red-500">✕</button>
+          </div>
+      )}
+
       <div className="mb-4">
         <div className="flex justify-between text-[10px] font-bold font-mono mb-1 text-gray-500 dark:text-gray-400 tracking-widest">
           <span>{t('execution_progress', lang)}</span>
@@ -277,6 +288,22 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                <MarkdownRenderer content={currentQ.text} className="inline-block w-full" />
              </div>
         </div>
+
+        {currentQ.visual && (
+            <div className="mb-8">
+                <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Attached Visual:</div>
+                <div 
+                    className="inline-block rounded border border-gray-300 dark:border-terminal-gray overflow-hidden cursor-zoom-in hover:border-terminal-green transition-colors bg-gray-100 dark:bg-black"
+                    onClick={() => setEnlargedImage(`data:image/png;base64,${currentQ.visual}`)}
+                >
+                    <img 
+                        src={`data:image/png;base64,${currentQ.visual}`} 
+                        alt="Question Visual" 
+                        className="max-h-60 max-w-full object-contain"
+                    />
+                </div>
+            </div>
+        )}
 
         {showCodeSnippet && (
           <div dir="ltr" className="w-full text-left">

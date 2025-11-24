@@ -24,6 +24,7 @@ interface LayoutProps {
   mobileActions?: MobileAction[];
   uiLanguage: UILanguage;
   onSetUiLanguage: (lang: UILanguage) => void;
+  forceStaticHeader?: boolean; // New prop to control header behavior
 }
 
 export type ThemeOption = 'light' | 'dark' | 'palestine';
@@ -170,7 +171,8 @@ const ZPlusLogo: React.FC<{ theme: ThemeOption }> = ({ theme }) => {
 export const Layout: React.FC<LayoutProps> = ({ 
     children, onHome, onToggleLibrary, isLibraryOpen, isFullWidth, onToggleFullWidth,
     autoHideFooter = true, onToggleAutoHideFooter, mobileActions,
-    uiLanguage, onSetUiLanguage
+    uiLanguage, onSetUiLanguage,
+    forceStaticHeader = false
 }) => {
   const [theme, setTheme] = useState<ThemeOption>('dark');
   const [showSettings, setShowSettings] = useState(false);
@@ -183,6 +185,9 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Derive effective auto-hide behavior
+  const shouldAutoHideHeader = autoHideHeader && !forceStaticHeader;
 
   useEffect(() => {
     document.documentElement.classList.remove('dark', 'theme-palestine');
@@ -202,7 +207,7 @@ export const Layout: React.FC<LayoutProps> = ({
   }, [fontFamily]);
 
   useEffect(() => {
-      if (!autoHideHeader) {
+      if (!shouldAutoHideHeader) {
           setIsHeaderVisible(true);
           return;
       }
@@ -210,14 +215,14 @@ export const Layout: React.FC<LayoutProps> = ({
           if (!isMobileMenuOpen) setIsHeaderVisible(false);
       }, 1500);
       return () => clearTimeout(timer);
-  }, [autoHideHeader, isMobileMenuOpen]);
+  }, [shouldAutoHideHeader, isMobileMenuOpen]);
 
   const handleMouseEnterHeader = () => {
-      if (autoHideHeader) setIsHeaderVisible(true);
+      if (shouldAutoHideHeader) setIsHeaderVisible(true);
   };
 
   const handleMouseLeaveHeader = () => {
-      if (autoHideHeader && !isMobileMenuOpen && !showSettings) {
+      if (shouldAutoHideHeader && !isMobileMenuOpen && !showSettings) {
           setIsHeaderVisible(false);
       }
   };
@@ -266,14 +271,14 @@ export const Layout: React.FC<LayoutProps> = ({
         `}</style>
       )}
 
-      {autoHideHeader && (
+      {shouldAutoHideHeader && (
           <div 
             className="hidden md:block fixed top-0 left-0 w-full h-6 z-50 bg-transparent cursor-crosshair"
             onMouseEnter={handleMouseEnterHeader}
           />
       )}
 
-      {autoHideHeader && (
+      {shouldAutoHideHeader && (
         <div 
             className={`hidden md:flex fixed top-0 left-1/2 -translate-x-1/2 z-40 transition-all duration-700 ease-in-out pointer-events-none flex-col items-center ${isHeaderVisible ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
         >

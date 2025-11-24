@@ -1,4 +1,5 @@
 
+
 export enum QuestionType {
   MCQ = 'MCQ',
   TRACING = 'TRACING',
@@ -31,6 +32,7 @@ export interface Question {
   correctOptionIndex?: number; // For MCQ
   tracingOutput?: string; // For Tracing
   explanation: string;
+  visual?: string; // Base64 string of the cropped visual/diagram associated with the question
 }
 
 export interface UserAnswer {

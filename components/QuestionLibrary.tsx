@@ -1,6 +1,8 @@
 
 
 
+
+
 import React, { useState, useEffect } from 'react';
 import { Question, QuestionType, SavedExam, UILanguage } from '../types';
 import { getLibrary, removeQuestion, getSavedExams, removeExam } from '../services/library';
@@ -121,6 +123,16 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                                          <div className="mb-6 text-lg">
                                             <MarkdownRenderer content={displayText} />
                                          </div>
+
+                                         {q.visual && (
+                                            <div className="mb-6">
+                                                <img 
+                                                    src={`data:image/png;base64,${q.visual}`} 
+                                                    alt="Saved Visual" 
+                                                    className="max-h-40 rounded border border-gray-300 dark:border-terminal-gray" 
+                                                />
+                                            </div>
+                                         )}
             
                                          {q.codeSnippet && !hasCodeBlockInText && (
                                              <div dir="ltr" className="text-left">

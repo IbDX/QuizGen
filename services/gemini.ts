@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage } from "../types";
 
@@ -40,7 +41,23 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
         },
         correctOptionIndex: { type: Type.INTEGER, nullable: true, description: "Index of correct option. REQUIRED for MCQ." },
         tracingOutput: { type: Type.STRING, nullable: true, description: "The expected output string. REQUIRED for TRACING." },
-        explanation: { type: Type.STRING, description: "Detailed step-by-step solution. For CODING questions, this field should contain the correct code solution." }
+        explanation: { type: Type.STRING, description: "Detailed step-by-step solution. For CODING questions, this field should contain the correct code solution." },
+        visualBounds: { 
+            type: Type.ARRAY, 
+            items: { type: Type.INTEGER },
+            nullable: true,
+            description: "Bounding box [ymin, xmin, ymax, xmax] (0-1000 scale) of ANY visual/diagram/graph essential for this question. Omit if text-only."
+        },
+        sourceFileIndex: { 
+            type: Type.INTEGER, 
+            nullable: true,
+            description: "Index of the file (0-based) in the provided list where this question appears."
+        },
+        pageNumber: {
+            type: Type.INTEGER,
+            nullable: true,
+            description: "For PDF files: The page number (1-based) where this question appears."
+        }
       },
       required: ["id", "type", "topic", "text", "explanation"]
     }
@@ -60,6 +77,123 @@ const tipsSchema = {
     type: Type.ARRAY,
     items: { type: Type.STRING },
     description: "A list of short, interesting technical facts or tips."
+};
+
+/**
+ * Client-side helper to crop images or PDF pages based on AI bounds
+ */
+const cropImage = async (
+  base64: string, 
+  mimeType: string, 
+  bounds: number[], 
+  pageNumber: number = 1
+): Promise<string | undefined> => {
+  const [ymin, xmin, ymax, xmax] = bounds;
+  
+  // Normalize coords (0-1000)
+  const norm = (val: number) => Math.max(0, Math.min(1, val / 1000));
+  const nYmin = norm(ymin);
+  const nXmin = norm(xmin);
+  const nYmax = norm(ymax);
+  const nXmax = norm(xmax);
+  
+  if (mimeType === 'application/pdf') {
+      // PDF Handling via pdf.js
+      const pdfjsLib = (window as any).pdfjsLib;
+      if (!pdfjsLib) return undefined;
+      
+      try {
+        const loadingTask = pdfjsLib.getDocument({ data: atob(base64) });
+        const pdf = await loadingTask.promise;
+        
+        // Ensure page number is valid
+        const numPages = pdf.numPages;
+        const pIndex = Math.max(1, Math.min(pageNumber, numPages));
+        
+        const page = await pdf.getPage(pIndex);
+        const viewport = page.getViewport({ scale: 2.0 }); // High res for crop
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return undefined;
+        
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        
+        // Calculate crop dimensions
+        const cropW = (nXmax - nXmin) * canvas.width;
+        const cropH = (nYmax - nYmin) * canvas.height;
+        const cropX = nXmin * canvas.width;
+        const cropY = nYmin * canvas.height;
+        
+        if (cropW <= 0 || cropH <= 0) return undefined;
+
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = cropW;
+        finalCanvas.height = cropH;
+        const finalCtx = finalCanvas.getContext('2d');
+        if(!finalCtx) return undefined;
+        
+        finalCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+        return finalCanvas.toDataURL('image/png').split(',')[1];
+      } catch (e) {
+          console.error("PDF Crop failed", e);
+          return undefined;
+      }
+      
+  } else {
+      // Image Handling
+      return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const w = img.width;
+              const h = img.height;
+              
+              const cropW = (nXmax - nXmin) * w;
+              const cropH = (nYmax - nYmin) * h;
+              const cropX = nXmin * w;
+              const cropY = nYmin * h;
+              
+              if (cropW <= 0 || cropH <= 0) { resolve(undefined); return; }
+
+              canvas.width = cropW;
+              canvas.height = cropH;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) { resolve(undefined); return; }
+              
+              ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+              resolve(canvas.toDataURL('image/png').split(',')[1]);
+          };
+          img.onerror = () => resolve(undefined);
+          img.src = `data:${mimeType};base64,${base64}`;
+      });
+  }
+};
+
+const processVisuals = async (questions: any[], files: {base64: string, mimeType: string}[]) => {
+    const processed = [];
+    for (const q of questions) {
+        if (q.visualBounds && q.visualBounds.length === 4 && q.sourceFileIndex !== undefined) {
+             const file = files[q.sourceFileIndex];
+             if (file) {
+                 try {
+                     const visualBase64 = await cropImage(file.base64, file.mimeType, q.visualBounds, q.pageNumber || 1);
+                     if (visualBase64) {
+                         q.visual = visualBase64;
+                     }
+                 } catch (e) {
+                     console.warn("Failed to crop visual for question", q.id, e);
+                 }
+             }
+        }
+        // Remove temp fields to match Question interface
+        const { visualBounds, sourceFileIndex, pageNumber, ...cleanQ } = q;
+        processed.push(cleanQ);
+    }
+    return processed;
 };
 
 const deduplicateQuestions = (questions: Question[]): Question[] => {
@@ -148,6 +282,15 @@ First, analyze ALL attached files from start to finish.
 Understand the document layout, question numbering, and answer keys (if present).
 Identify EVERY question in the document. Do not skip any.
 Preserve C++ syntax like pointers (*ptr) and references (&ref). Do not interpret them as Markdown italics.
+
+**VISUAL EXTRACTION RULES (CRITICAL)**
+- If a question includes a **diagram, graph, chart, or visual element** that is necessary to answer it, you MUST detect it.
+- Return \`visualBounds\` as \`[ymin, xmin, ymax, xmax]\` on a normalized scale of **0 to 1000**.
+  - 0 is top/left, 1000 is bottom/right.
+  - The box should tightly enclose the visual element.
+- Return \`sourceFileIndex\` indicating which file in the input list (0-based) contains this visual.
+- For PDF files, also return \`pageNumber\` (1-based index).
+- If the question is text-only, omit \`visualBounds\`.
 
 **MATH FORMATTING RULES:**
 - Use **LaTeX** for ALL mathematical expressions.
@@ -414,8 +557,12 @@ export const generateExam = async (
 
     if (response.text) {
       const cleanJson = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const questions = JSON.parse(cleanJson) as Question[];
-      return deduplicateQuestions(questions);
+      const rawQuestions = JSON.parse(cleanJson) as any[];
+      
+      // Process Visuals (Client-side Cropping)
+      const visualEnrichedQuestions = await processVisuals(rawQuestions, files);
+      
+      return deduplicateQuestions(visualEnrichedQuestions);
     }
     throw new Error("No response text generated");
   } catch (error) {

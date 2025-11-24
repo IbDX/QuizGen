@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -33,9 +35,18 @@ const getTopicResources = (topicRaw: string) => {
   if (RESOURCES[topic]) return RESOURCES[topic];
 
   // Smart Fallback
+  let searchSuffix = " explanation";
+  let readSuffix = " guide concepts";
+  
+  // Basic language detection for search query
+  if (topic.match(/[\u0600-\u06FF]/)) {
+       searchSuffix = " شرح";
+       readSuffix = " مفاهيم";
+  }
+
   return {
-    video: `https://www.youtube.com/results?search_query=${encodeURIComponent(topic + " programming tutorial")}`,
-    read: `https://www.google.com/search?q=${encodeURIComponent(topic + " programming guide concepts")}`
+    video: `https://www.youtube.com/results?search_query=${encodeURIComponent(topic + searchSuffix)}`,
+    read: `https://www.google.com/search?q=${encodeURIComponent(topic + readSuffix)}`
   };
 };
 
@@ -299,6 +310,17 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                     )}
                 </div>
                 <div className="mb-6 text-base md:text-lg font-medium text-gray-800 dark:text-terminal-light"><MarkdownRenderer content={displayText} /></div>
+                
+                {item.question.visual && (
+                    <div className="mb-6">
+                        <img 
+                            src={`data:image/png;base64,${item.question.visual}`} 
+                            alt="Visual" 
+                            className="max-h-40 rounded border border-gray-300 dark:border-terminal-gray" 
+                        />
+                    </div>
+                )}
+
                 {item.question.codeSnippet && !hasCodeBlockInText && (
                     <div dir="ltr" className="mb-6 text-left">
                         <CodeWindow code={item.question.codeSnippet} />
