@@ -34,8 +34,7 @@ export const translations = {
         "demo_desc": "Run an instant simulation using a sample C++ pointer analysis document.",
         "load_demo": "LOAD DEMO",
         "paste_tip_desktop": "Tip: You can Paste (Ctrl+V) or Drag & Drop files/URLs anywhere.",
-        "paste_tip_mobile": "Tip: Use the 'Paste from Clipboard' button or paste URLs into the box.",
-        "paste_from_clipboard": "PASTE FROM CLIPBOARD",
+        "paste_tip_mobile": "Tip: You can paste images (like screenshots) or URLs directly.",
 
         // AI Builder Card & Interface
         "builder_card_title": "AI EXAM BUILDER",
@@ -156,8 +155,7 @@ export const translations = {
         "demo_desc": "تشغيل محاكاة فورية باستخدام مستند تحليل مؤشرات C++.",
         "load_demo": "تشغيل العرض التجريبي",
         "paste_tip_desktop": "نصيحة: يمكنك لصق (Ctrl+V) أو سحب وإفلات الملفات/الروابط في أي مكان.",
-        "paste_tip_mobile": "نصيحة: استخدم زر 'اللصق من الحافظة' أو الصق الروابط في الصندوق.",
-        "paste_from_clipboard": "اللصق من الحافظة",
+        "paste_tip_mobile": "نصيحة: يمكنك لصق الصور (مثل لقطات الشاشة) أو الروابط مباشرة.",
         
         // AI Builder Card & Interface
         "builder_card_title": "منشئ الاختبارات الذكي",

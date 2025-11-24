@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
@@ -328,7 +327,6 @@ using namespace std;
       mobileActions={getMobileActions()}
       uiLanguage={uiLanguage}
       onSetUiLanguage={setUiLanguage}
-      forceStaticHeader={appState === 'UPLOAD'}
     >
       <ConfirmModal 
         isOpen={confirmModalState.isOpen}

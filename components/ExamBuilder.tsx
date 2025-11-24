@@ -21,6 +21,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
     const [isTyping, setIsTyping] = useState(false);
     const [isFinalizing, setIsFinalizing] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -28,6 +29,14 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages, isTyping, languageSelected]);
+    
+    // Auto-resize textarea
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'; // Reset height to shrink if text is deleted
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`; // Set to scroll height
+        }
+    }, [input]);
 
     const handleLanguageSelect = (selectedLang: 'en' | 'ar') => {
         setLanguageSelected(true);
@@ -54,6 +63,13 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             setMessages(prev => [...prev, { role: 'model', text: t('connection_error', lang) }]);
         } finally {
             setIsTyping(false);
+        }
+    };
+    
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
         }
     };
 
@@ -160,12 +176,14 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                             ) : (
                                 <>
                                     <form onSubmit={handleSendMessage} className="flex gap-2 mb-4">
-                                        <input 
-                                            type="text" 
+                                        <textarea
+                                            ref={textareaRef}
+                                            rows={1}
                                             value={input}
                                             onChange={(e) => setInput(e.target.value)}
+                                            onKeyDown={handleKeyDown}
                                             placeholder={lang === 'ar' ? "اكتب ردك هنا..." : "Type your response here..."}
-                                            className="flex-grow p-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded focus:border-terminal-green focus:ring-1 focus:ring-terminal-green outline-none font-mono text-gray-800 dark:text-terminal-light"
+                                            className="flex-grow p-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded focus:border-terminal-green focus:ring-1 focus:ring-terminal-green outline-none font-mono text-gray-800 dark:text-terminal-light resize-none overflow-y-hidden max-h-28"
                                             autoFocus
                                         />
                                         <button 
