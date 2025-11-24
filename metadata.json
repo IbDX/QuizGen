@@ -1,5 +1,7 @@
 {
   "name": "Copy of Terminal Exam Gen",
   "description": "A terminal-themed AI exam generator that parses documents to create multi-format technical assessments with intelligent grading.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "clipboard-read"
+  ]
 }

@@ -26,7 +26,22 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [globalStatus, setGlobalStatus] = useState<'IDLE' | 'PROCESSING'>('IDLE');
+  const [isMobile, setIsMobile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Robust Mobile Detection
+  useEffect(() => {
+    const checkMobile = () => {
+        const userAgent = typeof window.navigator === "undefined" ? "" : navigator.userAgent;
+        const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+        const isTouch = navigator.maxTouchPoints > 0;
+        const isNarrow = window.innerWidth < 768;
+        setIsMobile(mobileRegex.test(userAgent) || isTouch || isNarrow);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
@@ -139,7 +154,71 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     }
   };
 
-  // Global Paste Handler (Files & URLs)
+  // Programmatic Paste for Mobile Button
+  const handleManualPasteClick = async () => {
+    if (globalStatus !== 'IDLE') return;
+
+    // Clear previous clipboard logs
+    setLogs(prev => prev.filter(l => l.name !== "CLIPBOARD"));
+
+    try {
+        // PERMISSION CHECK (Attempt to trigger prompt on some browsers)
+        try {
+           if (navigator.permissions) {
+               // @ts-ignore
+               await navigator.permissions.query({ name: 'clipboard-read' });
+           }
+        } catch(e) { /* Ignore query errors */ }
+
+        // ATTEMPT 1: Try Rich Content (Images) via .read()
+        // This is the preferred method but requires permissions and isn't supported on all mobile browsers
+        const clipboardItems = await navigator.clipboard.read();
+        
+        let foundContent = false;
+        
+        for (const item of clipboardItems) {
+            const imageTypes = item.types.filter(type => type.startsWith('image/'));
+            if (imageTypes.length > 0) {
+                const blob = await item.getType(imageTypes[0]);
+                const file = new File([blob], `pasted_image_${Date.now()}.png`, { type: blob.type });
+                
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                handleFiles(dt.files);
+                foundContent = true;
+                break;
+            }
+        }
+
+        if (!foundContent) {
+            throw new Error("No image content found in clipboard items.");
+        }
+
+    } catch (err: any) {
+        // ATTEMPT 2: Fallback to Text via .readText()
+        // This is more widely supported on mobile
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+                setUrlInput(text.trim());
+                processUrl(text.trim());
+            } else if (text) {
+                 setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: "Clipboard text is not a valid URL (http/https)." }]);
+            } else {
+                 setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: "Clipboard is empty." }]);
+            }
+        } catch (textErr: any) {
+             console.error("Clipboard Error", textErr);
+             if (textErr.name === 'NotAllowedError' || textErr.name === 'SecurityError') {
+                 setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: "Permission Denied. Please allow clipboard access in browser settings." }]);
+             } else {
+                 setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: "Clipboard inaccessible. Please paste URL manually." }]);
+             }
+        }
+    }
+  };
+
+  // Global Paste Handler (Files & URLs) - Desktop mainly
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       // Avoid interfering if user is typing in an input
@@ -191,14 +270,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     }
   };
 
-  const isMobile = typeof window !== 'undefined' && /Mobi/i.test(window.navigator.userAgent);
   const pasteTip = isMobile ? t('paste_tip_mobile', lang) : t('paste_tip_desktop', lang);
 
   return (
     <div className={`w-full mx-auto mt-4 md:mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none' : 'max-w-2xl'}`}>
       
       {/* MOBILE UPLOAD BUTTON */}
-      <div className="md:hidden">
+      <div className="md:hidden flex flex-col gap-2">
           <button
             onClick={() => globalStatus === 'IDLE' && fileInputRef.current?.click()}
             className={`
@@ -215,6 +293,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
               <div className="text-xl font-bold uppercase tracking-wider">
                   {globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('tap_to_select', lang)}
               </div>
+          </button>
+          
+          {/* New Mobile Paste Button */}
+          <button
+             onClick={handleManualPasteClick}
+             disabled={globalStatus !== 'IDLE'}
+             className="w-full py-3 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 active:bg-gray-300 dark:active:bg-gray-700 flex items-center justify-center gap-2"
+          >
+              <span>📋</span> {t('paste_from_clipboard', lang)}
           </button>
       </div>
 
