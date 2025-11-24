@@ -1,8 +1,5 @@
 
 
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType, UILanguage } from '../types';
 import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini';
@@ -140,8 +137,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             isCorrect = userAnswer.answer === currentQ.correctOptionIndex;
             feedback = isCorrect ? "Correct!" : `Incorrect.\n${currentQ.explanation}`;
         } else {
-            // Short Answer - Use AI Grading
-            const result = await gradeShortAnswer(currentQ, String(userAnswer.answer));
+            // Short Answer - Use AI Grading with correct language
+            const result = await gradeShortAnswer(currentQ, String(userAnswer.answer), lang);
             isCorrect = result.isCorrect;
             feedback = result.feedback;
         }
@@ -151,7 +148,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       isCorrect = userTxt === correctTxt;
       feedback = isCorrect ? "Correct!" : `Incorrect. Expected: \`${currentQ.tracingOutput}\`\n\n${currentQ.explanation}`;
     } else if (currentQ.type === QuestionType.CODING) {
-      const result = await gradeCodingAnswer(currentQ, String(userAnswer.answer));
+      // Use AI Grading with correct language
+      const result = await gradeCodingAnswer(currentQ, String(userAnswer.answer), lang);
       isCorrect = result.isCorrect;
       feedback = result.feedback;
     }

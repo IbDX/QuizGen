@@ -643,13 +643,20 @@ export const generateExamFromWrongAnswers = async (originalQuestions: Question[]
     }
 }
 
-export const gradeCodingAnswer = async (question: Question, code: string): Promise<{ isCorrect: boolean; feedback: string }> => {
+export const gradeCodingAnswer = async (question: Question, code: string, lang: UILanguage = 'en'): Promise<{ isCorrect: boolean; feedback: string }> => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
+    // Explicit Language Instruction
+    const langInstruction = lang === 'ar' 
+        ? "CRITICAL: PROVIDE THE 'feedback' TEXT IN ARABIC. Keep technical terms and the 'Optimal Solution' code in English."
+        : "Provide the feedback in English.";
+
     const prompt = `
       **ROLE**: You are an expert code grader for a technical exam.
       **TASK**: Evaluate the user's code submission against the provided question and expected solution concepts.
+
+      ${langInstruction}
 
       **Question:**
       ${question.text}
@@ -700,12 +707,20 @@ export const gradeCodingAnswer = async (question: Question, code: string): Promi
   }
 };
 
-export const gradeShortAnswer = async (question: Question, answer: string): Promise<{ isCorrect: boolean; feedback: string }> => {
+export const gradeShortAnswer = async (question: Question, answer: string, lang: UILanguage = 'en'): Promise<{ isCorrect: boolean; feedback: string }> => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    // Explicit Language Instruction
+    const langInstruction = lang === 'ar' 
+        ? "CRITICAL: PROVIDE THE 'feedback' TEXT IN ARABIC."
+        : "Provide the feedback in English.";
+
     const prompt = `
       ROLE: Automated Exam Grader.
       TASK: Evaluate a user's text-based short answer.
+
+      ${langInstruction}
 
       Question: ${question.text}
       Expected Answer / Key Concepts: ${question.explanation}

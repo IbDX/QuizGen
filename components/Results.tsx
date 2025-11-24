@@ -1,8 +1,5 @@
 
 
-
-
-
 import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -123,10 +120,11 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       const gradePromises = toGrade.map(async item => {
         let result = { isCorrect: false, feedback: "Grading Error" };
         
+        // Pass 'lang' for correct feedback language
         if (item.question.type === QuestionType.CODING) {
-             result = await gradeCodingAnswer(item.question, String(item.answer));
+             result = await gradeCodingAnswer(item.question, String(item.answer), lang);
         } else {
-             result = await gradeShortAnswer(item.question, String(item.answer));
+             result = await gradeShortAnswer(item.question, String(item.answer), lang);
         }
 
         return {
