@@ -8,6 +8,7 @@ import { UILanguage } from '../types';
 interface FileUploadProps {
   onFilesAccepted: (files: Array<{base64: string, mime: string, name: string, hash: string}>) => void;
   onLoadDemo: () => void;
+  onStartBuilder: () => void; // New Prop
   isFullWidth: boolean;
   lang?: UILanguage;
   isActive: boolean;
@@ -19,7 +20,7 @@ interface ProcessingLog {
     error?: string;
 }
 
-export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadDemo, isFullWidth, lang = 'en', isActive }) => {
+export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadDemo, onStartBuilder, isFullWidth, lang = 'en', isActive }) => {
   const [logs, setLogs] = useState<ProcessingLog[]>([]);
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -329,34 +330,50 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           {pasteTip}
       </div>
 
-      {/* DEMO SECTION */}
+      {/* DEMO & AI BUILDER SECTION */}
       <div className="flex flex-col items-center mt-6">
           <div className="h-px bg-gray-300 dark:bg-gray-700 w-full mb-6"></div>
           
-          <div className="bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-4 rounded-lg flex flex-col sm:flex-row items-center gap-4 md:gap-6 hover:border-terminal-green transition-colors group w-full">
-              {/* Placeholder Image for Demo Card */}
-              <div className="relative w-full sm:w-24 h-32 sm:h-24 flex-shrink-0 overflow-hidden rounded border border-gray-400 dark:border-gray-600 group-hover:scale-105 transition-transform">
-                 <img 
-                    src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=150&h=150&q=80" 
-                    alt="Demo Source" 
-                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100"
-                 />
-                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
-              </div>
-              
-              <div className="flex-grow text-center sm:text-left w-full">
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100">{t('quick_test', lang)}</h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                      {t('demo_desc', lang)}
-                  </p>
-                  <button 
-                     onClick={onLoadDemo}
-                     disabled={globalStatus !== 'IDLE'}
-                     className="px-6 py-3 md:py-2 bg-terminal-green text-terminal-btn-text font-bold text-sm hover:brightness-110 transition-all w-full sm:w-auto uppercase tracking-wider disabled:opacity-50 rounded-sm shadow-md"
-                  >
-                      {t('load_demo', lang)}
-                  </button>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+            {/* DEMO CARD */}
+            <div className="bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-4 rounded-lg flex flex-col items-center gap-2 hover:border-terminal-green transition-colors group">
+                <div className="w-12 h-12 rounded bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-xl">
+                    ⚡
+                </div>
+                <div className="text-center">
+                    <h4 className="font-bold text-gray-800 dark:text-gray-100">{t('quick_test', lang)}</h4>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-3 leading-tight">
+                         Instant diagnostic simulation.
+                    </p>
+                    <button 
+                        onClick={onLoadDemo}
+                        disabled={globalStatus !== 'IDLE'}
+                        className="w-full py-2 bg-gray-300 dark:bg-gray-800 text-gray-800 dark:text-gray-300 font-bold text-xs hover:bg-terminal-green hover:text-black transition-colors uppercase rounded-sm"
+                    >
+                        {t('load_demo', lang)}
+                    </button>
+                </div>
+            </div>
+
+            {/* AI BUILDER CARD */}
+            <div className="bg-gray-100 dark:bg-gray-900 border border-blue-400 dark:border-blue-600 p-4 rounded-lg flex flex-col items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group shadow-md">
+                <div className="w-12 h-12 rounded bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-xl animate-pulse">
+                    🤖
+                </div>
+                <div className="text-center">
+                    <h4 className="font-bold text-blue-800 dark:text-blue-300">AI EXAM BUILDER</h4>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-3 leading-tight">
+                         Chat with AI to design a custom exam.
+                    </p>
+                    <button 
+                        onClick={onStartBuilder}
+                        disabled={globalStatus !== 'IDLE'}
+                        className="w-full py-2 bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors uppercase rounded-sm shadow-sm"
+                    >
+                        START BUILDER
+                    </button>
+                </div>
+            </div>
           </div>
       </div>
     </div>

@@ -65,6 +65,7 @@ export interface SavedExam {
 export type AppState = 
   | 'UPLOAD'
   | 'CONFIG'
+  | 'BUILDER'
   | 'GENERATING'
   | 'EXAM'
   | 'RESULTS'

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
 import { ExamConfig } from './components/ExamConfig';
+import { ExamBuilder } from './components/ExamBuilder';
 import { ExamRunner } from './components/ExamRunner';
 import { Results } from './components/Results';
 import { Leaderboard } from './components/Leaderboard';
@@ -58,7 +59,7 @@ const App: React.FC = () => {
 
   // In-app navigation confirmation logic
   const confirmAndNavigate = (navigationAction: () => void) => {
-    if (appState === 'EXAM') {
+    if (appState === 'EXAM' || appState === 'BUILDER') {
       setConfirmModalState({
         isOpen: true,
         title: t('exit_exam_warning_title', uiLanguage),
@@ -150,6 +151,22 @@ using namespace std;
           hash: 'DEMO_HASH_PRESET_001'
       };
       handleFilesAccepted([demoFile]);
+  };
+  
+  const handleStartBuilder = () => {
+      setAppState('BUILDER');
+  };
+  
+  const handleBuilderExamGenerated = (generatedQuestions: Question[]) => {
+      setQuestions(generatedQuestions);
+      // Default settings for builder-generated exam
+      setSettings({
+          timeLimitMinutes: 0,
+          mode: ExamMode.ONE_WAY, // Chat usually implies checking knowledge, so One Way is standard
+          formatPreference: QuestionFormatPreference.MIXED,
+          outputLanguage: 'en', // Builder handles language in chat
+      });
+      setAppState('EXAM');
   };
 
   const handleStartExam = async (examSettings: ExamSettings) => {
@@ -261,8 +278,14 @@ using namespace std;
   const getMobileActions = (): MobileAction[] => {
       if (appState === 'UPLOAD') {
           return [
-              { label: t('load_demo', uiLanguage), onClick: handleDemoLoad, variant: 'primary' }
+              { label: "AI EXAM BUILDER", onClick: handleStartBuilder, variant: 'primary' },
+              { label: t('load_demo', uiLanguage), onClick: handleDemoLoad, variant: 'default' }
           ];
+      }
+      if (appState === 'BUILDER') {
+           return [
+              { label: t('cancel_action', uiLanguage), onClick: () => confirmAndNavigate(handleRestart), variant: 'warning' }
+           ];
       }
       if (appState === 'RESULTS') {
           const wrongIds = questions.filter(q => {
@@ -357,6 +380,7 @@ using namespace std;
               <FileUpload 
                 onFilesAccepted={handleFilesAccepted} 
                 onLoadDemo={handleDemoLoad}
+                onStartBuilder={handleStartBuilder}
                 isFullWidth={isFullWidth}
                 lang={uiLanguage}
                 isActive={appState === 'UPLOAD'}
@@ -375,6 +399,15 @@ using namespace std;
                 lang={uiLanguage}
                 isActive={appState === 'CONFIG'}
             />
+          )}
+
+          {appState === 'BUILDER' && (
+              <ExamBuilder 
+                  onExamGenerated={handleBuilderExamGenerated}
+                  onCancel={() => confirmAndNavigate(handleRestart)}
+                  isFullWidth={isFullWidth}
+                  lang={uiLanguage}
+              />
           )}
 
           {appState === 'GENERATING' && (
