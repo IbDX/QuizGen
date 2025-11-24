@@ -3,11 +3,13 @@
 
 
 
+
 import React, { useState, useEffect } from 'react';
 import { Question, QuestionType, SavedExam, UILanguage } from '../types';
 import { getLibrary, removeQuestion, getSavedExams, removeExam } from '../services/library';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
+import { GraphRenderer } from './GraphRenderer'; // Import GraphRenderer
 import { t } from '../utils/translations';
 
 interface QuestionLibraryProps {
@@ -124,7 +126,13 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                                             <MarkdownRenderer content={displayText} />
                                          </div>
 
-                                         {q.visual && (
+                                         {q.graphConfig && (
+                                            <div className="mb-6">
+                                                <GraphRenderer config={q.graphConfig} />
+                                            </div>
+                                         )}
+
+                                         {!q.graphConfig && q.visual && (
                                             <div className="mb-6">
                                                 <img 
                                                     src={`data:image/png;base64,${q.visual}`} 

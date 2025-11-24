@@ -23,6 +23,15 @@ export enum ExamMode {
 export type OutputLanguage = 'en' | 'ar' | 'auto';
 export type UILanguage = 'en' | 'ar';
 
+export interface GraphConfig {
+  title?: string;
+  xAxisLabel?: string;
+  yAxisLabel?: string;
+  functions: string[]; // List of function strings like "x^2"
+  domain?: [number, number]; // X axis min/max
+  range?: [number, number]; // Y axis min/max
+}
+
 export interface Question {
   id: string;
   type: QuestionType;
@@ -34,6 +43,7 @@ export interface Question {
   tracingOutput?: string; // For Tracing
   explanation: string;
   visual?: string; // Base64 string of the cropped visual/diagram associated with the question
+  graphConfig?: GraphConfig; // Digital representation of a graph
 }
 
 export interface UserAnswer {

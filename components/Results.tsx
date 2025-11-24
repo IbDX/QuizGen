@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
+import { GraphRenderer } from './GraphRenderer'; // Import GraphRenderer
 import { generateExamPDF } from '../utils/pdfGenerator';
 import { saveQuestion, removeQuestion, isQuestionSaved, saveFullExam } from '../services/library';
 import { sanitizeInput } from '../utils/security';
@@ -337,7 +338,15 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                 </div>
                 <div className="mb-6 text-base md:text-lg font-medium text-gray-800 dark:text-terminal-light"><MarkdownRenderer content={displayText} /></div>
                 
-                {item.question.visual && (
+                {/* Graph Renderer for Results */}
+                {item.question.graphConfig && (
+                    <div className="mb-6">
+                         <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Graph Data:</div>
+                         <GraphRenderer config={item.question.graphConfig} />
+                    </div>
+                )}
+
+                {!item.question.graphConfig && item.question.visual && (
                     <div className="mb-6">
                         <img 
                             src={`data:image/png;base64,${item.question.visual}`} 

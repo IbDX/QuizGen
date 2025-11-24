@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage } from "../types";
 
@@ -31,7 +29,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
           type: Type.STRING, 
           description: `The type of the question. ${allowedDescription}.` 
         },
-        topic: { type: Type.STRING, description: "A short topic tag for this question (e.g., 'Loops', 'Pointers', 'Recursion')" },
+        topic: { type: Type.STRING, description: "A short topic tag for this question (e.g., 'Loops', 'Calculus', 'Recursion')" },
         text: { type: Type.STRING, description: "The full question text. Do NOT include the code snippet here if it is separate. Use standard LaTeX for math (wrap in $)." },
         codeSnippet: { 
             type: Type.STRING, 
@@ -47,11 +45,38 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
         correctOptionIndex: { type: Type.INTEGER, nullable: true, description: "Index of correct option. REQUIRED for MCQ." },
         tracingOutput: { type: Type.STRING, nullable: true, description: "The expected output string. REQUIRED for TRACING." },
         explanation: { type: Type.STRING, description: "Detailed step-by-step solution. For CODING questions, this field should contain the correct code solution." },
+        
+        graphConfig: {
+            type: Type.OBJECT,
+            nullable: true,
+            description: "Digital representation of any 2D MATH/PHYSICS graph. Prefer this over 'visualBounds' for mathematical functions.",
+            properties: {
+                title: { type: Type.STRING, description: "Graph Title" },
+                xAxisLabel: { type: Type.STRING, description: "X Axis Label" },
+                yAxisLabel: { type: Type.STRING, description: "Y Axis Label" },
+                functions: { 
+                    type: Type.ARRAY, 
+                    items: { type: Type.STRING },
+                    description: "Array of function strings in valid JavaScript syntax (compatible with JSXGraph). Use 'x**2' for power (NOT '^'). Supports: Math.sin(x), Math.cos(x), Math.exp(x), etc. Example: 'Math.sin(x)*x', '0.5*x**2 + 2'." 
+                },
+                domain: {
+                    type: Type.ARRAY,
+                    items: { type: Type.NUMBER },
+                    description: "[min, max] for X axis. Default [-10, 10]"
+                },
+                 range: {
+                    type: Type.ARRAY,
+                    items: { type: Type.NUMBER },
+                    description: "[min, max] for Y axis. Default [-10, 10]"
+                }
+            }
+        },
+
         visualBounds: { 
             type: Type.ARRAY, 
             items: { type: Type.INTEGER },
             nullable: true,
-            description: "Bounding box [ymin, xmin, ymax, xmax] (0-1000 scale) of ANY visual/diagram/graph ESSENTIAL for this question. OMIT if the question can be solved with text/math alone. DO NOT include the question text in this box."
+            description: "Bounding box [ymin, xmin, ymax, xmax] (0-1000 scale) of ANY NON-MATH visual/diagram (e.g. Anatomy, Circuit) that cannot be plotted digitally. OMIT if graphConfig is used."
         },
         sourceFileIndex: { 
             type: Type.INTEGER, 
@@ -267,8 +292,6 @@ Do NOT translate code keywords (e.g., 'int', 'void', 'for', 'if').
 **MATH FORMATTING RULE (CRITICAL FOR ARABIC):**
 - DO NOT use Arabic characters inside math equations (e.g. $س$, $ص$).
 - ALWAYS use standard English/Greek variables (e.g. $x$, $y$, $\\theta$) inside LaTeX blocks.
-- Correct: "أوجد قيمة $x$ في المعادلة $x^2 = 4$"
-- Incorrect: "أوجد قيمة $س$ في المعادلة $س^2 = 4$"
 `;
     } else if (outputLang === 'auto') {
         langInstruction = `
@@ -298,17 +321,21 @@ PHASE 1: HIGH-FIDELITY PARSING
    - **Formats**: Convert math to LaTeX ($E=mc^2$). Extract code into 'codeSnippet' (do NOT leave code as image).
 
 PHASE 2: INTELLIGENT VISUAL & LAYOUT ANALYSIS
-**DECISION ALGORITHM FOR VISUALS:**
-Analyze if the question *cannot* be solved or fully understood without seeing a diagram, graph, or figure.
-- **YES (Extract it):** Geometry, circuits, complex charts, biology diagrams, or questions explicitly saying "refer to the figure".
-- **NO (Skip it):** Code screenshots (extract text to \`codeSnippet\`), simple math formulas (convert to LaTeX), pure text questions, decorative icons.
+**DIGITAL GRAPH CONVERSION (MATH/PHYSICS):**
+If the question contains a 2D mathematical graph (e.g. functions like linear, quadratic, trigonometric, exponential), **DO NOT use \`visualBounds\`**.
+Instead, ANALYZE the graph and extract its parameters to populate \`graphConfig\`:
+- **Identify the Function**: Approximate the function expression in valid **JavaScript syntax** (e.g. 'x**2' for square, 'Math.sin(x)', '2*x + 5', 'Math.exp(x)').
+- **Syntax Rules**: Use \`**\` for power (NOT \`^\`). Use \`Math.\` prefix for functions like sin, cos, tan, log, exp.
+- **Domain/Range**: Estimate the visible domain [min, max] and range.
+- **Multiple Functions**: If multiple lines/curves are present, list them in the \`functions\` array.
+- **Labels**: Extract axis labels and title.
+- **GOAL**: We want to re-render this graph DIGITALLY using JSXGraph library, NOT crop the image.
 
-**CROPPING RULES (STRICT):**
-1. **Target:** Isolate the diagram/graph ONLY.
-2. **Exclude:** The question text, option labels (A, B, C), and page headers/footers.
-3. **Precision:** The \`visualBounds\` [ymin, xmin, ymax, xmax] (0-1000 scale) must be TIGHT around the visual.
-4. **Resolution:** Ensure the bounds cover the entire visual content including necessary legends or axis labels, but NO surrounding whitespace or text.
-5. **Separation:** If multiple questions refer to the same image, provide the SAME bounds for each question. If multiple visuals exist, map them correctly to their specific question.
+**CROPPING FALLBACK (NON-MATH DIAGRAMS):**
+Use \`visualBounds\` ONLY for complex diagrams that are NOT mathematical functions (e.g. biological anatomy, electrical circuits, mechanical systems, complex free-body diagrams).
+- **Target:** Isolate the diagram/graph ONLY.
+- **Exclude:** The question text, option labels (A, B, C), and page headers/footers.
+- **Precision:** The \`visualBounds\` [ymin, xmin, ymax, xmax] (0-1000 scale) must be TIGHT around the visual.
 
 **QUESTION CLASSIFICATION:**
 - **MCQ:** If options (A, B, C...) are present.

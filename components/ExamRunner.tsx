@@ -6,6 +6,7 @@ import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini';
 import { saveQuestion, isQuestionSaved, removeQuestion } from '../services/library';
 import { CodeWindow } from './CodeWindow';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { GraphRenderer } from './GraphRenderer'; // Import GraphRenderer
 import { validateCodeInput, sanitizeInput } from '../utils/security';
 import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
@@ -292,7 +293,16 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
              </div>
         </div>
 
-        {currentQ.visual && (
+        {/* Digital Graph Renderer */}
+        {currentQ.graphConfig && (
+            <div className="mb-8">
+                <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Interactive Graph:</div>
+                <GraphRenderer config={currentQ.graphConfig} />
+            </div>
+        )}
+
+        {/* Fallback to image if graphConfig not present but visual exists */}
+        {!currentQ.graphConfig && currentQ.visual && (
             <div className="mb-8">
                 <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Attached Visual:</div>
                 <div 
@@ -385,7 +395,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                   dir="ltr" 
                 />
              </div>
-          )}
+          ))}
 
           {currentQ.type === QuestionType.CODING && (
             <div className="space-y-2 border border-gray-300 dark:border-terminal-gray">
