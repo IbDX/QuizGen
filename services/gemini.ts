@@ -1,3 +1,5 @@
+
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage } from "../types";
 
@@ -57,7 +59,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
                 functions: { 
                     type: Type.ARRAY, 
                     items: { type: Type.STRING },
-                    description: "Array of function strings in valid JavaScript syntax (compatible with JSXGraph). Use 'x**2' for power (NOT '^'). Supports: Math.sin(x), Math.cos(x), Math.exp(x), etc. Example: 'Math.sin(x)*x', '0.5*x**2 + 2'." 
+                    description: "Array of function strings compatible with standard math evaluators (e.g. 'x^2', 'sin(x)', '2*x + 5')." 
                 },
                 domain: {
                     type: Type.ARRAY,
@@ -324,12 +326,11 @@ PHASE 2: INTELLIGENT VISUAL & LAYOUT ANALYSIS
 **DIGITAL GRAPH CONVERSION (MATH/PHYSICS):**
 If the question contains a 2D mathematical graph (e.g. functions like linear, quadratic, trigonometric, exponential), **DO NOT use \`visualBounds\`**.
 Instead, ANALYZE the graph and extract its parameters to populate \`graphConfig\`:
-- **Identify the Function**: Approximate the function expression in valid **JavaScript syntax** (e.g. 'x**2' for square, 'Math.sin(x)', '2*x + 5', 'Math.exp(x)').
-- **Syntax Rules**: Use \`**\` for power (NOT \`^\`). Use \`Math.\` prefix for functions like sin, cos, tan, log, exp.
+- **Identify the Function**: Approximate the function expression (e.g. 'x^2', '2*x + 5', 'sin(x)', 'exp(x)').
 - **Domain/Range**: Estimate the visible domain [min, max] and range.
 - **Multiple Functions**: If multiple lines/curves are present, list them in the \`functions\` array.
 - **Labels**: Extract axis labels and title.
-- **GOAL**: We want to re-render this graph DIGITALLY using JSXGraph library, NOT crop the image.
+- **GOAL**: We want to re-render this graph DIGITALLY using a plotting library, NOT crop the image.
 
 **CROPPING FALLBACK (NON-MATH DIAGRAMS):**
 Use \`visualBounds\` ONLY for complex diagrams that are NOT mathematical functions (e.g. biological anatomy, electrical circuits, mechanical systems, complex free-body diagrams).

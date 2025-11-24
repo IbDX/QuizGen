@@ -1,47 +1,46 @@
 
 # Z+ Terminal Exam Gen 🖥️
 
-An AI-powered, terminal-themed examination platform that generates technical assessments from uploaded documents (PDF/Images). Built with React, Tailwind CSS, and Google Gemini 2.5.
+An advanced, terminal-themed AI examination platform that parses documents to create multi-format technical assessments with intelligent grading. Built with **React 19**, **Tailwind CSS**, and the **Google GenAI SDK** (Gemini 2.5).
 
 ## ✨ Features
 
 ### 1. Intelligent Exam Generation
--   **Multi-File Batching:** Upload and process multiple PDFs or Images simultaneously to create comprehensive exams.
--   **Global Context Scanning:** The AI analyzes the entire document stack to understand context before generating questions, ensuring high fidelity.
--   **Quick Diagnostic Test:** Instant "Demo Mode" that loads a simulated C++ environment to test the system without needing files.
--   **VirusTotal Integration:** Files are hashed and verified securely against the VirusTotal database before processing.
--   **Smart Deduplication:** Automatically detects and prevents duplicate file uploads using SHA-256 hashing.
+-   **Multi-File Batching:** Upload and process multiple PDFs or Images simultaneously.
+-   **Context-Aware Analysis:** The AI scans the entire document stack to understand context before generating questions.
+-   **AI Exam Builder:** An interactive chat agent (`ExamBuilder`) that helps you negotiate and design custom exams through conversation.
+-   **Quick Diagnostic Mode:** Instant "Demo Mode" for testing system capabilities without file uploads.
+-   **Security First:** Integrated **VirusTotal** scanning to hash and verify files before processing.
 
-### 2. Exam Modes & Formats
--   **Original Mode (Default):** Strictly adheres to the source document's format (e.g., preserves True/False, Fill-in-the-Blank).
--   **Mixed Mode:** Automatically selects the best question type based on content optimization.
--   **Format Overrides:** Force the entire exam into a specific format:
-    -   **MCQ Only:** Converts coding challenges and open-ended questions into multiple-choice.
-    -   **Coding Only:** Converts theory into practical coding tasks.
-    -   **Tracing Only:** Focuses purely on code output analysis.
+### 2. Modes & Formats
+-   **Flexible Formats:**
+    -   **Original:** Preserves source document style.
+    -   **Mixed:** AI selects the best format for the concept.
+    -   **Forced Modes:** Convert content strictly to **MCQ**, **Coding Challenges**, **Tracing**, or **Short Answer**.
+-   **Exam Styles:**
+    -   **One-Way:** Standard testing environment.
+    -   **Two-Way:** Interactive mode with immediate feedback per question.
 
-### 3. Interactive Exam Experience
--   **One-Way Mode:** Standard exam style; submit all answers at the end.
--   **Two-Way Mode:** Instant feedback after every question.
--   **Rich Code Editor:** Integrated syntax highlighting (PrismJS) for coding questions.
--   **Code Canvas:** dedicated, syntax-highlighted window for reading complex code snippets without visual clutter.
--   **Mini-Games:** Play Snake, Tic-Tac-Toe, Sokoban, or Memory Match during the AI generation phase.
+### 3. Rich Interactive Experience
+-   **Digital Graph Engine:** Renders mathematical functions ($y=x^2$) dynamically using `function-plot` rather than static images.
+-   **Code Environment:**
+    -   **Syntax Highlighting:** Integrated PrismJS editor for coding questions.
+    -   **Code Window:** Specialized view for reading complex snippets.
+-   **Mini-Games:** Play Snake, Tic-Tac-Toe, Sokoban, or Memory Match during AI generation loading times.
+-   **Multilingual Support:** Full support for **English** and **Arabic** (RTL), including interface translations and content generation.
 
 ### 4. Grading & Analytics
--   **AI Grading:** Automated analysis of custom code submissions with detailed feedback.
--   **Z+ Elite Badge:** Achieve a perfect 100% score to unlock the exclusive "Elite Agent" badge on the leaderboard.
--   **Weak Point Analysis:** Identifies specific topics where you struggled and provides curated learning resources (Video + Reading).
--   **Remediation:** One-click generation of a *new* tactical makeup exam focusing only on your weak points.
+-   **AI Grading:** Automated analysis of custom code submissions with semantic feedback.
+-   **Weak Point Analysis:** Identifies struggle areas and provides curated video/reading resources.
+-   **Tactical Remediation:** One-click generation of specific makeup exams targeting your weak points.
+-   **Leaderboard & Badges:** Track performance and earn the **Z+ Elite Badge** for perfect scores.
+-   **Library System:** Save individual questions or full exams to local storage for later review.
 
 ### 5. Advanced UI/UX
--   **Cyberpunk / Terminal Theme:** Immersive dark mode with optional, togglable matrix rain background.
--   **Mobile-First Design:**
-    -   Responsive hamburger menu containing all critical actions.
-    -   Auto-hiding headers and footers to maximize screen real estate.
-    -   Touch-optimized controls.
--   **Smart Previews:** Hover over uploaded files to see instant PDF or Image previews within the configuration menu.
--   **Custom Cursor:** Terminal-themed pointer options (Wait, Grab, Text, Crosshair).
--   **PDF Export:** Download comprehensive reports including questions, your answers, and detailed explanations.
+-   **Themes:** Choose between **Light**, **Terminal (Dark)**, and **Palestine** themes.
+-   **AI System Agent:** A floating support bot (`AiHelper`) available to assist with platform navigation and troubleshooting.
+-   **Responsive Design:** Mobile-first architecture with touch-optimized controls and auto-hiding menus.
+-   **PDF Reports:** Generate professional PDF reports of your exam performance.
 
 ## 🚀 How to Run
 
@@ -63,7 +62,7 @@ An AI-powered, terminal-themed examination platform that generates technical ass
     ```
 
 3.  **Set Environment Variable:**
-    Create a `.env` file (or set in your environment) with your Google Gemini API Key:
+    Create a `.env` file with your API Key:
     ```
     API_KEY=your_google_gemini_api_key
     ```
@@ -73,19 +72,14 @@ An AI-powered, terminal-themed examination platform that generates technical ass
     npm run dev
     ```
 
-5.  **Build for Production:**
-    ```bash
-    npm run build
-    ```
-
 ## 🛠️ Tech Stack
 
--   **Frontend:** React 18+, TypeScript
+-   **Frontend:** React 19, TypeScript
 -   **Styling:** Tailwind CSS
--   **AI Model:** Google Gemini 2.5 Flash
+-   **AI Integration:** @google/genai SDK (Gemini 2.5 Flash)
+-   **Rendering:** jsPDF (Reporting), html2canvas, Function Plot (Graphs)
 -   **Editor:** React Simple Code Editor + PrismJS
--   **PDF Generation:** jsPDF
--   **Security:** VirusTotal API, Input Sanitization, SHA-256 Hashing
+-   **Security:** VirusTotal API, Input Sanitization (SHA-256)
 
 ---
 *Built with <3 by Z+ Team*
