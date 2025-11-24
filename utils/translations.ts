@@ -1,5 +1,3 @@
-
-
 export const translations = {
     en: {
         // Layout & Settings
@@ -19,7 +17,11 @@ export const translations = {
         "terminal_cursor": "TERMINAL CURSOR",
         "save_close": "SAVE & CLOSE",
         "status_online": "STATUS: ONLINE | SYSTEM: READY",
-        
+        "exit_exam_warning_title": "Exit Exam?",
+        "exit_exam_warning_body": "Are you sure you want to exit? All progress will be lost.",
+        "confirm_action": "CONFIRM EXIT",
+        "cancel_action": "CANCEL",
+
         // Upload
         "secure_upload": "SECURE FILE UPLOAD",
         "analyzing_batch": "ANALYZING BATCH...",
@@ -30,6 +32,8 @@ export const translations = {
         "quick_test": "QUICK DIAGNOSTIC TEST",
         "demo_desc": "Run an instant simulation using a sample C++ pointer analysis document.",
         "load_demo": "LOAD DEMO",
+        "paste_tip_desktop": "Tip: You can Paste (Ctrl+V) or Drag & Drop files/URLs anywhere.",
+        "paste_tip_mobile": "Tip: You can paste images (like screenshots) or URLs directly.",
 
         // Config
         "configuration": "CONFIGURATION",
@@ -118,6 +122,10 @@ export const translations = {
         "terminal_cursor": "مؤشر الطرفية",
         "save_close": "حفظ وإغلاق",
         "status_online": "الحالة: متصل | النظام: جاهز",
+        "exit_exam_warning_title": "الخروج من الاختبار؟",
+        "exit_exam_warning_body": "هل أنت متأكد من رغبتك في الخروج؟ سيتم فقدان كل التقدم.",
+        "confirm_action": "تأكيد الخروج",
+        "cancel_action": "إلغاء",
 
         // Upload
         "secure_upload": "رفع الملفات الآمن",
@@ -129,6 +137,9 @@ export const translations = {
         "quick_test": "اختبار تشخيصي سريع",
         "demo_desc": "تشغيل محاكاة فورية باستخدام مستند تحليل مؤشرات C++.",
         "load_demo": "تشغيل العرض التجريبي",
+        "paste_tip_desktop": "نصيحة: يمكنك لصق (Ctrl+V) أو سحب وإفلات الملفات/الروابط في أي مكان.",
+        "paste_tip_mobile": "نصيحة: يمكنك لصق الصور (مثل لقطات الشاشة) أو الروابط مباشرة.",
+
 
         // Config
         "configuration": "إعداد الاختبار",

@@ -189,6 +189,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     }
   };
 
+  const isMobile = typeof window !== 'undefined' && /Mobi/i.test(window.navigator.userAgent);
+  const pasteTip = isMobile ? t('paste_tip_mobile', lang) : t('paste_tip_desktop', lang);
+
   return (
     <div className={`w-full mx-auto mt-4 md:mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none' : 'max-w-2xl'}`}>
       
@@ -323,7 +326,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           </button>
       </form>
       <div className="text-center mt-2 text-[9px] text-gray-400 dark:text-gray-500">
-          Tip: You can Paste (Ctrl+V) files or URLs directly anywhere on this screen.
+          {pasteTip}
       </div>
 
       {/* DEMO SECTION */}

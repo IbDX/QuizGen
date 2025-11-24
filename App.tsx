@@ -7,6 +7,7 @@ import { Results } from './components/Results';
 import { Leaderboard } from './components/Leaderboard';
 import { QuestionLibrary } from './components/QuestionLibrary';
 import { LoadingScreen } from './components/LoadingScreen';
+import { ConfirmModal } from './components/ConfirmModal'; // Import the custom modal
 import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference, UILanguage } from './types';
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 import { generateExamPDF } from './utils/pdfGenerator';
@@ -27,10 +28,55 @@ const App: React.FC = () => {
   
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
 
+  // State for the custom confirmation modal
+  const [confirmModalState, setConfirmModalState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
   useEffect(() => {
     document.documentElement.dir = uiLanguage === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = uiLanguage;
   }, [uiLanguage]);
+
+  // Browser-level exit confirmation (refresh, close tab)
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (appState === 'EXAM') {
+        const message = t('exit_exam_warning_body', uiLanguage);
+        event.preventDefault();
+        event.returnValue = message; // For older browsers
+        return message; // For modern browsers
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [appState, uiLanguage]);
+
+  // In-app navigation confirmation logic
+  const confirmAndNavigate = (navigationAction: () => void) => {
+    if (appState === 'EXAM') {
+      setConfirmModalState({
+        isOpen: true,
+        title: t('exit_exam_warning_title', uiLanguage),
+        message: t('exit_exam_warning_body', uiLanguage),
+        onConfirm: () => {
+          navigationAction();
+          setConfirmModalState({ ...confirmModalState, isOpen: false });
+        },
+      });
+    } else {
+      navigationAction();
+    }
+  };
+  
+  const handleCancelExit = () => {
+      setConfirmModalState({ ...confirmModalState, isOpen: false });
+  };
+
 
   const handleFilesAccepted = (files: Array<{base64: string; mime: string; name: string; hash: string}>) => {
     const uniqueBatch: typeof files = [];
@@ -118,10 +164,7 @@ using namespace std;
     try {
       const filePayloads = uploadedFiles.map(f => ({ base64: f.base64, mimeType: f.mime }));
       
-      // Set up a minimum delay promise of 15 seconds
       const minDelayPromise = new Promise(resolve => setTimeout(resolve, 15000));
-      
-      // Set up the exam generation promise
       const generationPromise = generateExam(
           filePayloads, 
           examSettings.formatPreference, 
@@ -129,7 +172,6 @@ using namespace std;
           examSettings.instructions
       );
 
-      // Wait for both the minimum delay AND the generation to complete
       const [_, generatedQuestions] = await Promise.all([
           minDelayPromise,
           generationPromise
@@ -173,7 +215,7 @@ using namespace std;
           timeLimitMinutes: 0,
           mode: ExamMode.ONE_WAY,
           formatPreference: QuestionFormatPreference.ORIGINAL,
-          outputLanguage: uiLanguage === 'ar' ? 'ar' : 'en'
+          outputLanguage: uiLanguage === 'ar' ? 'ar' : 'en',
       });
       setIsLibraryOpen(false);
       setAppState('EXAM');
@@ -252,7 +294,7 @@ using namespace std;
 
   return (
     <Layout 
-      onHome={handleRestart} 
+      onHome={() => confirmAndNavigate(handleRestart)}
       onToggleLibrary={handleToggleLibrary}
       isLibraryOpen={isLibraryOpen}
       isFullWidth={isFullWidth} 
@@ -263,6 +305,15 @@ using namespace std;
       uiLanguage={uiLanguage}
       onSetUiLanguage={setUiLanguage}
     >
+      <ConfirmModal 
+        isOpen={confirmModalState.isOpen}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        onConfirm={confirmModalState.onConfirm}
+        onCancel={handleCancelExit}
+        lang={uiLanguage}
+      />
+
       {duplicateFiles.length > 0 && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
               <div className="bg-white dark:bg-gray-900 border-2 border-red-500 p-6 max-w-md w-full shadow-[0_0_30px_rgba(239,68,68,0.4)] relative">
