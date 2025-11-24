@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64, validateBatchSize } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -361,16 +362,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                     🤖
                 </div>
                 <div className="text-center">
-                    <h4 className="font-bold text-blue-800 dark:text-blue-300">AI EXAM BUILDER</h4>
+                    <h4 className="font-bold text-blue-800 dark:text-blue-300">{t('builder_card_title', lang)}</h4>
                     <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-3 leading-tight">
-                         Chat with AI to design a custom exam.
+                         {t('builder_card_desc', lang)}
                     </p>
                     <button 
                         onClick={onStartBuilder}
                         disabled={globalStatus !== 'IDLE'}
                         className="w-full py-2 bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors uppercase rounded-sm shadow-sm"
                     >
-                        START BUILDER
+                        {t('start_builder', lang)}
                     </button>
                 </div>
             </div>

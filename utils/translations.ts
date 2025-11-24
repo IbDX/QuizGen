@@ -1,3 +1,4 @@
+
 export const translations = {
     en: {
         // Layout & Settings
@@ -34,6 +35,22 @@ export const translations = {
         "load_demo": "LOAD DEMO",
         "paste_tip_desktop": "Tip: You can Paste (Ctrl+V) or Drag & Drop files/URLs anywhere.",
         "paste_tip_mobile": "Tip: You can paste images (like screenshots) or URLs directly.",
+
+        // AI Builder Card & Interface
+        "builder_card_title": "AI EXAM BUILDER",
+        "builder_card_desc": "Chat with AI to design a custom exam.",
+        "start_builder": "START BUILDER",
+        "builder_title": "AI EXAM BUILDER",
+        "builder_mode": "[INTERACTIVE MODE]",
+        "abort": "[ESC] ABORT",
+        "init_system": "INITIALIZE SYSTEM",
+        "select_lang_msg": "Select conversation language to begin.",
+        "user_role": "USER",
+        "agent_role": "SYSTEM AGENT",
+        "compiling": "COMPILING EXAM DATA...",
+        "connection_error": "Connection interrupted. Please try again.",
+        "builder_generate": "GENERATE FINAL EXAM",
+        "builder_negotiate_hint": "Negotiate exam content above. Click 'GENERATE EXAM' when ready.",
 
         // Config
         "configuration": "CONFIGURATION",
@@ -139,7 +156,22 @@ export const translations = {
         "load_demo": "تشغيل العرض التجريبي",
         "paste_tip_desktop": "نصيحة: يمكنك لصق (Ctrl+V) أو سحب وإفلات الملفات/الروابط في أي مكان.",
         "paste_tip_mobile": "نصيحة: يمكنك لصق الصور (مثل لقطات الشاشة) أو الروابط مباشرة.",
-
+        
+        // AI Builder Card & Interface
+        "builder_card_title": "منشئ الاختبارات الذكي",
+        "builder_card_desc": "تحدث مع الذكاء الاصطناعي لتصميم اختبار مخصص.",
+        "start_builder": "ابدأ المنشئ",
+        "builder_title": "منشئ الاختبارات الذكي",
+        "builder_mode": "[الوضع التفاعلي]",
+        "abort": "[ESC] خروج",
+        "init_system": "تهيئة النظام",
+        "select_lang_msg": "اختر لغة المحادثة للبدء.",
+        "user_role": "المستخدم",
+        "agent_role": "عميل النظام",
+        "compiling": "جاري تجميع بيانات الاختبار...",
+        "connection_error": "انقطع الاتصال. يرجى المحاولة مرة أخرى.",
+        "builder_generate": "إنشاء الاختبار النهائي",
+        "builder_negotiate_hint": "اتفق على المحتوى أعلاه. اضغط 'إنشاء الاختبار' عند الانتهاء.",
 
         // Config
         "configuration": "إعداد الاختبار",

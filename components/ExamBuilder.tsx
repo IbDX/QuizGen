@@ -51,7 +51,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             const response = await sendExamBuilderMessage(messages, userMsg);
             setMessages(prev => [...prev, { role: 'model', text: response }]);
         } catch (error) {
-            setMessages(prev => [...prev, { role: 'model', text: "Connection interrupted. Please try again." }]);
+            setMessages(prev => [...prev, { role: 'model', text: t('connection_error', lang) }]);
         } finally {
             setIsTyping(false);
         }
@@ -79,14 +79,14 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                     <div className="flex items-center gap-3">
                         <div className="w-3 h-3 bg-terminal-green rounded-full animate-pulse"></div>
                         <h2 className="font-bold text-lg md:text-xl text-gray-800 dark:text-terminal-light font-mono tracking-wider">
-                            AI EXAM BUILDER <span className="text-xs opacity-60 ml-2">[INTERACTIVE MODE]</span>
+                            {t('builder_title', lang)} <span className="text-xs opacity-60 ml-2">{t('builder_mode', lang)}</span>
                         </h2>
                     </div>
                     <button 
                         onClick={onCancel}
                         className="text-gray-500 hover:text-red-500 transition-colors font-mono font-bold text-sm"
                     >
-                        [ESC] ABORT
+                        {t('abort', lang)}
                     </button>
                 </div>
 
@@ -96,9 +96,8 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                         <div className="max-w-md w-full text-center space-y-8">
                             <div className="space-y-2">
                                  <div className="text-4xl mb-4 animate-bounce">👋</div>
-                                 <h3 className="text-2xl font-bold text-gray-800 dark:text-terminal-light font-mono">INITIALIZE SYSTEM</h3>
-                                 <p className="text-gray-500 font-mono text-sm">Select conversation language to begin.</p>
-                                 <p className="text-gray-500 font-mono text-xs opacity-75">اختر لغة المحادثة للبدء</p>
+                                 <h3 className="text-2xl font-bold text-gray-800 dark:text-terminal-light font-mono">{t('init_system', lang)}</h3>
+                                 <p className="text-gray-500 font-mono text-sm">{t('select_lang_msg', lang)}</p>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-4">
@@ -133,7 +132,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                             : 'bg-white dark:bg-black border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none shadow-sm'
                                     }`}>
                                         <div className={`font-bold text-[10px] mb-1 uppercase tracking-wider ${m.role === 'user' ? 'text-blue-100 opacity-80' : 'text-gray-500 opacity-50'}`}>
-                                            {m.role === 'user' ? 'USER' : 'SYSTEM AGENT'}
+                                            {m.role === 'user' ? t('user_role', lang) : t('agent_role', lang)}
                                         </div>
                                         <MarkdownRenderer content={m.text} className={m.role === 'user' ? 'text-white' : ''} />
                                     </div>
@@ -153,7 +152,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                             
                             {isFinalizing ? (
                                 <div className="flex flex-col items-center justify-center py-6 gap-4 animate-pulse">
-                                    <div className="text-terminal-green font-mono font-bold text-lg">COMPILING EXAM DATA...</div>
+                                    <div className="text-terminal-green font-mono font-bold text-lg">{t('compiling', lang)}</div>
                                     <div className="w-full max-w-md h-2 bg-gray-700 rounded-full overflow-hidden">
                                         <div className="h-full bg-terminal-green animate-progress"></div>
                                     </div>
@@ -180,13 +179,13 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
 
                                     <div className="flex justify-between items-center">
                                         <p className="text-[10px] text-gray-400 font-mono hidden md:block">
-                                            {lang === 'ar' ? "استخدم الدردشة لتحديد المحتوى، ثم اضغط 'إنشاء الاختبار' عند الانتهاء." : "Negotiate exam content above. Click 'GENERATE EXAM' when ready."}
+                                            {t('builder_negotiate_hint', lang)}
                                         </p>
                                         <button 
                                             onClick={handleCompileExam}
                                             className="w-full md:w-auto px-8 py-3 bg-blue-600 dark:bg-terminal-green text-white dark:text-black font-bold font-mono uppercase tracking-widest hover:bg-blue-700 dark:hover:bg-terminal-dimGreen shadow-lg transition-all active:scale-95"
                                         >
-                                            [ {lang === 'ar' ? "إنشاء الاختبار النهائي" : "GENERATE FINAL EXAM"} ]
+                                            [ {t('builder_generate', lang)} ]
                                         </button>
                                     </div>
                                 </>
