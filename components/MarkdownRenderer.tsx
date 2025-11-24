@@ -81,7 +81,8 @@ export const processInlineMarkdown = (text: string) => {
                     displayMode, 
                     throwOnError: false, 
                     output: 'html', 
-                    trust: true 
+                    trust: true,
+                    strict: false // Suppress warnings for unrecognized characters
                 });
                 const style = displayMode 
                     ? "display: block; margin: 1em 0; text-align: center; direction: ltr; unicode-bidi: isolate;"

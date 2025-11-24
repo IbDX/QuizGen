@@ -55,19 +55,25 @@ export const scanFileWithVirusTotal = async (file: File): Promise<ScanResult> =>
     throw new Error(`Unexpected VT Status: ${reportRes.status}`);
 
   } catch (error: any) {
-    console.warn("VirusTotal Check Failed:", error);
-    const isCors = error.name === 'TypeError' && error.message === 'Failed to fetch';
-    
     // We try to return the hash even if the scan fails (calculated locally)
     let hash = undefined;
     try { hash = await calculateSHA256(file); } catch (e) {}
 
+    // Check for NetworkError / CORS issues
+    if (error.name === 'TypeError' && (error.message.includes('fetch') || error.message.includes('NetworkError'))) {
+         return {
+            safe: true,
+            hash,
+            message: "Scan Skipped (Client-Side Only Mode). Proceeding."
+        };
+    }
+    
+    console.warn("VirusTotal Check Failed:", error);
+
     return {
       safe: true, 
       hash,
-      message: isCors 
-        ? "Scan Skipped (Browser CORS blocked VT API). Running in offline mode." 
-        : `Scan Error: ${error.message || 'Unknown'}`
+      message: `Scan Error: ${error.message || 'Unknown'}`
     };
   }
 };

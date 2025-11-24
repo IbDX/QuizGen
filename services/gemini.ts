@@ -1,7 +1,9 @@
 
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage } from "../types";
+
+// Helper for delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper to generate schema based on preference
 const getExamSchema = (preference: QuestionFormatPreference): Schema => {
@@ -257,6 +259,12 @@ However, ALL CODE SNIPPETS, VARIABLE NAMES, and PROGRAMMING SYNTAX MUST REMAIN I
 Use standard computer science terminology in Arabic (e.g., use 'مصفوفة' for Array, 'دالة' for Function, 'مؤشر' for Pointer) but keep the code strictly English.
 Example: "ما هي مخرجات الكود التالي؟" instead of "What is the output?".
 Do NOT translate code keywords (e.g., 'int', 'void', 'for', 'if').
+
+**MATH FORMATTING RULE (CRITICAL FOR ARABIC):**
+- DO NOT use Arabic characters inside math equations (e.g. $س$, $ص$).
+- ALWAYS use standard English/Greek variables (e.g. $x$, $y$, $\\theta$) inside LaTeX blocks.
+- Correct: "أوجد قيمة $x$ في المعادلة $x^2 = 4$"
+- Incorrect: "أوجد قيمة $س$ في المعادلة $س^2 = 4$"
 `;
     } else if (outputLang === 'auto') {
         langInstruction = `
@@ -426,6 +434,7 @@ You are an AI Exam Builder integrated into a secure website. Your job is to safe
   - Generate Questions, Options, and Explanations in **Arabic**.
   - KEEP ALL CODE, SYNTAX, AND VARIABLE NAMES IN **ENGLISH**.
   - Example: "ما هي قيمة المتغير x في الكود التالي؟" (Correct) vs "What is value of x?" (Incorrect).
+  - **MATH:** Do NOT use Arabic chars in LaTeX. Use $x$ not $س$.
 
 1. Core Behavior
 You must:
@@ -507,14 +516,17 @@ export const generateExam = async (
     outputLanguage: OutputLanguage = 'en',
     instructions?: string
 ): Promise<Question[]> => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    const modelId = 'gemini-2.5-flash'; 
-
-    const systemPrompt = getSystemInstruction(preference, outputLanguage);
-
-    const userPrompt = `
+  const modelId = 'gemini-2.5-flash'; 
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const systemPrompt = getSystemInstruction(preference, outputLanguage);
+  
+  const parts: any[] = files.map(file => ({
+      inlineData: {
+          mimeType: file.mimeType,
+          data: file.base64.replace(/\s/g, '')
+      }
+  }));
+  parts.push({ text: `
       Analyze the attached **${files.length} file(s)**.
       
       **INSTRUCTION**: 
@@ -524,51 +536,46 @@ export const generateExam = async (
       **USER CUSTOM INSTRUCTIONS/CONSTRAINTS**:
       The user has provided specific constraints or context for this generation. You MUST adhere to them:
       "${instructions}"
-      
-      (e.g., If user asks for specific number of questions, prioritize that. If user asks to focus on specific topics, filter for those.)
       ` : ''}
       
       Return a JSON array adhering to the schema.
-    `;
+  ` });
 
-    // Construct multi-part content
-    const parts: any[] = files.map(file => ({
-        inlineData: {
-            mimeType: file.mimeType,
-            data: file.base64.replace(/\s/g, '') // Ensure clean base64
+  const maxRetries = 3;
+  let attempt = 0;
+
+  while (attempt < maxRetries) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelId,
+        contents: { parts },
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          responseSchema: getExamSchema(preference), 
+          temperature: 0.2 
         }
-    }));
-    
-    parts.push({ text: userPrompt });
+      });
 
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: {
-        parts: parts
-      },
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-        responseSchema: getExamSchema(preference), 
-        thinkingConfig: { thinkingBudget: 0 }, 
-        temperature: 0.2 
+      if (response.text) {
+        const cleanJson = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const rawQuestions = JSON.parse(cleanJson) as any[];
+        const visualEnrichedQuestions = await processVisuals(rawQuestions, files);
+        return deduplicateQuestions(visualEnrichedQuestions);
       }
-    });
-
-    if (response.text) {
-      const cleanJson = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const rawQuestions = JSON.parse(cleanJson) as any[];
-      
-      // Process Visuals (Client-side Cropping)
-      const visualEnrichedQuestions = await processVisuals(rawQuestions, files);
-      
-      return deduplicateQuestions(visualEnrichedQuestions);
+      throw new Error("No response text generated");
+    } catch (error: any) {
+       console.warn(`Gemini Generation Attempt ${attempt + 1} failed:`, error);
+       attempt++;
+       if (attempt >= maxRetries) {
+           console.error("Gemini Generation Final Failure:", error);
+           throw error;
+       }
+       // Exponential backoff
+       await delay(2000 * Math.pow(2, attempt - 1));
     }
-    throw new Error("No response text generated");
-  } catch (error) {
-    console.error("Gemini Generation Error:", error);
-    throw error;
   }
+  return [];
 };
 
 export const generateExamFromWrongAnswers = async (originalQuestions: Question[], wrongIds: string[]): Promise<Question[]> => {
@@ -595,8 +602,7 @@ export const generateExamFromWrongAnswers = async (originalQuestions: Question[]
           contents: { parts: [{ text: prompt }] },
           config: {
             responseMimeType: "application/json",
-            responseSchema: schema,
-            thinkingConfig: { thinkingBudget: 0 }
+            responseSchema: schema
           }
         });
     
@@ -656,8 +662,7 @@ export const gradeCodingAnswer = async (question: Question, code: string): Promi
       contents: { parts: [{ text: prompt }] },
       config: {
         responseMimeType: "application/json",
-        responseSchema: gradingSchema,
-        thinkingConfig: { thinkingBudget: 0 }
+        responseSchema: gradingSchema
       }
     });
 
@@ -768,7 +773,6 @@ export const getAiHelperResponse = async (message: string, lang: UILanguage): Pr
       contents: { parts: [{ text: message }] },
       config: {
         systemInstruction: systemPrompt,
-        thinkingConfig: { thinkingBudget: 0 },
         maxOutputTokens: 200
       }
     });
@@ -792,8 +796,7 @@ export const sendExamBuilderMessage = async (history: ChatMessage[], newMessage:
             model: 'gemini-2.5-flash',
             config: {
                 systemInstruction: EXAM_BUILDER_SYSTEM_PROMPT,
-                temperature: 0.7,
-                thinkingConfig: { thinkingBudget: 0 }
+                temperature: 0.7
             },
             history: history.map(h => ({
                 role: h.role,
@@ -837,8 +840,7 @@ export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promi
             config: {
                 systemInstruction: EXAM_BUILDER_SYSTEM_PROMPT, // Keep persona
                 responseMimeType: "application/json",
-                responseSchema: schema,
-                thinkingConfig: { thinkingBudget: 0 }
+                responseSchema: schema
             }
         });
 
