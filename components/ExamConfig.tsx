@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ExamMode, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage } from '../types';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
@@ -20,6 +19,7 @@ interface ExamConfigProps {
   files: Array<FileData>;
   isFullWidth: boolean;
   lang: UILanguage;
+  isActive: boolean;
 }
 
 const FORMAT_OPTIONS = [
@@ -68,7 +68,7 @@ const PdfPreview: React.FC<{ base64: string }> = ({ base64 }) => {
     );
 };
 
-export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, onAppendFiles, files, isFullWidth, lang }) => {
+export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, onAppendFiles, files, isFullWidth, lang, isActive }) => {
   const [timeLimit, setTimeLimit] = useState<number>(30);
   const [isTimed, setIsTimed] = useState<boolean>(true);
   const [mode, setMode] = useState<ExamMode>(ExamMode.ONE_WAY);
@@ -200,16 +200,31 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       if(urlInput && !isScanning) processUrl(urlInput);
   };
 
+  const handleUrlPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    // Prioritize files (e.g., from screenshot tool or mobile gallery)
+    if (e.clipboardData && e.clipboardData.files.length > 0) {
+        e.preventDefault();
+        processNewFiles(e.clipboardData.files);
+        return;
+    }
+
+    // Fallback to text URL
+    const text = e.clipboardData.getData('text');
+    if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+      // Let the URL paste into the input for visual feedback
+      // and then trigger the processing.
+      processUrl(text.trim());
+    }
+  };
+
   // Global Paste Handler for this component
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
         if (isScanning) return;
         
-        // Don't interfere if pasting into specific text inputs (like custom instructions)
         const target = e.target as HTMLElement;
-        if (target.tagName === 'TEXTAREA' || (target.tagName === 'INPUT' && target !== fileInputRef.current)) {
-            // If it's the URL input, let default behavior happen, or check specifically
-             if (target.getAttribute('type') === 'url') return;
+        if (target.tagName === 'TEXTAREA' || (target.tagName === 'INPUT' && target.getAttribute('type') !== 'file')) {
+            return;
         }
 
         if (e.clipboardData) {
@@ -226,9 +241,17 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
              }
         }
     };
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [files, isScanning]); 
+    
+    if (isActive) {
+        window.addEventListener('paste', handlePaste);
+    }
+    
+    return () => {
+        if (isActive) {
+            window.removeEventListener('paste', handlePaste);
+        }
+    };
+  }, [files, isScanning, isActive]); 
 
   // Drag and Drop Handlers
   const handleDragOver = (e: React.DragEvent) => {
@@ -395,6 +418,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                     type="url"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
+                    onPaste={handleUrlPaste}
                     placeholder="https://example.com/file.pdf"
                     className="flex-grow bg-white dark:bg-black border border-gray-300 dark:border-gray-700 p-2 text-xs font-mono outline-none focus:border-terminal-green rounded-sm dark:text-white"
                     disabled={isScanning}

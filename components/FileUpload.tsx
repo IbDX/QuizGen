@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64, validateBatchSize } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -11,6 +10,7 @@ interface FileUploadProps {
   onLoadDemo: () => void;
   isFullWidth: boolean;
   lang?: UILanguage;
+  isActive: boolean;
 }
 
 interface ProcessingLog {
@@ -19,7 +19,7 @@ interface ProcessingLog {
     error?: string;
 }
 
-export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadDemo, isFullWidth, lang = 'en' }) => {
+export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadDemo, isFullWidth, lang = 'en', isActive }) => {
   const [logs, setLogs] = useState<ProcessingLog[]>([]);
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -120,6 +120,23 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
       setUrlInput(validation.sanitizedValue);
   };
 
+  const handleUrlPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    // Prioritize files (e.g., from screenshot tool or mobile gallery)
+    if (e.clipboardData && e.clipboardData.files.length > 0) {
+        e.preventDefault();
+        handleFiles(e.clipboardData.files);
+        return;
+    }
+
+    // Fallback to text URL
+    const text = e.clipboardData.getData('text');
+    if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+      // Let the URL paste into the input for visual feedback
+      // and then trigger the processing.
+      processUrl(text.trim());
+    }
+  };
+
   // Global Paste Handler (Files & URLs)
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
@@ -143,9 +160,17 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           }
       }
     };
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [globalStatus]);
+
+    if (isActive) {
+        window.addEventListener('paste', handlePaste);
+    }
+    
+    return () => {
+      if (isActive) {
+        window.removeEventListener('paste', handlePaste);
+      }
+    };
+  }, [globalStatus, isActive]);
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -286,6 +311,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
             className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-3 md:p-3 font-mono text-sm outline-none focus:border-terminal-green rounded-sm dark:text-white"
             value={urlInput}
             onChange={handleUrlChange}
+            onPaste={handleUrlPaste}
             disabled={globalStatus !== 'IDLE'}
           />
           <button 

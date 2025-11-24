@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
@@ -309,6 +308,7 @@ using namespace std;
                 onLoadDemo={handleDemoLoad}
                 isFullWidth={isFullWidth}
                 lang={uiLanguage}
+                isActive={appState === 'UPLOAD'}
               />
               <Leaderboard lang={uiLanguage}/>
             </>
@@ -322,6 +322,7 @@ using namespace std;
                 files={uploadedFiles}
                 isFullWidth={isFullWidth}
                 lang={uiLanguage}
+                isActive={appState === 'CONFIG'}
             />
           )}
 

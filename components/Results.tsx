@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -7,6 +6,7 @@ import { generateExamPDF } from '../utils/pdfGenerator';
 import { saveQuestion, removeQuestion, isQuestionSaved, saveFullExam } from '../services/library';
 import { sanitizeInput } from '../utils/security';
 import { t } from '../utils/translations';
+import { gradeCodingAnswer } from '../services/gemini'; // Import the grading service
 
 interface ResultsProps {
   questions: Question[];
@@ -44,14 +44,74 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   const [isPublished, setIsPublished] = useState(false);
   const [showWeakPoints, setShowWeakPoints] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
-  const [savedQuestions, setSavedQuestions] = useState<Record<string, boolean>>(() => {
-      const initial: Record<string, boolean> = {};
-      questions.forEach(q => { initial[q.id] = isQuestionSaved(q.id); });
-      return initial;
-  });
-  
+  const [savedQuestions, setSavedQuestions] = useState<Record<string, boolean>>({});
   const [examSaved, setExamSaved] = useState(false);
   const [isFooterVisible, setIsFooterVisible] = useState(true);
+
+  // State to hold processed results and grading status
+  const [finalResults, setFinalResults] = useState<any[]>([]);
+  const [gradingStatus, setGradingStatus] = useState<Record<string, boolean>>({});
+
+  // Effect for Post-Exam AI Grading
+  useEffect(() => {
+    // 1. Initial Processing (non-coding questions are graded instantly)
+    const initialProcessed = questions.map(q => {
+      const ua = answers.find(a => a.questionId === q.id);
+      let isCorrect: boolean | undefined = undefined;
+      let feedback = q.explanation;
+
+      if (!ua) {
+        return { question: q, isCorrect: false, answer: null, feedback: "No answer provided.\n\n**Analysis:**\n" + q.explanation };
+      }
+
+      if (q.type === QuestionType.MCQ) {
+        isCorrect = ua.answer === q.correctOptionIndex;
+      } else if (q.type === QuestionType.TRACING) {
+        isCorrect = String(ua.answer).trim().toLowerCase() === String(q.tracingOutput || "").trim().toLowerCase();
+      } else if (q.type === QuestionType.CODING) {
+        // If it was already graded in 2-way mode, use that result
+        if (ua.isCorrect !== undefined) {
+          isCorrect = ua.isCorrect;
+          feedback = ua.feedback || feedback;
+        }
+      }
+
+      return { question: q, isCorrect, answer: ua.answer, feedback };
+    });
+    setFinalResults(initialProcessed);
+
+    // 2. Identify and Grade Ungraded Coding Questions
+    const toGrade = initialProcessed.filter(p => p.question.type === QuestionType.CODING && p.answer && p.isCorrect === undefined);
+
+    if (toGrade.length > 0) {
+      const newStatus: Record<string, boolean> = {};
+      toGrade.forEach(item => newStatus[item.question.id] = true);
+      setGradingStatus(newStatus);
+
+      const gradePromises = toGrade.map(async item => {
+        const result = await gradeCodingAnswer(item.question, String(item.answer));
+        return {
+          ...item,
+          isCorrect: result.isCorrect,
+          feedback: result.feedback,
+        };
+      });
+
+      Promise.all(gradePromises).then(gradedItems => {
+        setFinalResults(currentResults => {
+          const updatedResults = [...currentResults];
+          gradedItems.forEach(gradedItem => {
+            const index = updatedResults.findIndex(r => r.question.id === gradedItem.question.id);
+            if (index !== -1) {
+              updatedResults[index] = gradedItem;
+            }
+          });
+          return updatedResults;
+        });
+        setGradingStatus({}); // Clear grading status
+      });
+    }
+  }, [questions, answers]);
 
   useEffect(() => {
     if (!autoHideFooter) { setIsFooterVisible(true); return; }
@@ -62,45 +122,19 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   const handleMouseEnterFooter = () => { if (autoHideFooter) setIsFooterVisible(true); };
   const handleMouseLeaveFooter = () => { if (autoHideFooter) setIsFooterVisible(false); };
   
-  let correctCount = 0;
-  const wrongIds: string[] = [];
-  const wrongTopics: Record<string, number> = {};
+  // Calculate score based on finalResults
+  const correctCount = finalResults.filter(r => r.isCorrect).length;
+  const wrongIds = finalResults.filter(r => !r.isCorrect).map(r => r.question.id);
+  const wrongTopics: Record<string, number> = finalResults
+    .filter(r => !r.isCorrect)
+    .reduce((acc, r) => {
+        const topic = r.question.topic || 'General';
+        acc[topic] = (acc[topic] || 0) + 1;
+        return acc;
+    }, {});
 
-  const processedAnswers = questions.map(q => {
-    const ua = answers.find(a => a.questionId === q.id);
-    let isCorrect = false;
-    let feedback = q.explanation;
-
-    if (!ua) {
-        wrongIds.push(q.id);
-        const topic = q.topic || 'General';
-        wrongTopics[topic] = (wrongTopics[topic] || 0) + 1;
-        return { question: q, isCorrect: false, answer: null, feedback: "No answer provided.\n\n**Analysis:**\n" + q.explanation };
-    }
-
-    if (q.type === QuestionType.MCQ) {
-        isCorrect = ua.answer === q.correctOptionIndex;
-    } else if (q.type === QuestionType.TRACING) {
-        isCorrect = String(ua.answer).trim().toLowerCase() === String(q.tracingOutput || "").trim().toLowerCase();
-    } else if (q.type === QuestionType.CODING) {
-        if (ua.isCorrect !== undefined) isCorrect = ua.isCorrect;
-        if (ua.feedback) feedback = ua.feedback;
-    }
-
-    if (isCorrect) correctCount++;
-    else {
-        wrongIds.push(q.id);
-        const topic = q.topic || 'General';
-        wrongTopics[topic] = (wrongTopics[topic] || 0) + 1;
-    }
-
-    return { question: q, isCorrect, answer: ua.answer, feedback };
-  });
-
-  const score = Math.round((correctCount / questions.length) * 100);
-  const getLetterGrade = (score: number) => {
-    if (score >= 90) return 'A'; if (score >= 80) return 'B'; if (score >= 70) return 'C'; if (score >= 60) return 'D'; return 'F';
-  };
+  const score = finalResults.length > 0 ? Math.round((correctCount / finalResults.length) * 100) : 0;
+  const getLetterGrade = (s: number) => s >= 90 ? 'A' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 60 ? 'D' : 'F';
   const grade = getLetterGrade(score);
   const isFailure = grade === 'F';
   const isPerfect = score === 100;
@@ -114,7 +148,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
   const handlePublish = () => {
     if (!userName.trim() || nameError) return;
-    const entry: LeaderboardEntry = { name: userName.trim(), score: score, date: new Date().toISOString(), isElite: isPerfect };
+    const entry: LeaderboardEntry = { name: userName.trim(), score, date: new Date().toISOString(), isElite: isPerfect };
     const stored = localStorage.getItem('exam_leaderboard');
     let scores: LeaderboardEntry[] = stored ? JSON.parse(stored) : [];
     scores.push(entry);
@@ -131,13 +165,13 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   };
 
   const toggleSave = (q: Question) => {
-      if (savedQuestions[q.id]) {
+      const currentlySaved = isQuestionSaved(q.id);
+      if (currentlySaved) {
           removeQuestion(q.id);
-          setSavedQuestions(prev => ({...prev, [q.id]: false}));
       } else {
           saveQuestion(q);
-          setSavedQuestions(prev => ({...prev, [q.id]: true}));
       }
+      setSavedQuestions(prev => ({...prev, [q.id]: !currentlySaved}));
   };
 
   return (
@@ -244,7 +278,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       </div>
 
       <div className="space-y-8 mb-12 relative z-10">
-        {processedAnswers.map((item, idx) => {
+        {finalResults.map((item, idx) => {
           const hasCodeBlockInText = item.question.text.includes('```');
           let displayText = item.question.text;
           if (item.question.codeSnippet && !hasCodeBlockInText && displayText.includes(item.question.codeSnippet)) {
@@ -252,13 +286,17 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
           }
 
           return (
-            <div key={item.question.id} className={`p-4 md:p-6 border-l-4 rtl:border-l-0 rtl:border-r-4 ${item.isCorrect ? 'border-terminal-green bg-green-50 dark:bg-terminal-green/5' : 'border-terminal-alert bg-red-50 dark:bg-terminal-alert/10'} bg-white dark:bg-terminal-black shadow-md rounded-r-lg rtl:rounded-r-none rtl:rounded-l-lg relative`}>
-                <button onClick={() => toggleSave(item.question)} className={`absolute top-2 right-2 md:top-4 md:right-4 rtl:right-auto rtl:left-4 p-2 transition-colors hover:scale-110 ${savedQuestions[item.question.id] ? 'text-terminal-alert' : 'text-gray-300 dark:text-terminal-gray hover:text-terminal-alert'}`}>
+            <div key={item.question.id} className={`p-4 md:p-6 border-l-4 rtl:border-l-0 rtl:border-r-4 ${gradingStatus[item.question.id] ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/10' : item.isCorrect ? 'border-terminal-green bg-green-50 dark:bg-terminal-green/5' : 'border-terminal-alert bg-red-50 dark:bg-terminal-alert/10'} bg-white dark:bg-terminal-black shadow-md rounded-r-lg rtl:rounded-r-none rtl:rounded-l-lg relative`}>
+                <button onClick={() => toggleSave(item.question)} className={`absolute top-2 right-2 md:top-4 md:right-4 rtl:right-auto rtl:left-4 p-2 transition-colors hover:scale-110 ${isQuestionSaved(item.question.id) ? 'text-terminal-alert' : 'text-gray-300 dark:text-terminal-gray hover:text-terminal-alert'}`}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-5 md:w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" /></svg>
                 </button>
                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-terminal-gray pr-8 rtl:pr-0 rtl:pl-8">
                     <h3 className="font-bold text-lg dark:text-terminal-light">{t('question', lang)} {idx + 1}</h3>
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${item.isCorrect ? 'bg-green-100 text-green-800 dark:bg-terminal-green dark:text-black' : 'bg-red-100 text-red-800 dark:bg-terminal-alert dark:text-white'}`}>{item.isCorrect ? t('passed', lang) : t('failed', lang)}</span>
+                    {gradingStatus[item.question.id] ? (
+                         <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-500 dark:text-black animate-pulse">GRADING...</span>
+                    ) : (
+                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${item.isCorrect ? 'bg-green-100 text-green-800 dark:bg-terminal-green dark:text-black' : 'bg-red-100 text-red-800 dark:bg-terminal-alert dark:text-white'}`}>{item.isCorrect ? t('passed', lang) : t('failed', lang)}</span>
+                    )}
                 </div>
                 <div className="mb-6 text-base md:text-lg font-medium text-gray-800 dark:text-terminal-light"><MarkdownRenderer content={displayText} /></div>
                 {item.question.codeSnippet && !hasCodeBlockInText && (
@@ -276,7 +314,11 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                     </div>
                     <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded border border-blue-100 dark:border-terminal-gray">
                         <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider text-blue-800 dark:text-terminal-green">{t('analysis', lang)}</span>
-                        <MarkdownRenderer content={item.feedback} />
+                        {gradingStatus[item.question.id] ? (
+                            <div className="animate-pulse text-gray-500">AI analysis in progress...</div>
+                        ) : (
+                            <MarkdownRenderer content={item.feedback} />
+                        )}
                     </div>
                 </div>
             </div>

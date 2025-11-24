@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType, UILanguage } from '../types';
 import { gradeCodingAnswer } from '../services/gemini';
@@ -197,12 +196,9 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const getAnswerValue = () => answers.get(currentQ.id)?.answer ?? "";
   const progressPercentage = Math.round((answers.size / questions.length) * 100);
   const isStandardMCQ = currentQ.type === QuestionType.MCQ && currentQ.options && currentQ.options.length > 0;
-  const hasCodeBlockInText = currentQ.text.includes('```');
   
-  let displayText = currentQ.text;
-  if (currentQ.codeSnippet && !hasCodeBlockInText && displayText.includes(currentQ.codeSnippet)) {
-     displayText = displayText.replace(currentQ.codeSnippet, '').trim();
-  }
+  // This is the main fix: only show the code snippet window if it's NOT a coding question.
+  const showCodeSnippet = currentQ.codeSnippet && currentQ.type !== QuestionType.CODING;
 
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
@@ -278,13 +274,13 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         
         <div className="mb-6 relative z-0 flex-grow">
              <div className="text-base md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-terminal-light break-words">
-               <MarkdownRenderer content={displayText} className="inline-block w-full" />
+               <MarkdownRenderer content={currentQ.text} className="inline-block w-full" />
              </div>
         </div>
 
-        {currentQ.codeSnippet && !hasCodeBlockInText && (
+        {showCodeSnippet && (
           <div dir="ltr" className="w-full text-left">
-              <CodeWindow code={currentQ.codeSnippet} />
+              <CodeWindow code={currentQ.codeSnippet!} />
           </div>
         )}
 
@@ -350,12 +346,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
           {currentQ.type === QuestionType.TRACING && (
              <div className="space-y-2">
                 <label className="text-sm font-bold opacity-70 font-mono dark:text-terminal-green" dir="ltr">&gt; {t('output_terminal', lang)}:</label>
-                <input 
-                  type="text" 
+                <textarea 
                   value={String(getAnswerValue())} 
                   onChange={(e) => handleAnswer(e.target.value)}
-                  maxLength={200}
-                  className="w-full bg-gray-50 dark:bg-terminal-black border border-gray-300 dark:border-terminal-gray p-3 md:p-4 font-mono focus:border-terminal-green outline-none text-base md:text-lg dark:text-terminal-light"
+                  maxLength={500}
+                  className="w-full bg-gray-50 dark:bg-terminal-black border border-gray-300 dark:border-terminal-gray p-3 md:p-4 font-mono focus:border-terminal-green outline-none text-base md:text-lg dark:text-terminal-light min-h-[80px] resize-y"
                   disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
                   dir="ltr" 
                 />

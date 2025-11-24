@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from 'react';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-javascript';
@@ -50,13 +49,18 @@ export const CodeWindow: React.FC<CodeWindowProps> = ({ code, title = "code" }) 
   }, [normalizedCode]);
 
   const handleCopy = async () => {
-      try {
-          await navigator.clipboard.writeText(normalizedCode);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-      } catch (err) {
-          console.error('Failed to copy code', err);
-      }
+    if (!navigator.clipboard) {
+        alert('Clipboard API not available in this browser. Please use a secure (HTTPS) connection.');
+        return;
+    }
+    try {
+        await navigator.clipboard.writeText(normalizedCode);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+        console.error('Failed to copy code', err);
+        alert(`Could not copy text: ${err}`);
+    }
   };
 
   return (
