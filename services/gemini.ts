@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage } from "../types";
 
@@ -15,6 +16,8 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
     allowedDescription = "MUST be strictly 'TRACING'. Do not return any other type.";
   } else if (preference === QuestionFormatPreference.CODING) {
     allowedDescription = "MUST be strictly 'CODING'. Do not return any other type.";
+  } else if (preference === QuestionFormatPreference.SHORT_ANSWER) {
+    allowedDescription = "MUST be strictly 'MCQ'. Options MUST be empty/null.";
   }
   // ORIGINAL and MIXED allow all types
 
@@ -29,7 +32,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
           description: `The type of the question. ${allowedDescription}.` 
         },
         topic: { type: Type.STRING, description: "A short topic tag for this question (e.g., 'Loops', 'Pointers', 'Recursion')" },
-        text: { type: Type.STRING, description: "The question text. Do NOT include the code snippet here. Use standard LaTeX for math (wrap in $)." },
+        text: { type: Type.STRING, description: "The full question text. Do NOT include the code snippet here if it is separate. Use standard LaTeX for math (wrap in $)." },
         codeSnippet: { 
             type: Type.STRING, 
             nullable: true, 
@@ -39,7 +42,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
           type: Type.ARRAY, 
           items: { type: Type.STRING },
           nullable: true,
-          description: "List of choices. REQUIRED for MCQ type." 
+          description: "List of choices. REQUIRED for MCQ type. MUST be empty/null if type is SHORT_ANSWER or CODING." 
         },
         correctOptionIndex: { type: Type.INTEGER, nullable: true, description: "Index of correct option. REQUIRED for MCQ." },
         tracingOutput: { type: Type.STRING, nullable: true, description: "The expected output string. REQUIRED for TRACING." },
@@ -48,7 +51,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
             type: Type.ARRAY, 
             items: { type: Type.INTEGER },
             nullable: true,
-            description: "Bounding box [ymin, xmin, ymax, xmax] (0-1000 scale) of ANY visual/diagram/graph essential for this question. Omit if text-only."
+            description: "Bounding box [ymin, xmin, ymax, xmax] (0-1000 scale) of ANY visual/diagram/graph ESSENTIAL for this question. OMIT if the question can be solved with text/math alone. DO NOT include the question text in this box."
         },
         sourceFileIndex: { 
             type: Type.INTEGER, 
@@ -113,7 +116,8 @@ const cropImage = async (
         const pIndex = Math.max(1, Math.min(pageNumber, numPages));
         
         const page = await pdf.getPage(pIndex);
-        const viewport = page.getViewport({ scale: 2.0 }); // High res for crop
+        // INCREASED SCALE for higher resolution cuts (was 2.0 -> 3.0 -> 4.0 for max quality)
+        const viewport = page.getViewport({ scale: 4.0 }); 
         
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -285,27 +289,32 @@ Generate all content in English.
     const BASE_INSTRUCTION = `
 ${langInstruction}
 
-PHASE 1: GLOBAL CONTEXT SCAN
-First, analyze ALL attached files from start to finish.
-Understand the document layout, question numbering, and answer keys (if present).
-Identify EVERY question in the document. Do not skip any.
-Preserve C++ syntax like pointers (*ptr) and references (&ref). Do not interpret them as Markdown italics.
+PHASE 1: HIGH-FIDELITY PARSING
+1. **Scan & Identify**: Locate every question block across all files.
+2. **Text Extraction**:
+   - **Capture Everything**: Include the full problem statement, preambles, and sub-questions.
+   - **Clean Up**: Remove "Q1", "1.", marks/scores (e.g. "[5 pts]"), and page artifacts.
+   - **Separation**: STRICTLY exclude answers/solutions from the 'text'. Use detected answers to set 'correctOptionIndex' or 'explanation'.
+   - **Formats**: Convert math to LaTeX ($E=mc^2$). Extract code into 'codeSnippet' (do NOT leave code as image).
 
-**VISUAL EXTRACTION RULES (CRITICAL)**
-- If a question includes a **diagram, graph, chart, or visual element** that is necessary to answer it, you MUST detect it.
-- Return \`visualBounds\` as \`[ymin, xmin, ymax, xmax]\` on a normalized scale of **0 to 1000**.
-  - 0 is top/left, 1000 is bottom/right.
-  - The box should tightly enclose the visual element.
-- Return \`sourceFileIndex\` indicating which file in the input list (0-based) contains this visual.
-- For PDF files, also return \`pageNumber\` (1-based index).
-- If the question is text-only, omit \`visualBounds\`.
+PHASE 2: INTELLIGENT VISUAL & LAYOUT ANALYSIS
+**DECISION ALGORITHM FOR VISUALS:**
+Analyze if the question *cannot* be solved or fully understood without seeing a diagram, graph, or figure.
+- **YES (Extract it):** Geometry, circuits, complex charts, biology diagrams, or questions explicitly saying "refer to the figure".
+- **NO (Skip it):** Code screenshots (extract text to \`codeSnippet\`), simple math formulas (convert to LaTeX), pure text questions, decorative icons.
 
-**MATH FORMATTING RULES:**
-- Use **LaTeX** for ALL mathematical expressions.
-- **Inline Math:** Wrap in single dollar signs, e.g., $x^2 + y = 5$.
-- **Block Math:** Wrap in double dollar signs, e.g., $$\\int_0^\\infty f(x) dx$$.
-- Ensure all variables (x, y, n) and math symbols are inside LaTeX delimiters.
-- DO NOT use plain text math (like x^2) without delimiters.
+**CROPPING RULES (STRICT):**
+1. **Target:** Isolate the diagram/graph ONLY.
+2. **Exclude:** The question text, option labels (A, B, C), and page headers/footers.
+3. **Precision:** The \`visualBounds\` [ymin, xmin, ymax, xmax] (0-1000 scale) must be TIGHT around the visual.
+4. **Resolution:** Ensure the bounds cover the entire visual content including necessary legends or axis labels, but NO surrounding whitespace or text.
+5. **Separation:** If multiple questions refer to the same image, provide the SAME bounds for each question. If multiple visuals exist, map them correctly to their specific question.
+
+**QUESTION CLASSIFICATION:**
+- **MCQ:** If options (A, B, C...) are present.
+- **SHORT_ANSWER:** Text-based question with NO options. Set \`type: "MCQ"\` and \`options: []\`.
+- **TRACING:** Asks for output of code.
+- **CODING:** Asks to write code.
 `;
 
     switch (preference) {
@@ -313,7 +322,7 @@ Preserve C++ syntax like pointers (*ptr) and references (&ref). Do not interpret
             return `
 ${BASE_INSTRUCTION}
 
-PHASE 2: FORCED MCQ TRANSFORMATION
+PHASE 3: FORCED MCQ TRANSFORMATION
 You MUST output EVERY question as "type": "MCQ".
 If a question is NOT originally an MCQ, you must creatively transform it.
 
@@ -339,7 +348,7 @@ CONSTRAINT: Output JSON must ONLY contain "type": "MCQ". All other fields (traci
             return `
 ${BASE_INSTRUCTION}
 
-PHASE 2: FORCED CODING TRANSFORMATION
+PHASE 3: FORCED CODING TRANSFORMATION
 You MUST output EVERY question as "type": "CODING".
 
 TRANSFORMATION RULES:
@@ -361,7 +370,7 @@ CONSTRAINT: Output JSON must ONLY contain "type": "CODING". 'options', 'tracingO
             return `
 ${BASE_INSTRUCTION}
 
-PHASE 2: FORCED TRACING TRANSFORMATION
+PHASE 3: FORCED TRACING TRANSFORMATION
 You MUST output EVERY question as "type": "TRACING".
 
 TRANSFORMATION RULES:
@@ -376,46 +385,62 @@ Prompt: "What does this function return when called with input 5?"
 
 CONSTRAINT: Output JSON must ONLY contain "type": "TRACING". 'tracingOutput' field is REQUIRED.
 `;
+        case QuestionFormatPreference.SHORT_ANSWER:
+            return `
+${BASE_INSTRUCTION}
+
+PHASE 3: FORCED SHORT ANSWER TRANSFORMATION
+You MUST output EVERY question as "type": "MCQ".
+CRITICAL: You MUST set "options" to an empty array [] or null.
+This format tells the UI to present a text input field for the user to type their answer.
+
+TRANSFORMATION RULES:
+Source: MCQ (Choose A, B...)
+Transformation: Remove options. Ask the question directly.
+Prompt: "What is [Concept]?" or "Explain [Topic]."
+
+Source: Code/Tracing
+Transformation: "What is the output?" or "What does this code do?"
+
+CONSTRAINT: Output JSON -> "type": "MCQ", "options": []. Put the answer in "explanation".
+`;
         case QuestionFormatPreference.ORIGINAL:
             return `
 ${BASE_INSTRUCTION}
 
-PHASE 2: STRICT FIDELITY EXTRACTION
-Extract questions exactly as they appear in the document(s). Do NOT change their type, wording, structure, or content in any way. This is a verbatim extraction task—no interpretation, summarization, or modification allowed.
+PHASE 3: STRICT FIDELITY EXTRACTION
+Extract questions exactly as they appear in the document(s). Do NOT change their type, wording, structure, or content in any way. This is a verbatim extraction task.
 
 VERBATIM COPY RULES:
-Copy ALL text, options, code snippets, and explanations WORD-FOR-WORD from the source. Preserve exact punctuation, spacing, capitalization, and formatting (e.g., bold, italics if detectable).
-Do NOT paraphrase, rephrase, correct grammatical errors, fix typos, or improve clarity—even if the source has mistakes or inconsistencies.
-If the source has ambiguous or incomplete content due to OCR noise, layout issues, or scanning errors, replicate it as closely as possible without adding or inventing details. Note any unreadable parts in the 'explanation' field (e.g., "Source text blurry: approximated as [best guess], but verify original").
+Copy ALL text, options, code snippets, and explanations WORD-FOR-WORD from the source. Preserve exact punctuation.
+Do NOT paraphrase.
+If the source has ambiguous or incomplete content due to OCR noise, replicate it as closely as possible.
 
 COMPLETENESS RULES:
-Identify and extract EVERY single question in the document(s), including all sub-parts, options, and related elements. Do not skip, merge, omit, or abbreviate any component.
-Scan exhaustively: Check every page, section, and element (e.g., tables, footnotes, appendices). If questions are scattered or non-linear (e.g., options on separate pages), gather and include them fully.
-For answer keys: If present (e.g., in a separate section), match them precisely to the corresponding question. Use the exact source answer to set fields like 'correctOptionIndex' or 'tracingOutput'. If no key is available, set nullable fields to null and note in 'explanation' (e.g., "No answer key provided in source").
-
+Identify and extract EVERY single question in the document(s).
+For answer keys: If present, match them to the corresponding question.
 MCQ-SPECIFIC RULES:
-If options are present (e.g., labeled A., B., C., D.; 1., 2., etc.; True/False), set "type": "MCQ".
-'options' array: List ALL options in the EXACT order, wording, and labeling from the source (e.g., ["A. Option one text", "B. Option two text"]). Do not add, remove, reorder, or alter any options—even if there are more/fewer than 4.
-'correctOptionIndex': Set to the 0-based index matching the source's correct answer. If the source uses labels (e.g., "Correct: B"), map to index (e.g., 1 for B if options are A-D). Verify against answer key without assumption.
-If options include code, math, or images, copy verbatim (use LaTeX for math; describe images if text-based).
+If options are present (labeled A, B, C... or 1, 2, 3...), set "type": "MCQ".
+'options' array: List ALL options in the EXACT order.
+'correctOptionIndex': Set to the 0-based index matching the source's correct answer.
 
 OTHER TYPE RULES:
-TRACING: If code exists and question asks for output/result (no options) -> Type: "TRACING". Set 'tracingOutput' verbatim from source key.
+TRACING: If code exists and question asks for output/result (no options) -> Type: "TRACING".
 CODING: If question asks to Write/Implement code (no options) -> Type: "CODING". 'codeSnippet' MUST be null.
 SHORT ANSWER: If text-based (no options) -> Type: "MCQ" with empty options array [].
 
-PRIORITY: Detect options first. If options exist, classify as MCQ—even if code is present. Output strictly adheres to schema; no extra fields.
+PRIORITY: Detect options first. If options exist, classify as MCQ—even if code is present.
 `;
         default: // MIXED / AUTO
             return `
 ${BASE_INSTRUCTION}
 
-PHASE 2: SMART CLASSIFICATION
+PHASE 3: SMART CLASSIFICATION
 Analyze each question and assign the most appropriate type for learning.
 MCQ: Use if options are present. (Priority #1)
 CODING: Use if the question asks to "Write" or "Implement". For these, 'codeSnippet' MUST be null.
 TRACING: Use if the question asks for "Output" or "Result".
-FALLBACK: Use "MCQ" with empty options for fill-in-the-blank or short answer.
+SHORT ANSWER: Use for definitions or open-ended questions. Set options to [].
 GOAL: Provide a diverse mix of question types if the document supports it.
 `;
     }
@@ -672,6 +697,48 @@ export const gradeCodingAnswer = async (question: Question, code: string): Promi
     return { isCorrect: false, feedback: "AI grading failed to parse response." };
   } catch (error) {
     return { isCorrect: false, feedback: "Error connecting to AI grading service." };
+  }
+};
+
+export const gradeShortAnswer = async (question: Question, answer: string): Promise<{ isCorrect: boolean; feedback: string }> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const prompt = `
+      ROLE: Automated Exam Grader.
+      TASK: Evaluate a user's text-based short answer.
+
+      Question: ${question.text}
+      Expected Answer / Key Concepts: ${question.explanation}
+      
+      User's Answer: "${answer}"
+      
+      INSTRUCTIONS:
+      1. Determine if the user's answer conveys the correct meaning/concept compared to the expected answer.
+      2. Be lenient with spelling or grammar, focus on the core technical concept.
+      3. If the user's answer is empty or completely irrelevant, mark as incorrect.
+      
+      OUTPUT: Return a JSON object.
+      {
+        "isCorrect": boolean,
+        "feedback": "Short explanation of why it is correct or incorrect. If incorrect, state the correct answer clearly."
+      }
+    `;
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: { parts: [{ text: prompt }] },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: gradingSchema
+      }
+    });
+
+    if (response.text) {
+        return JSON.parse(response.text);
+    }
+    return { isCorrect: false, feedback: "Grading Error." };
+  } catch (e) {
+      return { isCorrect: false, feedback: "Grading Service Unavailable." };
   }
 };
 

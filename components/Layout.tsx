@@ -180,7 +180,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [useCustomCursor, setUseCustomCursor] = useState(true);
   
   const [fontFamily, setFontFamily] = useState(FONT_OPTIONS[0].value);
-  const [autoHideHeader, setAutoHideHeader] = useState(true);
+  const [autoHideHeader, setAutoHideHeader] = useState(false);
   const [enableBackgroundAnim, setEnableBackgroundAnim] = useState(false);
 
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -260,7 +260,7 @@ export const Layout: React.FC<LayoutProps> = ({
       
       {enableBackgroundAnim && <BackgroundEffect theme={theme} />}
       
-      <AiHelper lang={uiLanguage} />
+      <AiHelper lang={uiLanguage} onSetUiLanguage={onSetUiLanguage} />
 
       {useCustomCursor && (
         <style>{`

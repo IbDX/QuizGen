@@ -1,3 +1,5 @@
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ExamMode, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage } from '../types';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
@@ -26,6 +28,7 @@ const FORMAT_OPTIONS = [
     { val: QuestionFormatPreference.MIXED, label: 'AUTO MIX', desc: 'Best Fit' },
     { val: QuestionFormatPreference.ORIGINAL, label: 'ORIGINAL', desc: 'Source Type' },
     { val: QuestionFormatPreference.MCQ, label: 'MCQ ONLY', desc: 'Force MCQ' },
+    { val: QuestionFormatPreference.SHORT_ANSWER, label: 'SHORT ANSWER', desc: 'Force Text' }, // New
     { val: QuestionFormatPreference.TRACING, label: 'TRACING', desc: 'Code Output' },
     { val: QuestionFormatPreference.CODING, label: 'CODING', desc: 'Code Write' },
 ];
@@ -474,7 +477,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
         <div className="hidden md:block bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
             <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('output_format', lang)}</label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-6 gap-2">
                 {FORMAT_OPTIONS.map((opt) => (
                     <button
                         key={opt.val}

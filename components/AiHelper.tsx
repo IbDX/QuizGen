@@ -8,6 +8,7 @@ import { sanitizeInput } from '../utils/security';
 
 interface AiHelperProps {
     lang: UILanguage;
+    onSetUiLanguage: (lang: UILanguage) => void;
 }
 
 interface Message {
@@ -15,7 +16,7 @@ interface Message {
     text: string;
 }
 
-export const AiHelper: React.FC<AiHelperProps> = ({ lang }) => {
+export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<Message[]>([
@@ -86,9 +87,17 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang }) => {
                                  {t('ai_helper_title', lang)}
                              </span>
                         </div>
-                        <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-red-500 dark:text-terminal-green dark:hover:text-white transition-colors">
-                            ✕
-                        </button>
+                        <div className="flex items-center gap-2">
+                             <button
+                                onClick={() => onSetUiLanguage(lang === 'en' ? 'ar' : 'en')}
+                                className="text-[10px] font-bold px-2 py-1 rounded border border-gray-400 dark:border-terminal-green text-gray-600 dark:text-terminal-green hover:bg-gray-200 dark:hover:bg-terminal-green/20 transition-colors"
+                             >
+                                {lang === 'en' ? 'عربي' : 'ENGLISH'}
+                             </button>
+                             <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-red-500 dark:text-terminal-green dark:hover:text-white transition-colors px-1">
+                                ✕
+                             </button>
+                        </div>
                     </div>
 
                     {/* Messages Area */}

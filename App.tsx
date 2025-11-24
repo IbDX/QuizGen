@@ -25,7 +25,7 @@ const App: React.FC = () => {
   const [loadingMsg, setLoadingMsg] = useState('');
   const [isFullWidth, setIsFullWidth] = useState(true); 
   
-  const [autoHideFooter, setAutoHideFooter] = useState(true);
+  const [autoHideFooter, setAutoHideFooter] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<UILanguage>('en');
   
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);

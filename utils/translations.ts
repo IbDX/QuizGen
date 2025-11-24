@@ -84,6 +84,7 @@ export const translations = {
         "editor": "EDITOR",
         "max_chars": "MAX 5000 CHARS",
         "security_alert": "SECURITY ALERT",
+        "no_answer_provided": "No answer provided.",
 
         // Results
         "assessment_complete": "ASSESSMENT COMPLETE",
@@ -207,6 +208,7 @@ export const translations = {
         "editor": "المحرر",
         "max_chars": "الحد الأقصى 5000 حرف",
         "security_alert": "تنبيه أمني",
+        "no_answer_provided": "لم يتم تقديم إجابة.",
 
         // Results
         "assessment_complete": "اكتمل التقييم",

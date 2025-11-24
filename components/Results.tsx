@@ -1,5 +1,8 @@
 
 
+
+
+
 import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -8,7 +11,7 @@ import { generateExamPDF } from '../utils/pdfGenerator';
 import { saveQuestion, removeQuestion, isQuestionSaved, saveFullExam } from '../services/library';
 import { sanitizeInput } from '../utils/security';
 import { t } from '../utils/translations';
-import { gradeCodingAnswer } from '../services/gemini'; // Import the grading service
+import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini'; // Import grading services
 
 interface ResultsProps {
   questions: Question[];
@@ -65,18 +68,31 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
   // Effect for Post-Exam AI Grading
   useEffect(() => {
-    // 1. Initial Processing (non-coding questions are graded instantly)
+    // 1. Initial Processing (Standard MCQ and Tracing are graded instantly)
     const initialProcessed = questions.map(q => {
       const ua = answers.find(a => a.questionId === q.id);
       let isCorrect: boolean | undefined = undefined;
       let feedback = q.explanation;
 
       if (!ua) {
-        return { question: q, isCorrect: false, answer: null, feedback: "No answer provided.\n\n**Analysis:**\n" + q.explanation };
+        return { 
+          question: q, 
+          isCorrect: false, 
+          answer: null, 
+          feedback: `${t('no_answer_provided', lang)}\n\n**${t('analysis', lang)}:**\n${q.explanation}` 
+        };
       }
 
       if (q.type === QuestionType.MCQ) {
-        isCorrect = ua.answer === q.correctOptionIndex;
+        if (q.options && q.options.length > 0) {
+            isCorrect = ua.answer === q.correctOptionIndex;
+        } else {
+            // Short Answer - Handled in step 2 or using stored result
+            if (ua.isCorrect !== undefined) {
+                isCorrect = ua.isCorrect;
+                feedback = ua.feedback || feedback;
+            }
+        }
       } else if (q.type === QuestionType.TRACING) {
         isCorrect = String(ua.answer).trim().toLowerCase() === String(q.tracingOutput || "").trim().toLowerCase();
       } else if (q.type === QuestionType.CODING) {
@@ -91,8 +107,13 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
     });
     setFinalResults(initialProcessed);
 
-    // 2. Identify and Grade Ungraded Coding Questions
-    const toGrade = initialProcessed.filter(p => p.question.type === QuestionType.CODING && p.answer && p.isCorrect === undefined);
+    // 2. Identify and Grade Ungraded Questions (Coding OR Short Answer)
+    const toGrade = initialProcessed.filter(p => {
+        const isCoding = p.question.type === QuestionType.CODING;
+        const isShortAnswer = p.question.type === QuestionType.MCQ && (!p.question.options || p.question.options.length === 0);
+        
+        return (isCoding || isShortAnswer) && p.answer && p.isCorrect === undefined;
+    });
 
     if (toGrade.length > 0) {
       const newStatus: Record<string, boolean> = {};
@@ -100,7 +121,14 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       setGradingStatus(newStatus);
 
       const gradePromises = toGrade.map(async item => {
-        const result = await gradeCodingAnswer(item.question, String(item.answer));
+        let result = { isCorrect: false, feedback: "Grading Error" };
+        
+        if (item.question.type === QuestionType.CODING) {
+             result = await gradeCodingAnswer(item.question, String(item.answer));
+        } else {
+             result = await gradeShortAnswer(item.question, String(item.answer));
+        }
+
         return {
           ...item,
           isCorrect: result.isCorrect,
@@ -122,7 +150,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         setGradingStatus({}); // Clear grading status
       });
     }
-  }, [questions, answers]);
+  }, [questions, answers, lang]); // Added lang as dependency to refresh feedback language
 
   useEffect(() => {
     if (!autoHideFooter) { setIsFooterVisible(true); return; }
@@ -331,7 +359,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                     <div className="bg-gray-100 dark:bg-[#0c0c0c] p-4 rounded border border-gray-200 dark:border-terminal-gray">
                         <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider dark:text-terminal-green">{t('your_input', lang)}</span>
                         <div className="font-mono break-words whitespace-pre-wrap text-gray-700 dark:text-terminal-light">
-                             {item.question.type === QuestionType.MCQ ? (item.question.options && item.answer !== null ? <MarkdownRenderer content={item.question.options[item.answer as number]} /> : 'None') : String(item.answer || 'No Answer')}
+                             {item.question.type === QuestionType.MCQ ? (item.question.options && item.question.options.length > 0 && item.answer !== null ? <MarkdownRenderer content={item.question.options[item.answer as number]} /> : String(item.answer || 'No Answer')) : String(item.answer || 'No Answer')}
                         </div>
                     </div>
                     <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded border border-blue-100 dark:border-terminal-gray">

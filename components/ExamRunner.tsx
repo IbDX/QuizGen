@@ -1,8 +1,11 @@
 
 
+
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType, UILanguage } from '../types';
-import { gradeCodingAnswer } from '../services/gemini';
+import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini';
 import { saveQuestion, isQuestionSaved, removeQuestion } from '../services/library';
 import { CodeWindow } from './CodeWindow';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -123,7 +126,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     const userAnswer = answers.get(currentQ.id);
     
     if (!userAnswer) {
-        setCurrentFeedback(`No answer provided.\n\n**Analysis/Solution:**\n${currentQ.explanation}`);
+        setCurrentFeedback(`${t('no_answer_provided', lang)}\n\n**${t('analysis', lang)}:**\n${currentQ.explanation}`);
         setShowFeedback(true);
         setIsGrading(false);
         return;
@@ -137,8 +140,10 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             isCorrect = userAnswer.answer === currentQ.correctOptionIndex;
             feedback = isCorrect ? "Correct!" : `Incorrect.\n${currentQ.explanation}`;
         } else {
-            feedback = `**Answer Analysis:**\n${currentQ.explanation}`;
-            isCorrect = true; 
+            // Short Answer - Use AI Grading
+            const result = await gradeShortAnswer(currentQ, String(userAnswer.answer));
+            isCorrect = result.isCorrect;
+            feedback = result.feedback;
         }
     } else if (currentQ.type === QuestionType.TRACING) {
       const userTxt = String(userAnswer.answer).trim().toLowerCase();

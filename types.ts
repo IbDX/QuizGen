@@ -11,6 +11,7 @@ export enum QuestionFormatPreference {
   MCQ = 'MCQ',     // Force everything to MCQ
   TRACING = 'TRACING', // Force everything to Tracing
   CODING = 'CODING', // Force everything to Coding
+  SHORT_ANSWER = 'SHORT_ANSWER', // Force text input (MCQ with no options)
   ORIGINAL = 'ORIGINAL' // Strictly follow source document format
 }
 
