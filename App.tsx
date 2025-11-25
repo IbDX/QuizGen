@@ -268,7 +268,7 @@ using namespace std;
         return isCorrect;
      });
      const score = Math.round((correctCount / questions.length) * 100);
-     const getGrade = (s: number) => s >= 90 ? 'A' : s >= 75 ? 'B' : s >= 50 ? 'C' : 'F';
+     const getGrade = (s: number) => s >= 97 ? 'A+' : s >= 93 ? 'A' : s >= 90 ? 'A-' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 50 ? 'D' : 'F';
      generateExamPDF(questions, score, getGrade(score), "User");
   };
   

@@ -171,7 +171,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
   const score = finalResults.length > 0 ? Math.round((correctCount / finalResults.length) * 100) : 0;
   // Updated Grading Scale: A(90+), B(75+), C(50+), F(<50)
-  const getLetterGrade = (s: number) => s >= 90 ? 'A' : s >= 75 ? 'B' : s >= 50 ? 'C' : 'F';
+  const getLetterGrade = (s: number) => s >= 90 ? 'A' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 50 ? 'D' : 'F';
   const grade = getLetterGrade(score);
   const isFailure = grade === 'F';
   const isPerfect = score === 100;
