@@ -1,6 +1,8 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generateLoadingTips } from '../services/gemini';
+import { processInlineMarkdown } from './MarkdownRenderer';
 import { UILanguage } from '../types';
 
 // --- D-PAD COMPONENT ---
@@ -339,7 +341,12 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, files = [
   const [isFetchingTips, setIsFetchingTips] = useState(true);
 
   const handleDir = (dir: string) => {
-      setDPadInput(dir);
+      let effectiveDir = dir;
+      if (lang === 'ar') {
+        if (dir === 'LEFT') effectiveDir = 'RIGHT';
+        else if (dir === 'RIGHT') effectiveDir = 'LEFT';
+      }
+      setDPadInput(effectiveDir);
       setTimeout(() => setDPadInput(''), 100);
   };
   const handleAction = (type: 'ACTION' | 'CYCLE') => {
@@ -360,14 +367,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, files = [
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  const GAMES = [
-      <SnakeGame key="snake" externalDir={dPadInput} externalAction={actionInput} />, 
-      <TicTacToe key="xo" externalDir={dPadInput} externalAction={actionInput} />, 
-      <SokobanGame key="sokoban" externalDir={dPadInput} externalAction={actionInput} />,
-      <MemoryGame key="memory" externalDir={dPadInput} externalAction={actionInput} />
-  ];
+  }, [lang]); // Add lang dependency to re-bind with correct handleDir closure
 
   useEffect(() => {
       const fetchNewTips = async () => {
@@ -392,15 +392,12 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, files = [
       return () => clearInterval(interval);
   }, [activeTips]);
 
-  const formatTip = (text: string) => {
-      const parts = text.split('`');
-      return parts.map((part, i) => {
-          if (i % 2 === 1) {
-              return <span key={i} className="bg-gray-300 dark:bg-gray-700 text-red-600 dark:text-terminal-green font-bold px-1 rounded mx-0.5" dir="ltr">{part}</span>;
-          }
-          return <span key={i}>{part}</span>;
-      });
-  };
+  const GAMES = [
+      <SnakeGame key="snake" externalDir={dPadInput} externalAction={actionInput} />,
+      <TicTacToe key="xo" externalDir={dPadInput} externalAction={actionInput} />,
+      <SokobanGame key="sokoban" externalDir={dPadInput} externalAction={actionInput} />,
+      <MemoryGame key="memory" externalDir={dPadInput} externalAction={actionInput} />
+  ];
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] w-full max-w-xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in">
@@ -418,8 +415,12 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, files = [
              </div>
              {isFetchingTips && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping"></div>}
           </div>
-          <p className="font-mono text-xs text-gray-700 dark:text-gray-300 min-h-[2.5rem] flex items-center flex-wrap">
-              {activeTips.length > 0 ? formatTip(activeTips[tipIndex]) : (isFetchingTips ? '' : 'No contextual tips available.')}
+          <p className="font-sans text-xs text-gray-700 dark:text-gray-300 min-h-[2.5rem] flex items-center flex-wrap">
+              {activeTips.length > 0 ? (
+                  <span dangerouslySetInnerHTML={{ __html: processInlineMarkdown(activeTips[tipIndex]) }} />
+              ) : (
+                  isFetchingTips ? '' : 'No contextual tips available.'
+              )}
           </p>
       </div>
       <div className="w-full bg-gray-200 dark:bg-[#111] p-4 rounded-xl shadow-2xl border-b-8 border-gray-400 dark:border-black flex flex-col items-center">

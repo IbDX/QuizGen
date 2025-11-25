@@ -814,7 +814,9 @@ export const generateLoadingTips = async (
             **RULES**:
             1.  **Language Match**: The generated tips MUST be in the same language you detected from the source files.
             2.  **Relevance**: Tips must be strictly related to the analyzed topic.
-            3.  **Format**: Keep each tip concise (under 30 words). If code is included, wrap it in backticks \`like this\` and keep the code itself in English.
+            3.  **Format**: Keep each tip concise (under 30 words).
+                - **Code**: If code is included, wrap it in backticks \`like this\` and keep the code itself in English.
+                - **Math**: If math formulas are included, use standard LaTeX syntax and wrap them in single dollar signs for inline math (e.g., \`$E=mc^2$\`).
             4.  **No Meta-Commentary**: Do not mention "Based on my analysis..." or "The topic is...". Just output the tips.
             5.  **Output**: Return a clean JSON array of strings.
         `;

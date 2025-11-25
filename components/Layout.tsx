@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BackgroundEffect } from './BackgroundEffect';
 import { UILanguage } from '../types';
@@ -496,13 +495,13 @@ export const Layout: React.FC<LayoutProps> = ({
                          <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">
                              <span className="font-bold text-sm">{t('digital_background', uiLanguage)}</span>
                              <button onClick={() => setEnableBackgroundAnim(!enableBackgroundAnim)} className={`w-12 h-6 rounded-full p-1 transition-colors ${enableBackgroundAnim ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${enableBackgroundAnim ? (uiLanguage==='ar'?'translate-x-[-1.5rem]':'translate-x-6') : 'translate-x-0'}`}></div>
+                                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${enableBackgroundAnim ? 'translate-x-6' : 'translate-x-0'}`}></div>
                              </button>
                          </div>
                          <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">
                              <span className="font-bold text-sm">{t('full_width', uiLanguage)}</span>
                              <button onClick={onToggleFullWidth} className={`w-12 h-6 rounded-full p-1 transition-colors ${isFullWidth ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isFullWidth ? (uiLanguage==='ar'?'translate-x-[-1.5rem]':'translate-x-6') : 'translate-x-0'}`}></div>
+                                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isFullWidth ? 'translate-x-6' : 'translate-x-0'}`}></div>
                              </button>
                          </div>
                     </div>

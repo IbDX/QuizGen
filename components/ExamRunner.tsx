@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType, UILanguage } from '../types';
 import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini';
@@ -12,7 +10,7 @@ import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
-import { t } from '../utils/translations';
+import { t, toArabicNumerals } from '../utils/translations';
 
 interface ExamRunnerProps {
   questions: Question[];
@@ -233,7 +231,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 p-4 border border-gray-300 dark:border-terminal-green bg-white dark:bg-terminal-black shadow-sm gap-4">
-         <div className="flex flex-wrap gap-2 justify-center">
+         <div className="flex flex-wrap gap-2 justify-center rtl:flex-row-reverse">
             {questions.map((_, idx) => {
                 const isAnswered = answers.has(questions[idx].id);
                 const isCurrent = idx === currentIndex;
@@ -253,7 +251,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                             ${isOneWay ? 'cursor-not-allowed' : ''}
                         `}
                     >
-                        {idx + 1}
+                        {lang === 'ar' ? toArabicNumerals(idx + 1) : idx + 1}
                     </button>
                 )
             })}
@@ -430,7 +428,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             </div>
         )}
 
-        <div className="mt-8 pt-4 border-t border-gray-200 dark:border-terminal-gray flex flex-row items-center justify-between">
+        <div className="mt-8 pt-4 border-t border-gray-200 dark:border-terminal-gray flex flex-row rtl:flex-row-reverse items-center justify-between">
              <button 
                 onClick={prevQuestion} 
                 disabled={currentIndex === 0 || isOneWay}
@@ -443,7 +441,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                 `}
                 title={t('prev', lang)}
              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-10 md:w-10 group-hover:-translate-x-1 transition-transform rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-10 md:w-10 group-hover:-translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                 </svg>
              </button>
@@ -482,7 +480,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                 `}
                 title={t('next', lang)}
              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-10 md:w-10 group-hover:translate-x-1 transition-transform rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 md:h-10 md:w-10 group-hover:translate-x-1 rtl:group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                 </svg>
              </button>

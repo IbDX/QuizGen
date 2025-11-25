@@ -255,3 +255,8 @@ export type TranslationKey = keyof typeof translations['en'];
 export const t = (key: TranslationKey, lang: string): string => {
     return translations[lang === 'ar' ? 'ar' : 'en'][key] || translations['en'][key] || key;
 };
+
+const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+export const toArabicNumerals = (num: number | string): string => {
+  return String(num).replace(/[0-9]/g, (digit) => arabicNumerals[parseInt(digit)]);
+};
