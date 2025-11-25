@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -172,7 +170,8 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
     }, {});
 
   const score = finalResults.length > 0 ? Math.round((correctCount / finalResults.length) * 100) : 0;
-  const getLetterGrade = (s: number) => s >= 90 ? 'A' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 60 ? 'D' : 'F';
+  // Updated Grading Scale: A(90+), B(75+), C(50+), F(<50)
+  const getLetterGrade = (s: number) => s >= 90 ? 'A' : s >= 75 ? 'B' : s >= 50 ? 'C' : 'F';
   const grade = getLetterGrade(score);
   const isFailure = grade === 'F';
   const isPerfect = score === 100;
@@ -234,7 +233,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
         <div className="flex items-center justify-center gap-6 mb-6 relative">
             <div className="text-center">
-                <div className={`text-5xl md:text-6xl font-mono mb-1 ${isFailure ? 'animate-bounce text-terminal-alert' : score >= 70 ? "text-terminal-green" : "text-terminal-alert"}`}>{score}%</div>
+                <div className={`text-5xl md:text-6xl font-mono mb-1 ${isFailure ? 'animate-bounce text-terminal-alert' : "text-terminal-green"}`}>{score}%</div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t('final_score', lang)}</div>
             </div>
             <div className="h-12 md:h-16 w-px bg-gray-300 dark:bg-gray-700"></div>

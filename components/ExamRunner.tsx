@@ -395,7 +395,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                   dir="ltr" 
                 />
              </div>
-          ))}
+          )}
 
           {currentQ.type === QuestionType.CODING && (
             <div className="space-y-2 border border-gray-300 dark:border-terminal-gray">
