@@ -21,6 +21,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
     const [isTyping, setIsTyping] = useState(false);
     const [isFinalizing, setIsFinalizing] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -28,6 +29,15 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages, isTyping, languageSelected]);
+    
+    // Auto-grow textarea effect
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'; // Reset height
+            const scrollHeight = textareaRef.current.scrollHeight;
+            textareaRef.current.style.height = `${scrollHeight}px`; // Set to content height
+        }
+    }, [input]);
 
     const handleLanguageSelect = (selectedLang: 'en' | 'ar') => {
         setLanguageSelected(true);
@@ -38,8 +48,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
         setMessages([{ role: 'model', text: greeting }]);
     };
 
-    const handleSendMessage = async (e?: React.FormEvent) => {
-        e?.preventDefault();
+    const handleSendMessage = async () => {
         if (!input.trim() || isTyping || isFinalizing) return;
 
         const userMsg = input;
@@ -54,6 +63,18 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             setMessages(prev => [...prev, { role: 'model', text: t('connection_error', lang) }]);
         } finally {
             setIsTyping(false);
+        }
+    };
+    
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        handleSendMessage();
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
         }
     };
 
@@ -71,8 +92,8 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
     };
 
     return (
-        <div className={`w-full mx-auto mt-4 md:mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none px-4' : 'max-w-4xl'}`}>
-            <div className="bg-gray-100 dark:bg-black border-2 border-terminal-green shadow-[0_0_20px_rgba(0,255,65,0.1)] rounded-lg overflow-hidden flex flex-col h-[80vh]">
+        <div className={`w-full mx-auto mt-4 md:mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none px-0 md:px-4' : 'max-w-4xl'}`}>
+            <div className="bg-gray-100 dark:bg-black border-2 border-terminal-green shadow-[0_0_20px_rgba(0,255,65,0.1)] rounded-lg overflow-hidden flex flex-col h-[calc(100vh-10rem)] md:h-[calc(100vh-14rem)]">
                 
                 {/* Header */}
                 <div className="bg-terminal-green/10 border-b border-terminal-green p-4 flex justify-between items-center shrink-0">
@@ -159,26 +180,28 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                 </div>
                             ) : (
                                 <>
-                                    <form onSubmit={handleSendMessage} className="flex gap-2 mb-4">
-                                        <input 
-                                            type="text" 
+                                    <form onSubmit={handleFormSubmit} className="flex gap-2 mb-4 items-end">
+                                        <textarea 
+                                            ref={textareaRef}
+                                            rows={1}
                                             value={input}
                                             onChange={(e) => setInput(e.target.value)}
+                                            onKeyDown={handleKeyDown}
                                             placeholder={lang === 'ar' ? "اكتب ردك هنا..." : "Type your response here..."}
-                                            className="flex-grow p-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded focus:border-terminal-green focus:ring-1 focus:ring-terminal-green outline-none font-mono text-gray-800 dark:text-terminal-light"
+                                            className="flex-grow p-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded focus:border-terminal-green focus:ring-1 focus:ring-terminal-green outline-none font-mono text-gray-800 dark:text-terminal-light resize-none overflow-y-auto max-h-32"
                                             autoFocus
                                         />
                                         <button 
                                             type="submit"
                                             disabled={!input.trim() || isTyping}
-                                            className="px-6 bg-gray-800 dark:bg-terminal-green/20 border border-gray-600 dark:border-terminal-green text-white dark:text-terminal-green hover:bg-gray-700 dark:hover:bg-terminal-green/30 font-bold uppercase rounded transition-colors disabled:opacity-50"
+                                            className="p-3 bg-gray-800 dark:bg-terminal-green/20 border border-gray-600 dark:border-terminal-green text-white dark:text-terminal-green hover:bg-gray-700 dark:hover:bg-terminal-green/30 font-bold uppercase rounded transition-colors disabled:opacity-50 h-full flex items-center justify-center"
                                         >
                                             ➤
                                         </button>
                                     </form>
 
-                                    <div className="flex justify-between items-center">
-                                        <p className="text-[10px] text-gray-400 font-mono hidden md:block">
+                                    <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-3">
+                                        <p className="text-[10px] text-gray-400 font-mono text-center md:text-left">
                                             {t('builder_negotiate_hint', lang)}
                                         </p>
                                         <button 

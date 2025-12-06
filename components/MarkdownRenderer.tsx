@@ -1,17 +1,34 @@
-
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { CodeWindow } from './CodeWindow';
-import katex from 'katex';
+
+declare global {
+  interface Window {
+    MathJax: any;
+  }
+}
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className = "" }) => {
+// Wrapped in React.memo to prevent MathJax flashing on parent re-renders (like timer ticks)
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content, className = "" }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current && window.MathJax && window.MathJax.typesetPromise) {
+      // Clear previous content handled by MathJax to avoid duplication
+      // MathJax 3 modifies the DOM in place, so typically we just need to tell it to look at the node again
+      // if the text content changed.
+      window.MathJax.typesetPromise([containerRef.current])
+        .catch((err: any) => console.warn('MathJax typeset failed: ', err));
+    }
+  }, [content]);
+
   if (!content) return null;
 
-  // Regex to split content by code blocks: ```lang ... ```
+  // Split content by code blocks to avoid rendering Markdown/Math inside code
   const parts = content.split(/```(\w*)\n?([\s\S]*?)```/g);
 
   return (
@@ -19,19 +36,21 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
       {parts.map((part, index) => {
         const mod = index % 3;
 
-        // Case 0: Regular Text
+        // Case 0: Regular Text (Markdown + Math)
         if (mod === 0) {
           if (!part.trim()) return null;
           return (
             <div 
-              key={index} 
+              key={index}
+              ref={containerRef}
+              // We inject the HTML with our pre-processing
               dangerouslySetInnerHTML={{ __html: processInlineMarkdown(part) }} 
-              className="whitespace-pre-line break-words" 
+              className="whitespace-pre-line break-words tex2jax_process" 
             />
           );
         }
 
-        // Case 1: Language Identifier
+        // Case 1: Language Identifier (skip)
         if (mod === 1) return null;
 
         // Case 2: Code Content
@@ -44,14 +63,14 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
       })}
     </div>
   );
-};
+}, (prevProps, nextProps) => prevProps.content === nextProps.content);
 
 export const processInlineMarkdown = (text: string) => {
     // Pipeline Strategy:
-    // 1. Extract Inline Code -> Placeholder (Protect `*ptr` from italic)
-    // 2. Extract Math -> Placeholder (Protect x*y from italic)
+    // 1. Extract Inline Code -> Placeholder
+    // 2. Extract Math -> Placeholder (Crucial: to protect from markdown chars)
     // 3. HTML Escape remaining text
-    // 4. Apply Markdown Formatting (Strict Bold/Italic)
+    // 4. Apply Markdown Formatting (Bold/Italic) - Unicode aware
     // 5. Restore Placeholders
     
     const placeholders: { id: string, html: string }[] = [];
@@ -59,12 +78,21 @@ export const processInlineMarkdown = (text: string) => {
 
     // Helper to store safely
     const store = (html: string) => {
-        const id = `%%PH_${placeholders.length}%%`; // Unique ID
+        const id = `%%PH_${placeholders.length}%%`;
         placeholders.push({ id, html });
         return id;
     };
 
-    // 1. Inline Code `text` - Extract FIRST
+    // 1. Protect Math Delimiters
+    // We store them as placeholders so HTML escaping doesn't break LaTeX like \frac
+    // and Markdown doesn't mistake * in math for italics
+    // IMPORTANT: Wrap math in a bidi-isolated LTR span so mixed Arabic/Math renders correctly
+    temp = temp.replace(/(\$\$[\s\S]+?\$\$)|(\$[^$\n]+?\$)|(\\\[[\s\S]+?\\\])|(\\\([^)\n]+?\\\))/g, (match) => {
+        // Force LTR isolation for Math blocks to prevent Arabic sentence structure scrambling
+        return store(`<span dir="ltr" style="unicode-bidi: isolate; display: inline-block;">${match}</span>`); 
+    });
+
+    // 2. Inline Code `text`
     temp = temp.replace(/`([^`]+)`/g, (match, codeContent) => {
         const escaped = codeContent
             .replace(/&/g, "&amp;")
@@ -73,52 +101,20 @@ export const processInlineMarkdown = (text: string) => {
         return store(`<span class="font-mono text-[0.9em] bg-gray-200 dark:bg-[#1e1e1e] text-red-600 dark:text-terminal-green px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 break-words box-decoration-clone" dir="ltr">${escaped}</span>`);
     });
 
-    // 2. Math - Using KaTeX
-    const renderMath = (regex: RegExp, displayMode: boolean) => {
-        temp = temp.replace(regex, (match, formula) => {
-            try {
-                const rendered = katex.renderToString(formula, { 
-                    displayMode, 
-                    throwOnError: false, 
-                    output: 'html', 
-                    trust: true,
-                    strict: false // Suppress warnings for unrecognized characters
-                });
-                const style = displayMode 
-                    ? "display: block; margin: 1em 0; text-align: center; direction: ltr; unicode-bidi: isolate;"
-                    : "display: inline-block; direction: ltr; unicode-bidi: isolate; vertical-align: middle;";
-                return store(`<span style="${style}" class="katex-wrapper">${rendered}</span>`);
-            } catch (e) {
-                return match;
-            }
-        });
-    };
-
-    // Math Regex Order: Block first, then Inline
-    renderMath(/\\\[([\s\S]+?)\\\]/g, true);
-    renderMath(/\$\$([\s\S]+?)\$\$/g, true);
-    renderMath(/\\\(([\s\S]+?)\\\)/g, false);
-    renderMath(/\$([^$\n]+?)\$/g, false);
-
     // 3. HTML Escape (Sanitize the rest of the text)
     temp = temp
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-    // 4. Markdown Formatting (Strict Mode for Smart Text Handling)
-    
-    // Bold: **text** 
-    // Requirement: Must contain non-whitespace content.
-    // Prevents matching literal "**" (options in exam) or "** "
-    temp = temp.replace(/(^|[^\\])\*\*([^\s](?:.*?[^\s])?)\*\*/g, '$1<strong class="text-black dark:text-white font-bold">$2</strong>');
+    // 4. Markdown Formatting
+    // Bold: **text** - Updated regex to be more inclusive of Unicode/Arabic
+    temp = temp.replace(/(^|[^\\])\*\*([^\s].*?[^\s])\*\*/g, '$1<strong class="text-black dark:text-white font-bold">$2</strong>');
     
     // Italic: *text*
-    // Requirement: Must start with non-space/non-*, end with non-space/non-*.
-    // Prevents matching "int *ptr" or "2 * 3" or "***"
-    temp = temp.replace(/(^|[^\\*])\*([^\s*](?:.*?[^\s*])?)\*(?!\*)/g, '$1<em class="italic">$2</em>');
+    temp = temp.replace(/(^|[^\\*])\*([^\s*].*?[^\s*])\*(?!\*)/g, '$1<em class="italic">$2</em>');
 
-    // 5. Restore Placeholders
+    // 5. Restore Placeholders (Code and Math)
     placeholders.forEach(ph => {
         temp = temp.split(ph.id).join(ph.html);
     });

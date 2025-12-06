@@ -12,7 +12,7 @@
           extend: {
             fontFamily: {
               mono: ['"Fira Code"', '"Courier New"', 'Courier', 'monospace'],
-              sans: ['"Roboto Mono"', '"Cairo"', 'sans-serif'], // Added Cairo for Arabic
+              sans: ['"Roboto Mono"', '"Cairo"', 'sans-serif'],
             },
             colors: {
               terminal: {
@@ -33,8 +33,33 @@
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&family=Roboto+Mono:wght@400;700&family=Cairo:wght@400;700&display=swap" rel="stylesheet">
     <!-- PrismJS Theme -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    <!-- KaTeX CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+    
+    <!-- PDFMake & VFS Fonts (Using reliable versions) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+
+    <!-- MathJax Config -->
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']],
+          packages: {'[+]': ['noerrors', 'noundefined']}
+        },
+        svg: {
+          fontCache: 'global'
+        },
+        options: {
+          ignoreHtmlClass: 'tex2jax_ignore',
+          processHtmlClass: 'tex2jax_process'
+        },
+        startup: {
+          typeset: false // We will call typesetPromise manually
+        }
+      };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
     <!-- PDF.js for Visual Cropping -->
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.js"></script>
     <!-- Function Plot for Digital Graphs -->
@@ -72,30 +97,21 @@
 
       /* Palestine Theme (Soft Dark Variant) */
       .theme-palestine {
-        /* Soft Charcoal Background (Between Light and Pitch Black) */
         --color-term-black: #202020; 
-        /* Flag Green for Primary Actions */
         --color-term-green: #007A3D; 
-        /* Darker Green for accents */
         --color-term-dim-green: #004422;
-        /* Lighter Gray for cards/containers */
         --color-term-gray: #333333;
-        /* Pure White for reading text (High Contrast) */
         --color-term-light: #FFFFFF;
-        /* Flag Red for Alerts/Errors */
         --color-term-alert: #CE1126;
         --color-term-glass: rgba(32, 32, 32, 0.95);
-        --color-term-btn-text: #ffffff; /* White text on flag green button */
+        --color-term-btn-text: #ffffff;
       }
 
-      /* Global Overrides for Palestine Theme Elements */
-      /* Text Selection: Red Background, White Text */
       .theme-palestine ::selection {
         background-color: var(--color-term-alert);
         color: #ffffff;
       }
       
-      /* Scrollbars: Dark Track, Red Thumb, White Border */
       .theme-palestine ::-webkit-scrollbar-track {
         background: var(--color-term-black);
       }
@@ -110,7 +126,6 @@
       body {
         font-family: 'Fira Code', 'Cairo', monospace;
       }
-      /* Default Custom Scrollbar (Terminal/Light) */
       ::-webkit-scrollbar {
         width: 10px;
       }
@@ -124,6 +139,18 @@
       ::-webkit-scrollbar-thumb:hover {
         background: var(--color-term-green);
       }
+      
+      /* MathJax Overrides - CRITICAL FOR RTL FIX */
+      mjx-container {
+        display: inline-block !important;
+        margin: 0 !important;
+        direction: ltr !important; /* Force math to always be LTR */
+        text-align: left !important;
+        unicode-bidi: isolate !important; /* Isolate math from RTL context to prevent sentence scrambling */
+      }
+      .katex-wrapper { /* Keep class name for compatibility with old CSS ref if any */
+        display: inline-block;
+      }
     </style>
   <script type="importmap">
 {
@@ -136,8 +163,6 @@
     "prismjs/": "https://aistudiocdn.com/prismjs@^1.30.0/",
     "prismjs": "https://aistudiocdn.com/prismjs@^1.30.0",
     "react-simple-code-editor": "https://aistudiocdn.com/react-simple-code-editor@^0.14.1",
-    "jspdf": "https://aistudiocdn.com/jspdf@^3.0.4",
-    "katex": "https://aistudiocdn.com/katex@^0.16.9/dist/katex.mjs",
     "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1"
   }
 }
