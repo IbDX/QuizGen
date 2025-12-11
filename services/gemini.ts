@@ -6,7 +6,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper to generate schema based on preference
 const getExamSchema = (preference: QuestionFormatPreference): Schema => {
-  let allowedDescription = "One of: 'MCQ', 'TRACING', 'CODING'";
+  let allowedDescription = "One of: 'MCQ', 'TRACING', 'CODING', 'SHORT_ANSWER'";
   
   if (preference === QuestionFormatPreference.MCQ) {
     allowedDescription = "MUST be strictly 'MCQ'. Do not return any other type.";
@@ -15,7 +15,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
   } else if (preference === QuestionFormatPreference.CODING) {
     allowedDescription = "MUST be strictly 'CODING'. Do not return any other type.";
   } else if (preference === QuestionFormatPreference.SHORT_ANSWER) {
-    allowedDescription = "MUST be strictly 'MCQ'. Options MUST be empty array [].";
+    allowedDescription = "MUST be strictly 'SHORT_ANSWER'. Options MUST be empty array [].";
   }
   // ORIGINAL and MIXED allow all types
 
@@ -40,7 +40,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
           type: Type.ARRAY, 
           items: { type: Type.STRING },
           nullable: true,
-          description: "List of choices. REQUIRED for MCQ type. MUST be an EMPTY ARRAY [] if the question is SHORT_ANSWER or CODING to ensure a text box appears." 
+          description: "List of choices. REQUIRED for MCQ type. MUST be an EMPTY ARRAY [] if the question is SHORT_ANSWER or CODING." 
         },
         correctOptionIndex: { type: Type.INTEGER, nullable: true, description: "Index of correct option. REQUIRED for MCQ." },
         tracingOutput: { type: Type.STRING, nullable: true, description: "The expected output string. REQUIRED for TRACING." },
@@ -348,7 +348,7 @@ If the question contains a schematic diagram (UML, Sequence, Flowchart, Logic Ga
 PHASE 3: QUESTION CLASSIFICATION & FORMATTING
 - **MCQ:** If options (A, B, C...) are present.
 - **SHORT_ANSWER:** Text-based question with NO options. 
-  - **CRITICAL:** Set \`type: "MCQ"\` but \`options: []\` (Empty Array). This forces the UI to show a text box.
+  - **CRITICAL:** Set \`type: "SHORT_ANSWER"\` and \`options: []\`. This is a first-class supported type.
 - **TRACING:** Asks for output of code.
 - **CODING:** Asks to write code.
 
@@ -385,7 +385,7 @@ Prompt: "What is the output of this code?"
             return `
 ${BASE_INSTRUCTION}
 PHASE 4: FORCED SHORT ANSWER TRANSFORMATION
-You MUST output EVERY question as "type": "MCQ".
+You MUST output EVERY question as "type": "SHORT_ANSWER".
 **CRITICAL:** You MUST set "options" to an empty array [] or null.
 Prompt: "Explain [Topic]..." or "What is [Concept]?"
 `;
@@ -395,7 +395,7 @@ ${BASE_INSTRUCTION}
 PHASE 4: STRICT FIDELITY EXTRACTION
 Extract questions exactly as they appear.
 If options exist -> MCQ.
-If text only -> SHORT_ANSWER (options: []).
+If text only -> SHORT_ANSWER.
 If write code -> CODING.
 `;
         default: // MIXED / AUTO
@@ -406,7 +406,7 @@ Analyze each question and assign the most appropriate type.
 - MCQ: If options exist.
 - CODING: If asking to "Write" code.
 - TRACING: If asking for "Output".
-- SHORT_ANSWER: If defining concepts (Set options: []).
+- SHORT_ANSWER: If defining concepts or no options present.
 `;
     }
 };
@@ -432,7 +432,8 @@ Guide the user through a short interactive chat.
 Ask concise questions to understand their exam needs.
 Adapt the exam difficulty, style, and content to the user’s level.
 Support any question format.
-**NEW FEATURE:** You can now offer to generate **Diagram Questions** (UML Class Diagrams, Flowcharts, Sequence Diagrams, State Machines) if the topic fits (e.g. Software Design, Algorithms, Logic Gates). Explicitly suggest this if relevant.
+**NEW FEATURE:** You can now offer to generate **Diagram Questions** (UML Class Diagrams, Flowcharts, Sequence Diagrams, State Machines) for **ANY** question type, including **SHORT_ANSWER**. 
+- Example Short Answer with Diagram: "Describe the flow represented by the following diagram." (Then include \`diagramConfig\`).
 
 2. Information You Must Collect From the User
 You should ask (one or two questions at a time):
@@ -441,7 +442,7 @@ Subject/topic
 Goal (school, university, certification, training, interview, practice, etc.)
 Preferred difficulty (easy / medium / hard / mixed)
 User level (beginner, intermediate, advanced)
-Question formats they want (MCQ, Coding, Tracing, **Diagrams**)
+Question formats they want (MCQ, Coding, Tracing, **Short Answer**, **Diagrams**)
 Number of questions
 Topics to focus on or avoid
 
@@ -745,6 +746,7 @@ export const gradeShortAnswer = async (question: Question, answer: string, lang:
   }
 };
 
+// ... (rest of the file remains unchanged for tip generation, helper bot, and builder chat)
 // --- DYNAMIC TIP GENERATION ---
 export const generateLoadingTips = async (
     files: { base64: string, mimeType: string }[],
@@ -822,6 +824,7 @@ export const getAiHelperResponse = async (message: string, lang: UILanguage): Pr
          - *MCQ Only*: Forces all questions to multiple choice.
          - *Coding*: Forces write-code style.
          - *Tracing*: Forces output prediction.
+         - *Short Answer*: Open-ended text response.
       - **Library**: Saves questions/exams locally in the browser.
       - **Z+ Badge**: Awarded for 100% score (Elite status).
       - **Themes**: Light, Terminal (Dark), Palestine (Flag Colors).

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -80,24 +81,19 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         };
       }
 
-      if (q.type === QuestionType.MCQ) {
-        if (q.options && q.options.length > 0) {
-            isCorrect = ua.answer === q.correctOptionIndex;
-        } else {
-            // Short Answer - Handled in step 2 or using stored result
-            if (ua.isCorrect !== undefined) {
-                isCorrect = ua.isCorrect;
-                feedback = ua.feedback || feedback;
-            }
-        }
+      // Explicitly check for Standard MCQ (options exist)
+      const isStandardMCQ = q.type === QuestionType.MCQ && q.options && q.options.length > 0;
+
+      if (isStandardMCQ) {
+          isCorrect = ua.answer === q.correctOptionIndex;
       } else if (q.type === QuestionType.TRACING) {
-        isCorrect = String(ua.answer).trim().toLowerCase() === String(q.tracingOutput || "").trim().toLowerCase();
-      } else if (q.type === QuestionType.CODING) {
-        // If it was already graded in 2-way mode, use that result
-        if (ua.isCorrect !== undefined) {
-          isCorrect = ua.isCorrect;
-          feedback = ua.feedback || feedback;
-        }
+          isCorrect = String(ua.answer).trim().toLowerCase() === String(q.tracingOutput || "").trim().toLowerCase();
+      } else if (q.type === QuestionType.CODING || q.type === QuestionType.SHORT_ANSWER || !isStandardMCQ) {
+          // These types need AI Grading or have already been graded in 2-way mode
+          if (ua.isCorrect !== undefined) {
+              isCorrect = ua.isCorrect;
+              feedback = ua.feedback || feedback;
+          }
       }
 
       return { question: q, isCorrect, answer: ua.answer, feedback };
@@ -106,10 +102,13 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
     // 2. Identify and Grade Ungraded Questions (Coding OR Short Answer)
     const toGrade = initialProcessed.filter(p => {
-        const isCoding = p.question.type === QuestionType.CODING;
-        const isShortAnswer = p.question.type === QuestionType.MCQ && (!p.question.options || p.question.options.length === 0);
+        // Standard MCQ check again
+        const isStandardMCQ = p.question.type === QuestionType.MCQ && p.question.options && p.question.options.length > 0;
+        const needsAiGrading = p.question.type === QuestionType.CODING || 
+                               p.question.type === QuestionType.SHORT_ANSWER || 
+                               !isStandardMCQ; // Fallback for MCQ without options (Short Answer hack)
         
-        return (isCoding || isShortAnswer) && p.answer && p.isCorrect === undefined;
+        return needsAiGrading && p.answer && p.isCorrect === undefined;
     });
 
     if (toGrade.length > 0) {
@@ -124,6 +123,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         if (item.question.type === QuestionType.CODING) {
              result = await gradeCodingAnswer(item.question, String(item.answer), lang);
         } else {
+             // Use Short Answer grader for SHORT_ANSWER or pseudo-MCQ
              result = await gradeShortAnswer(item.question, String(item.answer), lang);
         }
 
@@ -323,6 +323,8 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
               displayText = displayText.replace(item.question.codeSnippet, '').trim();
           }
 
+          const isStandardMCQ = item.question.type === QuestionType.MCQ && item.question.options && item.question.options.length > 0;
+
           return (
             <div key={item.question.id} className={`p-4 md:p-6 border-l-4 rtl:border-l-0 rtl:border-r-4 ${gradingStatus[item.question.id] ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/10' : item.isCorrect ? 'border-terminal-green bg-green-50 dark:bg-terminal-green/5' : 'border-terminal-alert bg-red-50 dark:bg-terminal-alert/10'} bg-white dark:bg-terminal-black shadow-md rounded-r-lg rtl:rounded-r-none rtl:rounded-l-lg relative`}>
                 <button onClick={() => toggleSave(item.question)} className={`absolute top-2 right-2 md:top-4 md:right-4 rtl:right-auto rtl:left-4 p-2 transition-colors hover:scale-110 ${isQuestionSaved(item.question.id) ? 'text-terminal-alert' : 'text-gray-300 dark:text-terminal-gray hover:text-terminal-alert'}`}>
@@ -385,7 +387,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                     <div className="bg-gray-100 dark:bg-[#0c0c0c] p-4 rounded border border-gray-200 dark:border-terminal-gray">
                         <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider dark:text-terminal-green">{t('your_input', lang)}</span>
                         <div className="font-mono break-words whitespace-pre-wrap text-gray-700 dark:text-terminal-light">
-                             {item.question.type === QuestionType.MCQ ? (item.question.options && item.question.options.length > 0 && item.answer !== null ? <MarkdownRenderer content={item.question.options[item.answer as number]} /> : String(item.answer || 'No Answer')) : String(item.answer || 'No Answer')}
+                             {isStandardMCQ ? (item.question.options && item.question.options.length > 0 && item.answer !== null ? <MarkdownRenderer content={item.question.options[item.answer as number]} /> : String(item.answer || 'No Answer')) : String(item.answer || 'No Answer')}
                         </div>
                     </div>
                     <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded border border-blue-100 dark:border-terminal-gray">

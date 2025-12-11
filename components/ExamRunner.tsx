@@ -133,30 +133,30 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     let feedback = "";
     let isCorrect = false;
 
-    if (currentQ.type === QuestionType.MCQ) {
-        // Robust check: Only grade as standard MCQ if valid options exist.
-        // Otherwise, it's a short answer.
-        const hasValidOptions = currentQ.options && currentQ.options.length > 0 && currentQ.options.some(o => o.trim().length > 0);
+    // Check MCQ only if type is explicitly MCQ AND it has valid options
+    const isStandardMCQ = currentQ.type === QuestionType.MCQ && 
+                          currentQ.options && 
+                          currentQ.options.length > 0 &&
+                          currentQ.options.some(o => o.trim().length > 0);
 
-        if (hasValidOptions) {
-            isCorrect = userAnswer.answer === currentQ.correctOptionIndex;
-            feedback = isCorrect ? "Correct!" : `Incorrect.\n${currentQ.explanation}`;
-        } else {
-            // Short Answer - Use AI Grading with correct language
-            const result = await gradeShortAnswer(currentQ, String(userAnswer.answer), lang);
-            isCorrect = result.isCorrect;
-            feedback = result.feedback;
-        }
+    if (isStandardMCQ) {
+        isCorrect = userAnswer.answer === currentQ.correctOptionIndex;
+        feedback = isCorrect ? "Correct!" : `Incorrect.\n${currentQ.explanation}`;
     } else if (currentQ.type === QuestionType.TRACING) {
-      const userTxt = String(userAnswer.answer).trim().toLowerCase();
-      const correctTxt = (currentQ.tracingOutput || "").trim().toLowerCase();
-      isCorrect = userTxt === correctTxt;
-      feedback = isCorrect ? "Correct!" : `Incorrect. Expected: \`${currentQ.tracingOutput}\`\n\n${currentQ.explanation}`;
+        const userTxt = String(userAnswer.answer).trim().toLowerCase();
+        const correctTxt = (currentQ.tracingOutput || "").trim().toLowerCase();
+        isCorrect = userTxt === correctTxt;
+        feedback = isCorrect ? "Correct!" : `Incorrect. Expected: \`${currentQ.tracingOutput}\`\n\n${currentQ.explanation}`;
     } else if (currentQ.type === QuestionType.CODING) {
-      // Use AI Grading with correct language
-      const result = await gradeCodingAnswer(currentQ, String(userAnswer.answer), lang);
-      isCorrect = result.isCorrect;
-      feedback = result.feedback;
+        // Use AI Grading
+        const result = await gradeCodingAnswer(currentQ, String(userAnswer.answer), lang);
+        isCorrect = result.isCorrect;
+        feedback = result.feedback;
+    } else {
+        // Short Answer (either type=SHORT_ANSWER or MCQ with no options)
+        const result = await gradeShortAnswer(currentQ, String(userAnswer.answer), lang);
+        isCorrect = result.isCorrect;
+        feedback = result.feedback;
     }
 
     setAnswers(prev => {
@@ -209,12 +209,17 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const progressPercentage = Math.round((answers.size / questions.length) * 100);
   
   // ROBUST MCQ CHECK: Check if options exist AND contain actual text.
-  // This filters out cases where the AI might return [""] or null for Short Answer questions.
+  // If options exist, we treat it as radio-button selection.
+  // Otherwise, it falls through to Text Input.
   const isStandardMCQ = currentQ.type === QuestionType.MCQ && 
                         currentQ.options && 
                         currentQ.options.length > 0 &&
                         currentQ.options.some(opt => opt && opt.trim().length > 0);
   
+  // We treat SHORT_ANSWER type AND MCQs with empty options as "Text Response" questions
+  const isTextResponse = currentQ.type === QuestionType.SHORT_ANSWER || 
+                         (currentQ.type === QuestionType.MCQ && !isStandardMCQ);
+
   const showCodeSnippet = currentQ.codeSnippet;
 
   return (
@@ -302,6 +307,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
              </div>
         </div>
 
+        {/* --- VISUALS SECTION (Graphs, Diagrams, Images) --- */}
+        {/* Render Diagrams REGARDLESS of question type, if config exists */}
         {currentQ.graphConfig && (
             <div className="mb-8">
                 <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Interactive Graph:</div>
@@ -395,7 +402,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                 </label>
               ))}
             </div>
-          ) : (currentQ.type === QuestionType.MCQ && (
+          ) : (isTextResponse && (
              <div className="space-y-2">
                 <div className="text-xs text-gray-500 dark:text-terminal-green font-bold mb-1 flex items-center gap-2 uppercase tracking-wider">
                    <span>✎ {t('short_answer', lang)}</span>

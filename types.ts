@@ -1,11 +1,9 @@
 
-
-
-
 export enum QuestionType {
   MCQ = 'MCQ',
   TRACING = 'TRACING',
-  CODING = 'CODING'
+  CODING = 'CODING',
+  SHORT_ANSWER = 'SHORT_ANSWER'
 }
 
 export enum QuestionFormatPreference {
