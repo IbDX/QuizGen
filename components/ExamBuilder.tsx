@@ -37,7 +37,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto'; // Reset height
             const scrollHeight = textareaRef.current.scrollHeight;
-            textareaRef.current.style.height = `${scrollHeight}px`; // Set to content height
+            textareaRef.current.style.height = `${Math.min(scrollHeight, 150)}px`; // Increased max height for better multi-line view
         }
     }, [input]);
 
@@ -99,13 +99,6 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
         handleSendMessage();
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSendMessage();
-        }
-    };
-
     const handleCompileExam = async () => {
         if (messages.length < 2) return; 
         setIsFinalizing(true);
@@ -120,154 +113,171 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
     };
 
     return (
-        <div className={`w-full mx-auto mt-4 md:mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none px-0 md:px-4' : 'max-w-4xl'}`}>
-            <div className="bg-gray-100 dark:bg-black border-2 border-terminal-green shadow-[0_0_20px_rgba(0,255,65,0.1)] rounded-lg overflow-hidden flex flex-col h-[calc(100vh-10rem)] md:h-[calc(100vh-14rem)]">
-                
-                {/* Header */}
-                <div className="bg-terminal-green/10 border-b border-terminal-green p-4 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-terminal-green rounded-full animate-pulse"></div>
-                        <h2 className="font-bold text-lg md:text-xl text-gray-800 dark:text-terminal-light font-mono tracking-wider">
-                            {t('builder_title', lang)} <span className="text-xs opacity-60 ml-2">{t('builder_mode', lang)}</span>
+        // CONTAINER STRATEGY:
+        // Mobile: Fixed full screen (inset-0 top-16) to sit exactly under navbar. No rounding.
+        // Desktop: Relative card, centered, rounded, shadow.
+        <div className={`
+            fixed inset-0 top-16 z-30 flex flex-col bg-white dark:bg-black 
+            md:static md:z-0 md:h-[calc(100vh-12rem)] md:min-h-[600px] md:mt-8 md:rounded-lg md:border-2 md:border-terminal-green md:shadow-[0_0_30px_rgba(0,255,65,0.15)]
+            ${isFullWidth ? 'md:max-w-none' : 'md:max-w-5xl md:mx-auto'}
+        `}>
+            
+            {/* Header */}
+            <div className="bg-gray-50 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-terminal-green/50 p-3 md:p-4 flex justify-between items-center shrink-0 shadow-sm z-20">
+                <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 bg-terminal-green rounded-full animate-pulse shadow-[0_0_8px_var(--color-term-green)]"></div>
+                    <div>
+                        <h2 className="font-bold text-base md:text-lg text-gray-800 dark:text-terminal-light font-mono tracking-wider leading-none">
+                            {t('builder_title', lang)}
                         </h2>
+                        <span className="text-[10px] text-gray-500 dark:text-terminal-green/70 font-mono tracking-widest hidden md:inline-block">
+                            {t('builder_mode', lang)}
+                        </span>
                     </div>
-                    <button 
-                        onClick={onCancel}
-                        className="text-gray-500 hover:text-red-500 transition-colors font-mono font-bold text-sm"
-                    >
-                        {t('abort', lang)}
-                    </button>
                 </div>
+                <button 
+                    onClick={onCancel}
+                    className="px-3 py-1.5 rounded text-xs font-bold font-mono border border-gray-300 dark:border-gray-700 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                >
+                    {t('abort', lang)}
+                </button>
+            </div>
 
-                {!languageSelected ? (
-                    // LANGUAGE SELECTION SCREEN
-                    <div className="flex-grow flex flex-col items-center justify-center p-8 bg-white dark:bg-gray-900/50 animate-fade-in">
-                        <div className="max-w-md w-full text-center space-y-8">
-                            <div className="space-y-2">
-                                 <div className="text-4xl mb-4 animate-bounce">👋</div>
-                                 <h3 className="text-2xl font-bold text-gray-800 dark:text-terminal-light font-mono">{t('init_system', lang)}</h3>
-                                 <p className="text-gray-500 font-mono text-sm">{t('select_lang_msg', lang)}</p>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                                <button 
-                                    onClick={() => handleLanguageSelect('en')}
-                                    className="p-6 border-2 border-gray-200 dark:border-gray-700 hover:border-terminal-green dark:hover:border-terminal-green bg-white dark:bg-black hover:bg-green-50 dark:hover:bg-terminal-green/10 rounded-xl transition-all group flex flex-col items-center gap-2"
-                                >
-                                    <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">🇺🇸</span>
-                                    <span className="font-bold font-mono text-gray-700 dark:text-gray-300 group-hover:text-terminal-green">ENGLISH</span>
-                                </button>
+            {!languageSelected ? (
+                // LANGUAGE SELECTION SCREEN
+                <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white dark:bg-black animate-fade-in overflow-y-auto">
+                    <div className="max-w-md w-full text-center space-y-8">
+                        <div className="space-y-3">
+                             <div className="text-5xl mb-6 animate-bounce">👋</div>
+                             <h3 className="text-2xl font-bold text-gray-900 dark:text-white font-mono">{t('init_system', lang)}</h3>
+                             <p className="text-gray-500 text-sm">{t('select_lang_msg', lang)}</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                            <button 
+                                onClick={() => handleLanguageSelect('en')}
+                                className="p-6 border-2 border-gray-200 dark:border-gray-800 hover:border-blue-500 dark:hover:border-terminal-green bg-gray-50 dark:bg-gray-900 rounded-xl transition-all group flex flex-row md:flex-col items-center justify-center gap-4 active:scale-95"
+                            >
+                                <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">🇺🇸</span>
+                                <span className="font-bold font-mono text-lg text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-terminal-green">ENGLISH</span>
+                            </button>
 
-                                <button 
-                                    onClick={() => handleLanguageSelect('ar')}
-                                    className="p-6 border-2 border-gray-200 dark:border-gray-700 hover:border-terminal-green dark:hover:border-terminal-green bg-white dark:bg-black hover:bg-green-50 dark:hover:bg-terminal-green/10 rounded-xl transition-all group flex flex-col items-center gap-2"
-                                >
-                                    <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">🇸🇦</span>
-                                    <span className="font-bold font-mono text-gray-700 dark:text-gray-300 group-hover:text-terminal-green font-sans">العربية</span>
-                                </button>
-                            </div>
+                            <button 
+                                onClick={() => handleLanguageSelect('ar')}
+                                className="p-6 border-2 border-gray-200 dark:border-gray-800 hover:border-green-500 dark:hover:border-terminal-green bg-gray-50 dark:bg-gray-900 rounded-xl transition-all group flex flex-row md:flex-col items-center justify-center gap-4 active:scale-95"
+                            >
+                                <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">🇸🇦</span>
+                                <span className="font-bold font-sans text-lg text-gray-700 dark:text-gray-300 group-hover:text-green-600 dark:group-hover:text-terminal-green">العربية</span>
+                            </button>
                         </div>
                     </div>
-                ) : (
-                    // CHAT INTERFACE
-                    <>
-                        {/* Chat Area */}
-                        <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 md:p-6 space-y-6 bg-white dark:bg-gray-900/50 scroll-smooth">
-                            {messages.map((m, i) => (
-                                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] md:max-w-[75%] rounded-lg p-4 shadow-sm text-sm md:text-base leading-relaxed ${
-                                        m.role === 'user' 
-                                            ? 'bg-blue-600 text-white border border-blue-700 rounded-br-none shadow-md' 
-                                            : 'bg-white dark:bg-black border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none shadow-sm'
-                                    }`}>
-                                        <div className={`font-bold text-[10px] mb-1 uppercase tracking-wider ${m.role === 'user' ? 'text-blue-100 opacity-80' : 'text-gray-500 opacity-50'}`}>
-                                            {m.role === 'user' ? t('user_role', lang) : t('agent_role', lang)}
-                                        </div>
-                                        <MarkdownRenderer content={m.text} className={m.role === 'user' ? 'text-white' : ''} />
-                                    </div>
-                                </div>
-                            ))}
-                            {isTyping && (
-                                <div className="flex justify-start">
-                                    <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-700 p-4 rounded-lg rounded-bl-none">
-                                        <span className="inline-block w-2 h-4 bg-terminal-green animate-blink"></span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Controls Area */}
-                        <div className="p-4 bg-gray-50 dark:bg-black border-t border-gray-300 dark:border-gray-800 shrink-0">
-                            
-                            {isFinalizing ? (
-                                <div className="flex flex-col items-center justify-center py-6 gap-4 animate-pulse">
-                                    <div className="text-terminal-green font-mono font-bold text-lg">{t('compiling', lang)}</div>
-                                    <div className="w-full max-w-md h-2 bg-gray-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-terminal-green animate-progress"></div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    {/* Suggested Replies Chips */}
-                                    {quickReplies.length > 0 && !isTyping && (
-                                        <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
-                                            {quickReplies.map((reply, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => handleSendMessage(reply)}
-                                                    className="whitespace-nowrap px-4 py-2 bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-600 rounded-full text-xs font-bold text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
-                                                >
-                                                    {reply}
-                                                </button>
-                                            ))}
+                </div>
+            ) : (
+                // CHAT INTERFACE
+                <>
+                    {/* Chat Area */}
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-6 bg-white dark:bg-black scroll-smooth">
+                        {messages.map((m, i) => (
+                            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
+                                <div className={`
+                                    max-w-[90%] md:max-w-[75%] rounded-2xl px-4 py-3 shadow-sm text-sm md:text-base leading-relaxed break-words relative
+                                    ${m.role === 'user' 
+                                        ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-sm' 
+                                        : 'bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-sm'
+                                    }
+                                `}>
+                                    {m.role === 'model' && (
+                                        <div className="text-[9px] font-bold text-gray-400 mb-1 uppercase tracking-wider flex items-center gap-1">
+                                            <span>🤖</span> {t('agent_role', lang)}
                                         </div>
                                     )}
+                                    <MarkdownRenderer content={m.text} className={m.role === 'user' ? 'text-white' : ''} />
+                                </div>
+                            </div>
+                        ))}
+                        {isTyping && (
+                            <div className="flex justify-start animate-pulse">
+                                <div className="bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-4 py-3 rounded-2xl rounded-bl-sm flex gap-1 items-center">
+                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100"></span>
+                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-200"></span>
+                                </div>
+                            </div>
+                        )}
+                        {/* Spacer for bottom scrolling */}
+                        <div className="h-4"></div> 
+                    </div>
 
-                                    <form onSubmit={handleFormSubmit} className="flex gap-2 mb-4 items-end">
-                                        <textarea 
-                                            ref={textareaRef}
-                                            rows={1}
-                                            value={input}
-                                            onChange={(e) => setInput(e.target.value)}
-                                            onKeyDown={handleKeyDown}
-                                            placeholder={lang === 'ar' ? "اكتب ردك هنا..." : "Type your response here..."}
-                                            className="flex-grow p-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded focus:border-terminal-green focus:ring-1 focus:ring-terminal-green outline-none font-mono text-gray-800 dark:text-terminal-light resize-none overflow-y-auto max-h-32"
-                                            autoFocus
-                                        />
-                                        <button 
-                                            type="submit"
-                                            disabled={!input.trim() || isTyping}
-                                            className="p-3 bg-gray-800 dark:bg-terminal-green/20 border border-gray-600 dark:border-terminal-green text-white dark:text-terminal-green hover:bg-gray-700 dark:hover:bg-terminal-green/30 font-bold uppercase rounded transition-colors disabled:opacity-50 h-full flex items-center justify-center"
-                                        >
-                                            ➤
-                                        </button>
-                                    </form>
-
-                                    <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-3">
-                                        <p className="text-[10px] text-gray-400 font-mono text-center md:text-left">
-                                            {t('builder_negotiate_hint', lang)}
-                                        </p>
-                                        <button 
-                                            onClick={handleCompileExam}
-                                            className="w-full md:w-auto px-8 py-3 bg-blue-600 dark:bg-terminal-green text-white dark:text-black font-bold font-mono uppercase tracking-widest hover:bg-blue-700 dark:hover:bg-terminal-dimGreen shadow-lg transition-all active:scale-95"
-                                        >
-                                            [ {t('builder_generate', lang)} ]
-                                        </button>
+                    {/* Controls Area */}
+                    <div className="bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shrink-0 pb-safe">
+                        
+                        {isFinalizing ? (
+                            <div className="flex flex-col items-center justify-center py-8 gap-4 px-6">
+                                <div className="text-terminal-green font-mono font-bold text-base md:text-lg animate-pulse">{t('compiling', lang)}</div>
+                                <div className="w-full max-w-md h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                    <div className="h-full bg-terminal-green animate-progress"></div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-3 md:p-4 space-y-3">
+                                {/* Suggested Replies Chips */}
+                                {quickReplies.length > 0 && !isTyping && (
+                                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3 md:mx-0 md:px-0">
+                                        {quickReplies.map((reply, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleSendMessage(reply)}
+                                                className="whitespace-nowrap px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-full text-xs font-bold text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm active:scale-95"
+                                            >
+                                                {reply}
+                                            </button>
+                                        ))}
                                     </div>
-                                </>
-                            )}
-                        </div>
-                    </>
-                )}
-            </div>
+                                )}
+
+                                <form onSubmit={handleFormSubmit} className="flex gap-2 items-end bg-gray-100 dark:bg-gray-900 p-2 rounded-xl border border-transparent focus-within:border-blue-400 dark:focus-within:border-terminal-green transition-colors">
+                                    <textarea 
+                                        ref={textareaRef}
+                                        rows={1}
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        // Removed onKeyDown to allow natural multi-line behavior
+                                        placeholder={lang === 'ar' ? "اكتب ردك هنا..." : "Type your response here..."}
+                                        className="flex-grow p-2 bg-transparent outline-none font-sans text-gray-800 dark:text-white resize-none max-h-40 min-h-[24px] text-sm md:text-base leading-relaxed"
+                                        autoFocus
+                                    />
+                                    <button 
+                                        type="submit"
+                                        disabled={!input.trim() || isTyping}
+                                        className="p-2 bg-blue-600 dark:bg-terminal-green text-white dark:text-black rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-90 flex-shrink-0 w-10 h-10 flex items-center justify-center"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 rtl:rotate-180" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                                        </svg>
+                                    </button>
+                                </form>
+
+                                <div className="flex justify-end">
+                                    <button 
+                                        onClick={handleCompileExam}
+                                        disabled={messages.length < 2}
+                                        className="w-full md:w-auto px-6 py-3 bg-gray-900 dark:bg-gray-800 text-white dark:text-terminal-green font-bold text-xs uppercase tracking-widest hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-95 rounded-lg border border-gray-700 dark:border-terminal-green disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {t('builder_generate', lang)}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
             
             <style>{`
-                @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-                .animate-blink { animation: blink 1s infinite; }
                 @keyframes progress { 0% { width: 0% } 100% { width: 100% } }
                 .animate-progress { animation: progress 2s ease-in-out infinite; }
                 .scrollbar-hide::-webkit-scrollbar { display: none; }
                 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+                .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
             `}</style>
         </div>
     );
