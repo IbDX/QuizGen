@@ -42,6 +42,20 @@ An advanced, terminal-themed AI examination platform that parses documents to cr
 -   **Responsive Design:** Mobile-first architecture with touch-optimized controls and auto-hiding menus.
 -   **PDF Reports:** Generate professional PDF reports of your exam performance.
 
+---
+
+## 📚 Technical Documentation
+
+For a deep dive into how the system works internally, please refer to the technical documentation files:
+
+1.  [**Architecture & Stack**](technical_readme/01_architecture_stack.md) - Overview of the React state machine, routing, and tech stack.
+2.  [**AI Generation Engine**](technical_readme/02_ai_generation_engine.md) - How Gemini 2.5 is prompted, schema validation, and context parsing.
+3.  [**Security & Validation**](technical_readme/03_security_validation.md) - VirusTotal integration, Magic Byte checking, and input sanitization.
+4.  [**Rendering System**](technical_readme/04_rendering_visuals.md) - How Graphs, Diagrams (Mermaid), and Markdown/Math (LaTeX) are rendered.
+5.  [**Grading Logic**](technical_readme/05_grading_logic.md) - The hybrid grading system (Deterministic vs. LLM-based evaluation).
+
+---
+
 ## 🚀 How to Run
 
 ### Prerequisites
