@@ -4,17 +4,20 @@
 
 
 
+
+
 import React, { useState, useEffect } from 'react';
 import { Question, QuestionType, SavedExam, UILanguage } from '../types';
 import { getLibrary, removeQuestion, getSavedExams, removeExam } from '../services/library';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
 import { GraphRenderer } from './GraphRenderer'; // Import GraphRenderer
+import { DiagramRenderer } from './DiagramRenderer'; // Import DiagramRenderer
 import { t } from '../utils/translations';
 
 interface QuestionLibraryProps {
     isFullWidth: boolean;
-    onLoadExam?: (questions: Question[]) => void;
+    onLoadExam?: (exam: SavedExam) => void;
     lang?: UILanguage;
 }
 
@@ -41,7 +44,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
 
     const handleLoadExam = (e: SavedExam) => {
         if (onLoadExam) {
-            onLoadExam(e.questions);
+            onLoadExam(e);
         }
     };
 
@@ -132,7 +135,13 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                                             </div>
                                          )}
 
-                                         {!q.graphConfig && q.visual && (
+                                         {q.diagramConfig && (
+                                            <div className="mb-6">
+                                                <DiagramRenderer code={q.diagramConfig.code} />
+                                            </div>
+                                         )}
+
+                                         {!q.graphConfig && !q.diagramConfig && q.visual && (
                                             <div className="mb-6">
                                                 <img 
                                                     src={`data:image/png;base64,${q.visual}`} 
@@ -146,6 +155,19 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                                              <div dir="ltr" className="text-left">
                                                  <CodeWindow code={q.codeSnippet} />
                                              </div>
+                                         )}
+
+                                        {(q.type === QuestionType.CODING || q.type === QuestionType.TRACING) && q.expectedOutput && (
+                                            <div className="my-6" dir="ltr">
+                                                <div className="bg-[#252526] px-4 py-2 border-b border-black flex items-center rounded-t-lg">
+                                                    <span className="text-xs text-gray-400 font-mono uppercase">Expected Output</span>
+                                                </div>
+                                                <pre className="!m-0 !p-4 !bg-[#1e1e1e] !text-sm overflow-x-auto custom-scrollbar border border-t-0 border-gray-700 rounded-b-lg">
+                                                    <code className="text-gray-200 font-mono leading-relaxed whitespace-pre-wrap">
+                                                        {q.expectedOutput}
+                                                    </code>
+                                                </pre>
+                                            </div>
                                          )}
             
                                          <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded mt-4 border border-blue-100 dark:border-gray-800">

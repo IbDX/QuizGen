@@ -1,5 +1,7 @@
 
 
+
+
 export enum QuestionType {
   MCQ = 'MCQ',
   TRACING = 'TRACING',
@@ -32,6 +34,11 @@ export interface GraphConfig {
   range?: [number, number]; // Y axis min/max
 }
 
+export interface DiagramConfig {
+    type: 'mermaid';
+    code: string;
+}
+
 export interface Question {
   id: string;
   type: QuestionType;
@@ -41,9 +48,11 @@ export interface Question {
   options?: string[]; // For MCQ
   correctOptionIndex?: number; // For MCQ
   tracingOutput?: string; // For Tracing
+  expectedOutput?: string; // For coding questions with a required output format/example
   explanation: string;
   visual?: string; // Base64 string of the cropped visual/diagram associated with the question
   graphConfig?: GraphConfig; // Digital representation of a graph
+  diagramConfig?: DiagramConfig; // Digital representation of diagrams (UML, Logic Gates, etc.)
 }
 
 export interface UserAnswer {

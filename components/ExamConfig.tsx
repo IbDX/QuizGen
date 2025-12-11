@@ -1,5 +1,7 @@
 
 
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ExamMode, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage } from '../types';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
@@ -22,6 +24,7 @@ interface ExamConfigProps {
   isFullWidth: boolean;
   lang: UILanguage;
   isActive: boolean;
+  preloadedTitle?: string; // New prop for loaded exam mode
 }
 
 const FORMAT_OPTIONS = [
@@ -71,7 +74,7 @@ const PdfPreview: React.FC<{ base64: string }> = ({ base64 }) => {
     );
 };
 
-export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, onAppendFiles, files, isFullWidth, lang, isActive }) => {
+export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, onAppendFiles, files, isFullWidth, lang, isActive, preloadedTitle }) => {
   const [timeLimit, setTimeLimit] = useState<number>(30);
   const [isTimed, setIsTimed] = useState<boolean>(true);
   const [mode, setMode] = useState<ExamMode>(ExamMode.ONE_WAY);
@@ -223,7 +226,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   // Global Paste Handler for this component
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
-        if (isScanning) return;
+        if (isScanning || preloadedTitle) return; // Disable drop/paste for preloaded
         
         const target = e.target as HTMLElement;
         if (target.tagName === 'TEXTAREA' || (target.tagName === 'INPUT' && target.getAttribute('type') !== 'file')) {
@@ -254,7 +257,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
             window.removeEventListener('paste', handlePaste);
         }
     };
-  }, [files, isScanning, isActive]); 
+  }, [files, isScanning, isActive, preloadedTitle]); 
 
   // Drag and Drop Handlers
   const handleDragOver = (e: React.DragEvent) => {
@@ -265,7 +268,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isScanning) {
+    if (!isScanning && !preloadedTitle) {
         processNewFiles(e.dataTransfer.files);
     }
   };
@@ -351,9 +354,12 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
       <h2 className="text-xl md:text-2xl font-bold mb-6 border-b border-gray-300 dark:border-terminal-gray pb-2 flex items-center gap-2">
         <span className="text-blue-600 dark:text-terminal-green rtl:rotate-180">&gt;</span> 
-        <span className="text-gray-900 dark:text-terminal-light">{t('configuration', lang)}</span>
+        <span className="text-gray-900 dark:text-terminal-light">
+            {preloadedTitle ? `Configuring: ${preloadedTitle}` : t('configuration', lang)}
+        </span>
       </h2>
 
+      {!preloadedTitle && (
       <div className="mb-6 bg-gray-100 dark:bg-gray-900/50 p-4 border border-gray-300 dark:border-terminal-gray shadow-sm">
         <div className="flex justify-between items-center mb-3">
             <p className="text-xs text-gray-500 dark:text-terminal-green uppercase tracking-wider font-bold">{t('target_sources', lang)} ({files.length})</p>
@@ -445,9 +451,11 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
             </div>
         )}
       </div>
+      )}
 
       <div className="mb-6 space-y-6">
-        {/* Output Language Selection */}
+        {/* Output Language Selection - Hidden if preloaded */}
+        {!preloadedTitle && (
         <div className="bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
             <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('output_lang', lang)}</label>
             <div className="grid grid-cols-3 gap-2">
@@ -474,7 +482,10 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                 &gt; {getLangDescription(outputLanguage)}
             </p>
         </div>
+        )}
 
+        {/* Output Format - Hidden if preloaded */}
+        {!preloadedTitle && (
         <div className="hidden md:block bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
             <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('output_format', lang)}</label>
             <div className="grid grid-cols-6 gap-2">
@@ -496,6 +507,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                 ))}
             </div>
         </div>
+        )}
 
         <div className="bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
           <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">{t('mode_select', lang)}</label>
@@ -541,7 +553,8 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
           </div>
         </div>
 
-        {/* Custom Instructions Input */}
+        {/* Custom Instructions Input - Hidden if preloaded (no generation happens) */}
+        {!preloadedTitle && (
         <div className="bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
             <label className="block text-sm font-bold mb-2 text-gray-900 dark:text-terminal-light">
                 {lang === 'ar' ? 'تعليمات مخصصة (اختياري)' : 'CUSTOM INSTRUCTIONS (OPTIONAL)'}
@@ -564,6 +577,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                 <p className="text-[10px] text-red-500 mt-1 font-bold">{instructionError}</p>
             )}
         </div>
+        )}
 
         <div className="bg-gray-50 dark:bg-black/30 p-3 border border-gray-200 dark:border-gray-800 rounded shadow-sm">
           <div className="flex justify-between items-center mb-2">
@@ -592,10 +606,10 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
       <button 
         onClick={handleStart}
-        disabled={isScanning || !!instructionError}
+        disabled={(isScanning && !preloadedTitle) || !!instructionError}
         className="w-full py-4 md:py-3 bg-gray-900 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-black font-bold text-lg md:text-base uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg rounded"
       >
-        [ {t('initiate_exam', lang)} ]
+        [ {preloadedTitle ? "START EXAM" : t('initiate_exam', lang)} ]
       </button>
     </div>
   );

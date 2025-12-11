@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType, UILanguage } from '../types';
 import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini';
@@ -5,6 +7,7 @@ import { saveQuestion, isQuestionSaved, removeQuestion } from '../services/libra
 import { CodeWindow } from './CodeWindow';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { GraphRenderer } from './GraphRenderer'; // Import GraphRenderer
+import { DiagramRenderer } from './DiagramRenderer'; // Import DiagramRenderer
 import { validateCodeInput, sanitizeInput } from '../utils/security';
 import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
@@ -203,8 +206,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const progressPercentage = Math.round((answers.size / questions.length) * 100);
   const isStandardMCQ = currentQ.type === QuestionType.MCQ && currentQ.options && currentQ.options.length > 0;
   
-  // This is the main fix: only show the code snippet window if it's NOT a coding question.
-  const showCodeSnippet = currentQ.codeSnippet && currentQ.type !== QuestionType.CODING;
+  const showCodeSnippet = currentQ.codeSnippet;
 
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
@@ -291,7 +293,6 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
              </div>
         </div>
 
-        {/* Digital Graph Renderer */}
         {currentQ.graphConfig && (
             <div className="mb-8">
                 <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Interactive Graph:</div>
@@ -299,8 +300,14 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
             </div>
         )}
 
-        {/* Fallback to image if graphConfig not present but visual exists */}
-        {!currentQ.graphConfig && currentQ.visual && (
+        {currentQ.diagramConfig && (
+            <div className="mb-8">
+                 <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Diagram Structure:</div>
+                 <DiagramRenderer code={currentQ.diagramConfig.code} />
+            </div>
+        )}
+
+        {!currentQ.graphConfig && !currentQ.diagramConfig && currentQ.visual && (
             <div className="mb-8">
                 <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Attached Visual:</div>
                 <div 
@@ -319,6 +326,19 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         {showCodeSnippet && (
           <div dir="ltr" className="w-full text-left">
               <CodeWindow code={currentQ.codeSnippet!} />
+          </div>
+        )}
+
+        {(currentQ.type === QuestionType.CODING || currentQ.type === QuestionType.TRACING) && currentQ.expectedOutput && (
+          <div className="my-8" dir="ltr">
+              <div className="bg-[#252526] px-4 py-2 border-b border-black flex items-center rounded-t-lg">
+                  <span className="text-xs text-gray-400 font-mono uppercase">Expected Output</span>
+              </div>
+              <pre className="!m-0 !p-4 !bg-[#1e1e1e] !text-sm overflow-x-auto custom-scrollbar border border-t-0 border-gray-700 rounded-b-lg">
+                  <code className="text-gray-200 font-mono leading-relaxed whitespace-pre-wrap">
+                      {currentQ.expectedOutput}
+                  </code>
+              </pre>
           </div>
         )}
 

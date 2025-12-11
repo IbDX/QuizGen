@@ -3,6 +3,7 @@ import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
 import { GraphRenderer } from './GraphRenderer'; // Import GraphRenderer
+import { DiagramRenderer } from './DiagramRenderer'; // Import DiagramRenderer
 import { generateExamPDF } from '../utils/pdfGenerator';
 import { saveQuestion, removeQuestion, isQuestionSaved, saveFullExam } from '../services/library';
 import { sanitizeInput } from '../utils/security';
@@ -337,7 +338,6 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                 </div>
                 <div className="mb-6 text-base md:text-lg font-medium text-gray-800 dark:text-terminal-light"><MarkdownRenderer content={displayText} /></div>
                 
-                {/* Graph Renderer for Results */}
                 {item.question.graphConfig && (
                     <div className="mb-6">
                          <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Graph Data:</div>
@@ -345,7 +345,14 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                     </div>
                 )}
 
-                {!item.question.graphConfig && item.question.visual && (
+                {item.question.diagramConfig && (
+                    <div className="mb-6">
+                         <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Diagram Structure:</div>
+                         <DiagramRenderer code={item.question.diagramConfig.code} />
+                    </div>
+                )}
+
+                {!item.question.graphConfig && !item.question.diagramConfig && item.question.visual && (
                     <div className="mb-6">
                         <img 
                             src={`data:image/png;base64,${item.question.visual}`} 
@@ -361,6 +368,19 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                     </div>
                 )}
                 
+                {(item.question.type === QuestionType.CODING || item.question.type === QuestionType.TRACING) && item.question.expectedOutput && (
+                    <div className="my-6" dir="ltr">
+                        <div className="bg-[#252526] px-4 py-2 border-b border-black flex items-center rounded-t-lg">
+                            <span className="text-xs text-gray-400 font-mono uppercase">Expected Output</span>
+                        </div>
+                        <pre className="!m-0 !p-4 !bg-[#1e1e1e] !text-sm overflow-x-auto custom-scrollbar border border-t-0 border-gray-700 rounded-b-lg">
+                            <code className="text-gray-200 font-mono leading-relaxed whitespace-pre-wrap">
+                                {item.question.expectedOutput}
+                            </code>
+                        </pre>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                     <div className="bg-gray-100 dark:bg-[#0c0c0c] p-4 rounded border border-gray-200 dark:border-terminal-gray">
                         <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider dark:text-terminal-green">{t('your_input', lang)}</span>

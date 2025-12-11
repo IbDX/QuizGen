@@ -20,6 +20,8 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [isFinalizing, setIsFinalizing] = useState(false);
+    const [quickReplies, setQuickReplies] = useState<string[]>([]);
+    
     const scrollRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -28,7 +30,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages, isTyping, languageSelected]);
+    }, [messages, isTyping, languageSelected, quickReplies]);
     
     // Auto-grow textarea effect
     useEffect(() => {
@@ -42,23 +44,49 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
     const handleLanguageSelect = (selectedLang: 'en' | 'ar') => {
         setLanguageSelected(true);
         const greeting = selectedLang === 'ar' 
-            ? "مرحباً! أنا مهندس الاختبارات الذكي.\n\nللبدء، يرجى تزويدي بالمعلومات التالية:\n1. **موضوع الاختبار** (مثال: فيزياء، جافا سكربت، تاريخ).\n2. **لغة الأسئلة** (هل تريد الاختبار بالعربية أم الإنجليزية؟)."
-            : "Hello! I am your AI Exam Builder.\n\nTo get started, please tell me:\n1. The **Subject** of the exam (e.g., Physics, JavaScript, History).\n2. The **Language** you want the questions to be in (English or Arabic).";
+            ? "مرحباً! أنا مهندس الاختبارات الذكي.\n\nيمكنني تصميم اختبارات MCQ، كتابة أكواد، أو حتى **مخططات هيكلية** (UML، خرائط تدفق).\n\nللبدء، يرجى تزويدي بالمعلومات التالية:\n1. **موضوع الاختبار** (مثال: فيزياء، جافا سكربت، تصميم أنظمة).\n2. **لغة الأسئلة** (هل تريد الاختبار بالعربية أم الإنجليزية؟)."
+            : "Hello! I am your AI Exam Builder.\n\nI can design MCQs, Coding Challenges, and even **Diagram Questions** (UML, Flowcharts).\n\nTo get started, please tell me:\n1. The **Subject** of the exam (e.g., Physics, JavaScript, System Design).\n2. The **Language** you want the questions to be in (English or Arabic).";
         
         setMessages([{ role: 'model', text: greeting }]);
+        setQuickReplies(selectedLang === 'ar' 
+            ? ["جافا سكربت - للمبتدئين", "فيزياء عامة", "تاريخ الحاسوب"] 
+            : ["JavaScript Basics", "General Physics", "Computer History"]
+        );
     };
 
-    const handleSendMessage = async () => {
-        if (!input.trim() || isTyping || isFinalizing) return;
+    const handleSendMessage = async (textOverride?: string) => {
+        const textToSend = textOverride || input;
+        
+        if (!textToSend.trim() || isTyping || isFinalizing) return;
 
-        const userMsg = input;
         setInput('');
-        setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+        setQuickReplies([]); // Clear old suggestions
+        setMessages(prev => [...prev, { role: 'user', text: textToSend }]);
         setIsTyping(true);
 
         try {
-            const response = await sendExamBuilderMessage(messages, userMsg);
-            setMessages(prev => [...prev, { role: 'model', text: response }]);
+            const rawResponse = await sendExamBuilderMessage(messages, textToSend);
+            
+            // Parse response for Suggestions
+            let cleanResponse = rawResponse;
+            let newSuggestions: string[] = [];
+            
+            if (rawResponse.includes('||SUGGESTIONS||')) {
+                const parts = rawResponse.split('||SUGGESTIONS||');
+                cleanResponse = parts[0].trim();
+                try {
+                    const jsonString = parts[1].trim();
+                    // Basic cleanup in case parsing is tricky
+                    const validJson = jsonString.substring(jsonString.indexOf('['), jsonString.lastIndexOf(']') + 1);
+                    newSuggestions = JSON.parse(validJson);
+                } catch (e) {
+                    console.warn("Failed to parse suggested replies", e);
+                }
+            }
+
+            setMessages(prev => [...prev, { role: 'model', text: cleanResponse }]);
+            setQuickReplies(newSuggestions.slice(0, 3)); // Ensure max 3
+
         } catch (error) {
             setMessages(prev => [...prev, { role: 'model', text: t('connection_error', lang) }]);
         } finally {
@@ -180,6 +208,21 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                 </div>
                             ) : (
                                 <>
+                                    {/* Suggested Replies Chips */}
+                                    {quickReplies.length > 0 && !isTyping && (
+                                        <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
+                                            {quickReplies.map((reply, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => handleSendMessage(reply)}
+                                                    className="whitespace-nowrap px-4 py-2 bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-600 rounded-full text-xs font-bold text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                                                >
+                                                    {reply}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     <form onSubmit={handleFormSubmit} className="flex gap-2 mb-4 items-end">
                                         <textarea 
                                             ref={textareaRef}
@@ -223,6 +266,8 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                 .animate-blink { animation: blink 1s infinite; }
                 @keyframes progress { 0% { width: 0% } 100% { width: 100% } }
                 .animate-progress { animation: progress 2s ease-in-out infinite; }
+                .scrollbar-hide::-webkit-scrollbar { display: none; }
+                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
             `}</style>
         </div>
     );

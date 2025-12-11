@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect } from 'react';
 import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
@@ -10,7 +12,7 @@ import { Leaderboard } from './components/Leaderboard';
 import { QuestionLibrary } from './components/QuestionLibrary';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ConfirmModal } from './components/ConfirmModal'; // Import the custom modal
-import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference, UILanguage } from './types';
+import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference, UILanguage, SavedExam } from './types';
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 import { generateExamPDF } from './utils/pdfGenerator';
 import { t } from './utils/translations';
@@ -24,6 +26,7 @@ const App: React.FC = () => {
   const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
   const [loadingMsg, setLoadingMsg] = useState('');
   const [isFullWidth, setIsFullWidth] = useState(true); 
+  const [preloadedExamTitle, setPreloadedExamTitle] = useState<string | undefined>(undefined);
   
   const [autoHideFooter, setAutoHideFooter] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<UILanguage>('en');
@@ -99,6 +102,7 @@ const App: React.FC = () => {
     }
 
     setUploadedFiles(uniqueBatch);
+    setPreloadedExamTitle(undefined); // Reset preloaded title on new upload
     setAppState('CONFIG');
   };
 
@@ -171,8 +175,16 @@ using namespace std;
   };
 
   const handleStartExam = async (examSettings: ExamSettings) => {
-    if (uploadedFiles.length === 0) return;
     setSettings(examSettings);
+
+    // Case 1: Preloaded Exam (From Library)
+    if (preloadedExamTitle) {
+        setAppState('EXAM');
+        return;
+    }
+
+    // Case 2: New Generation
+    if (uploadedFiles.length === 0) return;
     setAppState('GENERATING');
     setLoadingMsg(uiLanguage === 'ar' 
         ? `جاري التحليل... ${uploadedFiles.length} ملفات...` 
@@ -219,6 +231,7 @@ using namespace std;
     setSettings(null);
     setUserAnswers([]);
     setIsLibraryOpen(false);
+    setPreloadedExamTitle(undefined);
   };
 
   const handleRetake = () => {
@@ -226,17 +239,13 @@ using namespace std;
     setAppState('EXAM');
   };
   
-  const handleLoadSavedExam = (loadedQuestions: Question[]) => {
-      setQuestions(loadedQuestions);
+  const handleLoadSavedExam = (exam: SavedExam) => {
+      setQuestions(exam.questions);
+      setPreloadedExamTitle(exam.title);
+      setUploadedFiles([]); // Clear files as we are loading existing questions
       setUserAnswers([]);
-      setSettings({
-          timeLimitMinutes: 0,
-          mode: ExamMode.ONE_WAY,
-          formatPreference: QuestionFormatPreference.ORIGINAL,
-          outputLanguage: uiLanguage === 'ar' ? 'ar' : 'en',
-      });
       setIsLibraryOpen(false);
-      setAppState('EXAM');
+      setAppState('CONFIG'); // Go to CONFIG instead of EXAM
   };
 
   const handleRemediation = async (wrongIds: string[]) => {
@@ -246,6 +255,7 @@ using namespace std;
       const newQuestions = await generateExamFromWrongAnswers(questions, wrongIds);
       setQuestions(newQuestions);
       setUserAnswers([]);
+      setPreloadedExamTitle(undefined); // Treat as new exam context
       setAppState('EXAM');
     } catch (e) {
        console.error(e);
@@ -391,7 +401,7 @@ using namespace std;
             </>
           )}
 
-          {appState === 'CONFIG' && uploadedFiles.length > 0 && (
+          {appState === 'CONFIG' && (uploadedFiles.length > 0 || preloadedExamTitle) && (
             <ExamConfig 
                 onStart={handleStartExam} 
                 onRemoveFile={handleRemoveFile}
@@ -400,6 +410,7 @@ using namespace std;
                 isFullWidth={isFullWidth}
                 lang={uiLanguage}
                 isActive={appState === 'CONFIG'}
+                preloadedTitle={preloadedExamTitle}
             />
           )}
 
