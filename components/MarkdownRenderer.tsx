@@ -108,11 +108,11 @@ export const processInlineMarkdown = (text: string) => {
         .replace(/>/g, "&gt;");
 
     // 4. Markdown Formatting
-    // Bold: **text** - Updated regex to be more inclusive of Unicode/Arabic
-    temp = temp.replace(/(^|[^\\])\*\*([^\s].*?[^\s])\*\*/g, '$1<strong class="text-black dark:text-white font-bold">$2</strong>');
+    // Bold: **text** - Uses non-greedy match that works across lines if needed, better handling of spaces
+    temp = temp.replace(/\*\*([^*]+?)\*\*/g, '<strong class="text-black dark:text-white font-bold">$1</strong>');
     
     // Italic: *text*
-    temp = temp.replace(/(^|[^\\*])\*([^\s*].*?[^\s*])\*(?!\*)/g, '$1<em class="italic">$2</em>');
+    temp = temp.replace(/(^|[^\\*])\*([^*]+?)\*(?!\*)/g, '$1<em class="italic">$2</em>');
 
     // 5. Restore Placeholders (Code and Math)
     placeholders.forEach(ph => {

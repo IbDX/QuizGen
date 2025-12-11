@@ -15,7 +15,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
   } else if (preference === QuestionFormatPreference.CODING) {
     allowedDescription = "MUST be strictly 'CODING'. Do not return any other type.";
   } else if (preference === QuestionFormatPreference.SHORT_ANSWER) {
-    allowedDescription = "MUST be strictly 'MCQ'. Options MUST be empty/null.";
+    allowedDescription = "MUST be strictly 'MCQ'. Options MUST be empty array [].";
   }
   // ORIGINAL and MIXED allow all types
 
@@ -30,7 +30,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
           description: `The type of the question. ${allowedDescription}.` 
         },
         topic: { type: Type.STRING, description: "A short topic tag for this question (e.g., 'Loops', 'Calculus', 'Recursion')" },
-        text: { type: Type.STRING, description: "The full question text. Do NOT include the code snippet here if it is separate. Use standard LaTeX for math (wrap in $)." },
+        text: { type: Type.STRING, description: "The full question text. Do NOT include the code snippet here if it is separate. Use standard LaTeX for math (wrap in $). CLEAN UP formatting." },
         codeSnippet: { 
             type: Type.STRING, 
             nullable: true, 
@@ -40,7 +40,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
           type: Type.ARRAY, 
           items: { type: Type.STRING },
           nullable: true,
-          description: "List of choices. REQUIRED for MCQ type. MUST be empty/null if type is SHORT_ANSWER or CODING." 
+          description: "List of choices. REQUIRED for MCQ type. MUST be an EMPTY ARRAY [] if the question is SHORT_ANSWER or CODING to ensure a text box appears." 
         },
         correctOptionIndex: { type: Type.INTEGER, nullable: true, description: "Index of correct option. REQUIRED for MCQ." },
         tracingOutput: { type: Type.STRING, nullable: true, description: "The expected output string. REQUIRED for TRACING." },
@@ -303,18 +303,12 @@ However, ALL CODE SNIPPETS, VARIABLE NAMES, and PROGRAMMING SYNTAX MUST REMAIN I
 Use standard computer science terminology in Arabic (e.g., use 'مصفوفة' for Array, 'دالة' for Function, 'مؤشر' for Pointer) but keep the code strictly English.
 Example: "ما هي مخرجات الكود التالي؟" instead of "What is the output?".
 Do NOT translate code keywords (e.g., 'int', 'void', 'for', 'if').
-
-**MATH FORMATTING RULE (CRITICAL FOR ARABIC):**
-- DO NOT use Arabic characters inside math equations (e.g. $س$, $ص$).
-- ALWAYS use standard English/Greek variables (e.g. $x$, $y$, $\\theta$) inside LaTeX blocks.
 `;
     } else if (outputLang === 'auto') {
         langInstruction = `
 LANGUAGE REQUIREMENT: SOURCE MATCHING (MULTI-FILE BATCH SUPPORT)
-You are likely processing a batch of files that may be in DIFFERENT languages.
 For EACH individual question you extract, detect the language of the specific source text/file it comes from.
 If File A is Arabic and File B is English, questions extracted from File A MUST be in Arabic, and questions from File B MUST be in English.
-Do NOT standardize the language across the whole exam. Preserve the original language of each individual question.
 ALWAYS keep code snippets and syntax in ENGLISH/Technical format regardless of the question language.
 `;
     } else {
@@ -327,183 +321,92 @@ Generate all content in English.
     const BASE_INSTRUCTION = `
 ${langInstruction}
 
+PHASE 0: SANITIZATION & SPOILER REMOVAL (CRITICAL)
+- **STRIP ANSWERS:** You MUST Detect if the source text includes the solution immediately after the question (e.g., "Answer: C", "Sol: ...", "Correct: A").
+- **ACTION:** REMOVE the solution/answer text from the 'text' field entirely.
+- **MOVE:** Place the detected solution into the 'explanation' field or use it to determine 'correctOptionIndex'.
+- **NEVER** reveal the answer in the 'text' or 'options' fields.
+
 PHASE 1: HIGH-FIDELITY PARSING
 1. **Scan & Identify**: Locate every question block across all files.
 2. **Text Extraction**:
-   - **Capture Everything**: Include the full problem statement, preambles, and sub-questions.
+   - **Capture Everything**: Include the full problem statement.
    - **Clean Up**: Remove "Q1", "1.", marks/scores (e.g. "[5 pts]"), and page artifacts.
-   - **Separation**: STRICTLY exclude answers/solutions from the 'text'. Use detected answers to set 'correctOptionIndex' or 'explanation'.
-   - **Formats**: Convert math to LaTeX ($E=mc^2$). Extract code into 'codeSnippet' (do NOT leave code as image).
-   - **Expected Output**: For coding or data query questions, if an example of the required output format or a result table is shown, capture it verbatim in the 'expectedOutput' field. **CRITICAL**: Preserve all whitespace, alignment, table borders, and formatting exactly as seen. Do not add markdown backticks.
+   - **Formats**: Convert math to LaTeX ($E=mc^2$). Extract code into 'codeSnippet'.
+   - **Expected Output**: For coding/data questions, capture sample tables/output verbatim in 'expectedOutput'.
 
 PHASE 2: INTELLIGENT VISUAL & LAYOUT ANALYSIS
 **DIGITAL GRAPH CONVERSION (MATH/PHYSICS):**
-If the question contains a 2D mathematical graph (e.g. functions like linear, quadratic, trigonometric, exponential), **DO NOT use \`visualBounds\`**.
-Instead, ANALYZE the graph and extract its parameters to populate \`graphConfig\`:
-- **Identify the Function**: Approximate the function expression (e.g. 'x^2', '2*x + 5', 'sin(x)', 'exp(x)').
-- **Domain/Range**: Estimate the visible domain [min, max] and range.
-- **Multiple Functions**: If multiple lines/curves are present, list them in the \`functions\` array.
-- **Labels**: Extract axis labels and title.
-- **GOAL**: We want to re-render this graph DIGITALLY using a plotting library, NOT crop the image.
+If the question contains a 2D mathematical graph, ANALYZE it and extract parameters to \`graphConfig\`:
+- **Identify Function**: e.g. 'x^2', '2*x + 5', 'sin(x)'.
+- **Domain/Range**: Estimate visible bounds.
 
-**DIAGRAM EXTRACTION (UML, TREES, FLOWCHARTS, LOGIC GATES):**
-If the question contains a schematic diagram such as:
-- **UML Class Diagram**
-- **Sequence Diagram**
-- **Flowchart**
-- **Decision Tree / Binary Tree**
-- **Logic Gates Circuit**
-- **State Machine**
+**DIAGRAM EXTRACTION (UML, TREES, FLOWCHARTS):**
+If the question contains a schematic diagram (UML, Sequence, Flowchart, Logic Gates), return valid **Mermaid.js** code in \`diagramConfig\`.
+- **Abstract Classes/Methods:** Use '<<abstract>>' or append '*' to method names for italics.
 
-**DO NOT** use \`visualBounds\`. Cropping these often results in low quality or cut-off labels.
-Instead, EXTRACT the structure and return it as valid **Mermaid.js** code in the \`diagramConfig\` object.
-- **CRITICAL MERMAID SYNTAX RULES:** 
-  1. For **Interfaces**, use: \`class Name { <<interface>> method() }\`. Do NOT use \`interface Name { ... }\`.
-  2. For **Abstract Classes**, use: \`class Name { <<abstract>> method() }\`.
-  3. For **Abstract Methods** (Italicized), you **MUST** append \`*\` to the method signature. Example: \`+makeSound()*\` will render as *makeSound()*.
-  4. Use 'classDiagram' for UML classes.
-  5. Use 'graph TD' or 'graph LR' for flowcharts/trees.
-  6. Use 'sequenceDiagram' for sequence diagrams.
-  7. Use 'stateDiagram-v2' for state machines.
-
-**CROPPING FALLBACK (COMPLEX ART/ANATOMY):**
-Use \`visualBounds\` ONLY for complex visuals that are NOT mathematical functions and NOT standard diagrams (e.g. biological anatomy, detailed artistic illustrations, complex free-body diagrams that cannot be plotted).
-- **Target:** Isolate the diagram/graph ONLY.
-- **Exclude:** The question text, option labels (A, B, C), and page headers/footers.
-- **Precision:** The \`visualBounds\` [ymin, xmin, ymax, xmax] (0-1000 scale) must be TIGHT around the visual.
-
-**QUESTION CLASSIFICATION:**
+PHASE 3: QUESTION CLASSIFICATION & FORMATTING
 - **MCQ:** If options (A, B, C...) are present.
-- **SHORT_ANSWER:** Text-based question with NO options. Set \`type: "MCQ"\` and \`options: []\`.
+- **SHORT_ANSWER:** Text-based question with NO options. 
+  - **CRITICAL:** Set \`type: "MCQ"\` but \`options: []\` (Empty Array). This forces the UI to show a text box.
 - **TRACING:** Asks for output of code.
 - **CODING:** Asks to write code.
+
+**FORMATTING INTELLIGENCE:**
+- **Bold Keywords:** Use **bold** for key terms (e.g., **not**, **always**, **incorrect**).
+- **Bullet Points:** Use standard Markdown lists if the question lists conditions.
+- **Cleanliness:** Ensure no trailing whitespace.
 `;
 
     switch (preference) {
         case QuestionFormatPreference.MCQ:
             return `
 ${BASE_INSTRUCTION}
-
-PHASE 3: FORCED MCQ TRANSFORMATION
+PHASE 4: FORCED MCQ TRANSFORMATION
 You MUST output EVERY question as "type": "MCQ".
-If a question is NOT originally an MCQ, you must creatively transform it.
-
-TRANSFORMATION RULES:
-Source: Coding Challenge (Write code...)
-Transformation: Generate 4 code snippets as options.
-Option A: The Correct Code.
-Options B, C, D: Plausible code with syntax errors or logic bugs.
-Prompt: "Which of the following implementations correctly solves: [Problem]?"
-
-Source: Tracing (What is output?)
-Transformation: Keep the code snippet.
-Options: Generate 4 possible outputs (1 correct, 3 distractors).
-Prompt: "What is the output of the following code?"
-
-Source: Open Ended (Define X...)
-Transformation: Create 4 definition statements.
-Prompt: "Which statement best describes [Concept]?"
-
-CONSTRAINT: Output JSON must ONLY contain "type": "MCQ". All other fields (tracingOutput) are ignored.
+If a question is NOT originally an MCQ, you must creatively transform it by generating 3 distractors and 1 correct option.
 `;
         case QuestionFormatPreference.CODING:
             return `
 ${BASE_INSTRUCTION}
-
-PHASE 3: FORCED CODING TRANSFORMATION
+PHASE 4: FORCED CODING TRANSFORMATION
 You MUST output EVERY question as "type": "CODING".
-
-TRANSFORMATION RULES:
-Source: MCQ (Choose the correct code...)
-Transformation: Strip the options. Extract the problem statement.
-Prompt: "Write a function/program that [Original Goal]."
-Action: Set 'options' to null.
-
-Source: Tracing (What is the output of this code?)
-Transformation: Reverse engineering.
-Prompt: "Write a program that produces exactly the following output: [Output Value]."
-
-Source: Theory (What is recursion?)
-Prompt: "Write a simple code example that demonstrates the concept of Recursion."
-
-CONSTRAINT: Output JSON must ONLY contain "type": "CODING". 'options', 'tracingOutput', and 'codeSnippet' must be null.
+Prompt: "Write a function/program that..."
+Set 'options' to null.
 `;
         case QuestionFormatPreference.TRACING:
             return `
 ${BASE_INSTRUCTION}
-
-PHASE 3: FORCED TRACING TRANSFORMATION
+PHASE 4: FORCED TRACING TRANSFORMATION
 You MUST output EVERY question as "type": "TRACING".
-
-TRANSFORMATION RULES:
-Source: Theory / MCQ
-Transformation: Create a code snippet that demonstrates the concept being asked.
 Prompt: "What is the output of this code?"
-Result: Put the result in 'tracingOutput'.
-
-Source: Coding (Write a function...)
-Transformation: Take the solution code. Hardcode specific inputs (e.g., func(5)}.
-Prompt: "What does this function return when called with input 5?"
-
-CONSTRAINT: Output JSON must ONLY contain "type": "TRACING". 'tracingOutput' field is REQUIRED.
 `;
         case QuestionFormatPreference.SHORT_ANSWER:
             return `
 ${BASE_INSTRUCTION}
-
-PHASE 3: FORCED SHORT ANSWER TRANSFORMATION
+PHASE 4: FORCED SHORT ANSWER TRANSFORMATION
 You MUST output EVERY question as "type": "MCQ".
-CRITICAL: You MUST set "options" to an empty array [] or null.
-This format tells the UI to present a text input field for the user to type their answer.
-
-TRANSFORMATION RULES:
-Source: MCQ (Choose A, B...)
-Transformation: Remove options. Ask the question directly.
-Prompt: "What is [Concept]?" or "Explain [Topic]."
-
-Source: Code/Tracing
-Transformation: "What is the output?" or "What does this code do?"
-
-CONSTRAINT: Output JSON -> "type": "MCQ", "options": []. Put the answer in "explanation".
+**CRITICAL:** You MUST set "options" to an empty array [] or null.
+Prompt: "Explain [Topic]..." or "What is [Concept]?"
 `;
         case QuestionFormatPreference.ORIGINAL:
             return `
 ${BASE_INSTRUCTION}
-
-PHASE 3: STRICT FIDELITY EXTRACTION
-Extract questions exactly as they appear in the document(s). Do NOT change their type, wording, structure, or content in any way. This is a verbatim extraction task.
-
-VERBATIM COPY RULES:
-Copy ALL text, options, code snippets, and explanations WORD-FOR-WORD from the source. Preserve exact punctuation.
-Do NOT paraphrase.
-If the source has ambiguous or incomplete content due to OCR noise, replicate it as closely as possible.
-
-COMPLETENESS RULES:
-Identify and extract EVERY single question in the document(s).
-For answer keys: If present, match them to the corresponding question.
-MCQ-SPECIFIC RULES:
-If options are present (labeled A, B, C... or 1, 2, 3...), set "type": "MCQ".
-'options' array: List ALL options in the EXACT order.
-'correctOptionIndex': Set to the 0-based index matching the source's correct answer.
-
-OTHER TYPE RULES:
-TRACING: If code exists and question asks for output/result (no options) -> Type: "TRACING".
-CODING: If question asks to Write/Implement code (no options) -> Type: "CODING". 'codeSnippet' MUST be null.
-SHORT ANSWER: If text-based (no options) -> Type: "MCQ" with empty options array [].
-
-PRIORITY: Detect options first. If options exist, classify as MCQ—even if code is present.
+PHASE 4: STRICT FIDELITY EXTRACTION
+Extract questions exactly as they appear.
+If options exist -> MCQ.
+If text only -> SHORT_ANSWER (options: []).
+If write code -> CODING.
 `;
         default: // MIXED / AUTO
             return `
 ${BASE_INSTRUCTION}
-
-PHASE 3: SMART CLASSIFICATION
-Analyze each question and assign the most appropriate type for learning.
-MCQ: Use if options are present. (Priority #1)
-CODING: Use if the question asks to "Write" or "Implement". For these, 'codeSnippet' MUST be null.
-TRACING: Use if the question asks for "Output" or "Result".
-SHORT ANSWER: Use for definitions or open-ended questions. Set options to [].
-GOAL: Provide a diverse mix of question types if the document supports it.
+PHASE 4: SMART CLASSIFICATION
+Analyze each question and assign the most appropriate type.
+- MCQ: If options exist.
+- CODING: If asking to "Write" code.
+- TRACING: If asking for "Output".
+- SHORT_ANSWER: If defining concepts (Set options: []).
 `;
     }
 };
@@ -637,7 +540,7 @@ export const generateExam = async (
       Return a JSON array adhering to the schema.
   ` });
 
-  const maxRetries = 3;
+  const maxRetries = 5; // Increased retries for 429 errors
   let attempt = 0;
 
   while (attempt < maxRetries) {
@@ -662,13 +565,27 @@ export const generateExam = async (
       throw new Error("No response text generated");
     } catch (error: any) {
        console.warn(`Gemini Generation Attempt ${attempt + 1} failed:`, error);
+       
+       // Enhanced Rate Limit Handling (429)
+       const isRateLimit = error.message?.includes('429') || error.message?.includes('Quota') || error.status === 429 || error.code === 429;
+       
+       if (isRateLimit) {
+           console.warn("Rate limit hit. Waiting significantly longer...");
+           // Base wait of 10s + exponential backoff + jitter for rate limits
+           const waitTime = 10000 + (3000 * Math.pow(2, attempt)) + (Math.random() * 2000);
+           await delay(waitTime);
+       } else {
+           // Standard backoff for other errors
+           await delay(2000 * Math.pow(2, attempt));
+       }
+       
        attempt++;
        if (attempt >= maxRetries) {
            console.error("Gemini Generation Final Failure:", error);
+           // Re-throw with clear message for UI
+           if (isRateLimit) throw new Error("429_RATE_LIMIT");
            throw error;
        }
-       // Exponential backoff
-       await delay(2000 * Math.pow(2, attempt - 1));
     }
   }
   return [];
@@ -878,8 +795,9 @@ export const generateLoadingTips = async (
             return JSON.parse(response.text) as string[];
         }
         return [];
-    } catch (e) {
-        console.warn("Failed to generate AI tips", e);
+    } catch (e: any) {
+        // Silent failure for tips to preserve quota for main exam
+        console.warn("Skipped AI tips due to error/rate-limit:", e.message);
         return [];
     }
 };

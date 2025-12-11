@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, UserAnswer, ExamSettings, ExamMode, QuestionType, UILanguage } from '../types';
 import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini';
@@ -135,7 +134,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
     let isCorrect = false;
 
     if (currentQ.type === QuestionType.MCQ) {
-        if (currentQ.options && currentQ.options.length > 0) {
+        // Robust check: Only grade as standard MCQ if valid options exist.
+        // Otherwise, it's a short answer.
+        const hasValidOptions = currentQ.options && currentQ.options.length > 0 && currentQ.options.some(o => o.trim().length > 0);
+
+        if (hasValidOptions) {
             isCorrect = userAnswer.answer === currentQ.correctOptionIndex;
             feedback = isCorrect ? "Correct!" : `Incorrect.\n${currentQ.explanation}`;
         } else {
@@ -204,7 +207,13 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
   const getAnswerValue = () => answers.get(currentQ.id)?.answer ?? "";
   const progressPercentage = Math.round((answers.size / questions.length) * 100);
-  const isStandardMCQ = currentQ.type === QuestionType.MCQ && currentQ.options && currentQ.options.length > 0;
+  
+  // ROBUST MCQ CHECK: Check if options exist AND contain actual text.
+  // This filters out cases where the AI might return [""] or null for Short Answer questions.
+  const isStandardMCQ = currentQ.type === QuestionType.MCQ && 
+                        currentQ.options && 
+                        currentQ.options.length > 0 &&
+                        currentQ.options.some(opt => opt && opt.trim().length > 0);
   
   const showCodeSnippet = currentQ.codeSnippet;
 
@@ -282,7 +291,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                     </svg>
                 </button>
                 <span className="text-[10px] font-bold uppercase tracking-widest bg-gray-200 dark:bg-terminal-dimGreen text-black dark:text-terminal-light px-2 py-1 rounded-sm whitespace-nowrap">
-                    {currentQ.type}
+                    {isStandardMCQ ? "MCQ" : currentQ.type}
                 </span>
             </div>
         </div>
@@ -397,6 +406,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                   onChange={(e) => handleAnswer(e.target.value)}
                   className="w-full bg-gray-50 dark:bg-terminal-black border border-gray-300 dark:border-terminal-gray p-3 md:p-4 font-mono focus:border-terminal-green outline-none text-base md:text-lg rounded dark:text-terminal-light"
                   disabled={showFeedback && settings.mode === ExamMode.TWO_WAY}
+                  placeholder={lang === 'ar' ? 'اكتب إجابتك هنا...' : 'Type your answer here...'}
                 />
              </div>
           ))}

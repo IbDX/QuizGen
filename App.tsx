@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
@@ -212,10 +210,18 @@ using namespace std;
       setQuestions(generatedQuestions);
       setAppState('EXAM');
 
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Failed to generate exam. Please try different files.');
-      setAppState('UPLOAD');
+      
+      if (e.message === "429_RATE_LIMIT" || e.message?.includes('429') || e.message?.includes('Quota')) {
+          alert(uiLanguage === 'ar' 
+              ? "⚠️ النظام مشغول جداً (تجاوز الحصة). يرجى الانتظار دقيقة والمحاولة لاحقاً." 
+              : "⚠️ HIGH TRAFFIC: System quota exceeded. Please wait 1 minute and try again.");
+      } else {
+          alert('Failed to generate exam. Please try different files or simpler instructions.');
+      }
+      
+      setAppState('CONFIG'); // Go back to config instead of upload so they can retry
     }
   };
 
