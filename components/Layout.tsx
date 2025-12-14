@@ -533,7 +533,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             {t('settings_system', uiLanguage)}
                         </h3>
                         <a 
-                            href="https://github.com/your-repo/issues" 
+                            href="https://github.com/IbDX/QuizGen/issues" 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="flex items-center justify-between p-4 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group rounded cursor-pointer"
