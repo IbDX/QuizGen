@@ -21,7 +21,10 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
         if (!raw) return "";
         let cleaned = raw.trim();
 
-        // 1. Remove markdown code blocks if the AI wrapped them in ```mermaid ... ```
+        // 1. Remove markdown code blocks (allow spaces/case insensitivity)
+        // Matches ```mermaid, ``` mermaid, ```, etc.
+        cleaned = cleaned.replace(/^```\s*mermaid\s*$/gim, '').replace(/^```\s*$/gim, '').trim(); 
+        // Fallback for inline or non-newline anchored
         cleaned = cleaned.replace(/```mermaid/gi, '').replace(/```/g, '').trim();
 
         // 2. Fix: "interface Name {" -> "class Name { <<interface>>"

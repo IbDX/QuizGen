@@ -58,10 +58,11 @@ Instead of static images, Z+ renders interactive graphs.
 For system design questions, the AI generates **Mermaid.js** code.
 
 ### Robustness (Self-Healing)
-LLMs sometimes generate slightly invalid Mermaid syntax (e.g., using "interface" keyword incorrectly in class diagrams).
-The `DiagramRenderer` includes a `cleanMermaidCode` heuristic function:
-1.  **Abstract Classes:** Converts invalid `abstract class X` syntax to valid Mermaid `class X { <<abstract>> }`.
-2.  **Interfaces:** Fixes bracket definitions for interfaces.
+LLMs sometimes generate slightly invalid Mermaid syntax (e.g., using "interface" keyword incorrectly in class diagrams). The `DiagramRenderer` includes a `cleanMermaidCode` heuristic function:
+
+1.  **Markdown Stripping:** Removes ` ```mermaid ` and ` ``` ` delimiters if the AI includes them in the raw string. This handles variations with spaces and case sensitivity.
+2.  **Abstract Classes:** Converts invalid `abstract class X` syntax to valid Mermaid `class X { <<abstract>> }`.
+3.  **Interfaces:** Fixes bracket definitions for interfaces.
 
 ---
 
