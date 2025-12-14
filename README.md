@@ -41,6 +41,7 @@ An advanced, terminal-themed AI examination platform that parses documents to cr
 -   **AI System Agent:** A floating support bot (`AiHelper`) available to assist with platform navigation and troubleshooting.
 -   **Responsive Design:** Mobile-first architecture with touch-optimized controls and auto-hiding menus.
 -   **PDF Reports:** Generate professional PDF reports of your exam performance.
+-   **Issue Reporting:** Integrated link to GitHub Issues for bug tracking via Advanced Settings.
 
 ---
 

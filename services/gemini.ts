@@ -1,3 +1,5 @@
+
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage } from "../types";
 
@@ -342,8 +344,10 @@ If the question contains a 2D mathematical graph, ANALYZE it and extract paramet
 - **Domain/Range**: Estimate visible bounds.
 
 **DIAGRAM EXTRACTION (UML, TREES, FLOWCHARTS):**
-If the question contains a schematic diagram (UML, Sequence, Flowchart, Logic Gates), return valid **Mermaid.js** code in \`diagramConfig\`.
+**CRITICAL INSTRUCTION:** If the question contains ANY schematic diagram (UML Class/Sequence, Flowchart, Logic Gates, Tree Structure), you MUST attempt to "Redraw the figure in the image as a clean digital diagram with no missing details" using **Mermaid.js** code in \`diagramConfig\`.
+- **Fidelity:** Capture ALL labels, arrow types (solid vs dotted), cardinality (1..*), and notes.
 - **Abstract Classes/Methods:** Use '<<abstract>>' or append '*' to method names for italics.
+- **Priority:** Always prefer generating \`diagramConfig\` over \`visualBounds\` for schematic diagrams.
 
 PHASE 3: QUESTION CLASSIFICATION & FORMATTING
 - **MCQ:** If options (A, B, C...) are present.
@@ -815,7 +819,7 @@ export const getAiHelperResponse = async (message: string, lang: UILanguage): Pr
       **YOUR GOAL**: Assist the user with specific troubleshooting, features, and usage of THIS website only.
       
       **APP KNOWLEDGE BASE**:
-      - **Upload**: Supports PDF/IMG (Max 10MB). Securely scans files. Supports Demo mode.
+      - **Upload**: Supports PDF/IMG (Max 15MB). Securely scans files. Supports Demo mode.
       - **Modes**: 
          - *One-Way*: Standard exam, no feedback until end. 
          - *Two-Way*: Interactive, instant feedback per question.

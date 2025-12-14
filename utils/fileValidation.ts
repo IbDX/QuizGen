@@ -4,7 +4,7 @@
  * Validates file size and magic bytes to ensure it is PDF, JPG, or PNG.
  */
 export const validateFile = async (file: File): Promise<{ valid: boolean; error?: string; mimeType?: string }> => {
-  const MAX_SIZE_MB = 10; // Updated to 10MB limit
+  const MAX_SIZE_MB = 15; // Updated to 15MB limit
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
     return { valid: false, error: `File size exceeds ${MAX_SIZE_MB}MB limit.` };
   }
@@ -18,7 +18,7 @@ export const validateFile = async (file: File): Promise<{ valid: boolean; error?
 };
 
 export const validateBatchSize = (files: File[]): { valid: boolean; error?: string } => {
-  const MAX_BATCH_SIZE_MB = 20;
+  const MAX_BATCH_SIZE_MB = 50; // Increased to 50MB to accommodate multiple 15MB files
   const totalSize = files.reduce((acc, f) => acc + f.size, 0);
   if (totalSize > MAX_BATCH_SIZE_MB * 1024 * 1024) {
     return { valid: false, error: `Total batch size exceeds ${MAX_BATCH_SIZE_MB}MB limit.` };
@@ -81,8 +81,8 @@ export const urlToBase64 = async (url: string): Promise<{ base64: string, mimeTy
     
     const blob = await response.blob();
     
-    // STRICT SIZE CHECK (10MB)
-    const MAX_SIZE_MB = 10;
+    // STRICT SIZE CHECK (15MB)
+    const MAX_SIZE_MB = 15;
     if (blob.size > MAX_SIZE_MB * 1024 * 1024) {
         throw new Error(`File size from URL exceeds ${MAX_SIZE_MB}MB limit.`);
     }

@@ -1,4 +1,5 @@
 
+
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64, validateBatchSize } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -49,7 +50,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     
     const newFiles = Array.from(fileList);
 
-    // 0. Batch Size Check (Strict 20MB)
+    // 0. Batch Size Check (Strict 50MB)
     const batchCheck = validateBatchSize(newFiles);
     if (!batchCheck.valid) {
         setLogs([{ name: "BATCH UPLOAD", status: 'FAILED', error: batchCheck.error }]);
@@ -72,7 +73,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
         setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'SCANNING' } : l));
 
         try {
-            // 1. Validation (Strict 10MB per file)
+            // 1. Validation (Strict 15MB per file)
             const validationCheck = await validateFile(file);
             if (!validationCheck.valid || !validationCheck.mimeType) {
                 throw new Error(validationCheck.error || 'Invalid file type');
@@ -115,7 +116,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     setLogs([{ name: url, status: 'SCANNING' }]);
     
     try {
-       // urlToBase64 enforces 10MB limit per file internally
+       // urlToBase64 enforces 15MB limit per file internally
        const { base64, mimeType, name } = await urlToBase64(url);
        const hash = `url_hash_${Date.now()}_${name}`; 
        
@@ -343,7 +344,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
              : "Drag & Drop PDF, PNG, JPG here or Click to Browse"}
           </p>
           <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-2">
-            Max 10MB per file / 20MB Total
+            Max 15MB per file / 50MB Total
           </p>
         </div>
 

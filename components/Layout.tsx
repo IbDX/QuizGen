@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { BackgroundEffect } from './BackgroundEffect';
 import { UILanguage } from '../types';
@@ -504,6 +505,25 @@ export const Layout: React.FC<LayoutProps> = ({
                                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isFullWidth ? 'translate-x-6' : 'translate-x-0'}`}></div>
                              </button>
                          </div>
+                    </div>
+
+                    {/* Advanced Settings */}
+                    <div className="pt-4 mt-4 border-t border-gray-300 dark:border-gray-800">
+                        <label className="block text-sm font-bold mb-2 uppercase text-gray-600 dark:text-terminal-green">{t('advanced_settings', uiLanguage)}</label>
+                        <a 
+                            href="https://github.com/your-repo/issues" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group"
+                        >
+                            <span className="font-bold text-sm text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                {t('report_issue', uiLanguage)}
+                            </span>
+                            <span className="text-gray-400 group-hover:text-red-500">↗</span>
+                        </a>
                     </div>
                 </div>
 

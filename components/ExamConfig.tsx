@@ -2,6 +2,8 @@
 
 
 
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ExamMode, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage } from '../types';
 import { validateFile, fileToBase64, urlToBase64 } from '../utils/fileValidation';
@@ -131,7 +133,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   const processNewFiles = async (fileList: FileList | null) => {
       if (!fileList || fileList.length === 0) return;
 
-      const MAX_BATCH_SIZE_MB = 20;
+      const MAX_BATCH_SIZE_MB = 50; // Increased to 50MB
       // Approximate existing size from base64 (3/4 length)
       const currentTotalSize = files.reduce((acc, f) => acc + (f.base64.length * 0.75), 0);
       const newFiles = Array.from(fileList);
@@ -151,7 +153,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       for (let i = 0; i < newFiles.length; i++) {
           const file = newFiles[i];
           try {
-              // Strict 10MB per file check inside validateFile
+              // Strict 15MB per file check inside validateFile
               const validationCheck = await validateFile(file);
               if (!validationCheck.valid || !validationCheck.mimeType) {
                   throw new Error(`File ${file.name}: ${validationCheck.error || 'Invalid type'}`);
@@ -180,13 +182,13 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
       setIsScanning(true);
       setScanError(null);
       try {
-          // 10MB individual limit check happens in urlToBase64
+          // 15MB individual limit check happens in urlToBase64
           const { base64, mimeType, name } = await urlToBase64(url);
           
-          // Calculate size for Batch Limit Check (20MB)
+          // Calculate size for Batch Limit Check (50MB)
           const newFileSize = base64.length * 0.75; 
           const currentTotalSize = files.reduce((acc, f) => acc + (f.base64.length * 0.75), 0);
-          const MAX_BATCH_SIZE_MB = 20;
+          const MAX_BATCH_SIZE_MB = 50;
 
           if ((currentTotalSize + newFileSize) > MAX_BATCH_SIZE_MB * 1024 * 1024) {
                throw new Error(`Batch limit exceeded. Total cannot exceed ${MAX_BATCH_SIZE_MB}MB.`);
@@ -416,7 +418,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                 )}
             </div>
             <p className="text-[10px] text-gray-400 dark:text-terminal-dimGreen mt-2 font-mono uppercase tracking-wide">
-                Max 10MB/File • 20MB Total
+                Max 15MB/File • 50MB Total
             </p>
         </div>
 

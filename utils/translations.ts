@@ -22,6 +22,8 @@ export const translations = {
         "exit_exam_warning_body": "Are you sure you want to exit? All progress will be lost.",
         "confirm_action": "CONFIRM EXIT",
         "cancel_action": "CANCEL",
+        "advanced_settings": "ADVANCED SETTINGS",
+        "report_issue": "REPORT BUG / ISSUE",
 
         // Upload
         "secure_upload": "SECURE FILE UPLOAD",
@@ -146,6 +148,8 @@ export const translations = {
         "exit_exam_warning_body": "هل أنت متأكد من رغبتك في الخروج؟ سيتم فقدان كل التقدم.",
         "confirm_action": "تأكيد الخروج",
         "cancel_action": "إلغاء",
+        "advanced_settings": "إعدادات متقدمة",
+        "report_issue": "الإبلاغ عن مشكلة / خطأ",
 
         // Upload
         "secure_upload": "رفع الملفات الآمن",
