@@ -425,114 +425,143 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {showSettings && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 cursor-default">
-            <div className="bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-terminal-green w-full max-w-md shadow-2xl p-6 animate-fade-in relative max-h-[90vh] overflow-hidden flex flex-col">
-                <button 
-                    onClick={() => setShowSettings(false)}
-                    className="absolute top-2 right-2 text-gray-500 hover:text-red-500 z-10 bg-white dark:bg-gray-900 rounded-full p-1 rtl:left-2 rtl:right-auto"
-                >
-                    ✕
-                </button>
+            <div className="bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-terminal-green w-full max-w-2xl shadow-2xl p-0 animate-fade-in relative max-h-[90vh] overflow-hidden flex flex-col rounded-lg">
                 
-                <h2 className="text-xl font-bold mb-6 border-b border-gray-300 dark:border-gray-700 pb-2 flex items-center gap-2 text-gray-800 dark:text-terminal-green shrink-0">
-                    {t('system_preferences', uiLanguage)}
-                </h2>
+                {/* SETTINGS HEADER */}
+                <div className="p-4 border-b border-gray-300 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-black/20">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-terminal-green">
+                        <span className="text-2xl">⚙️</span> {t('system_preferences', uiLanguage)}
+                    </h2>
+                    <button 
+                        onClick={() => setShowSettings(false)}
+                        className="text-gray-500 hover:text-red-500 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                    >
+                        ✕
+                    </button>
+                </div>
 
-                <div className="space-y-6 text-gray-800 dark:text-gray-200 overflow-y-auto custom-scrollbar pr-2 flex-grow">
-                    {/* UI Language Selection */}
+                {/* SCROLLABLE CONTENT */}
+                <div className="overflow-y-auto custom-scrollbar flex-grow p-6 space-y-8">
+                    
+                    {/* SECTION 1: INTERFACE */}
                     <div>
-                        <label className="block text-sm font-bold mb-2 uppercase text-gray-600 dark:text-terminal-green">{t('system_language', uiLanguage)}</label>
-                        <div className="grid grid-cols-2 gap-2">
-                             <button
-                                onClick={() => onSetUiLanguage('en')}
-                                className={`p-2 border rounded text-xs font-bold transition-all ${uiLanguage === 'en' ? 'border-terminal-green bg-terminal-green text-black' : 'border-gray-700 bg-black text-gray-500'}`}
-                             >
-                                 ENGLISH
-                             </button>
-                             <button
-                                onClick={() => onSetUiLanguage('ar')}
-                                className={`p-2 border rounded text-xs font-bold transition-all font-sans ${uiLanguage === 'ar' ? 'border-terminal-green bg-terminal-green text-black' : 'border-gray-700 bg-black text-gray-500'}`}
-                             >
-                                 العربية (ARABIC)
-                             </button>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-gray-800 pb-1">
+                            {t('settings_interface', uiLanguage)}
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('system_language', uiLanguage)}</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                     <button onClick={() => onSetUiLanguage('en')} className={`p-2 border rounded text-xs font-bold transition-all ${uiLanguage === 'en' ? 'border-terminal-green bg-terminal-green text-black' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-500'}`}>ENGLISH</button>
+                                     <button onClick={() => onSetUiLanguage('ar')} className={`p-2 border rounded text-xs font-bold transition-all font-sans ${uiLanguage === 'ar' ? 'border-terminal-green bg-terminal-green text-black' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-500'}`}>العربية (ARABIC)</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('ui_theme', uiLanguage)}</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                     <button onClick={() => setTheme('light')} className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'light' ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-500'}`}>LIGHT</button>
+                                     <button onClick={() => setTheme('dark')} className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'dark' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-500'}`}>TERMINAL</button>
+                                     <button onClick={() => setTheme('palestine')} className={`p-2 border rounded text-xs font-bold transition-all relative overflow-hidden ${theme === 'palestine' ? 'border-red-500 text-white' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-500'}`} style={theme === 'palestine' ? { background: 'linear-gradient(135deg, #CE1126 0%, #007A3D 100%)' } : {}}>PALESTINE</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Theme Selection */}
+                    {/* SECTION 2: DISPLAY */}
                     <div>
-                        <label className="block text-sm font-bold mb-2 uppercase text-gray-600 dark:text-terminal-green">{t('ui_theme', uiLanguage)}</label>
-                        <div className="grid grid-cols-3 gap-2">
-                             <button onClick={() => setTheme('light')} className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'light' ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 bg-gray-100 text-gray-600'}`}>LIGHT</button>
-                             <button onClick={() => setTheme('dark')} className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'dark' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-700 bg-black text-gray-500'}`}>TERMINAL</button>
-                             <button onClick={() => setTheme('palestine')} className={`p-2 border rounded text-xs font-bold transition-all relative overflow-hidden ${theme === 'palestine' ? 'border-red-500 text-white' : 'border-gray-700 bg-black text-gray-500'}`} style={theme === 'palestine' ? { background: 'linear-gradient(135deg, #CE1126 0%, #007A3D 100%)' } : {}}>PALESTINE</button>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-gray-800 pb-1">
+                            {t('settings_display', uiLanguage)}
+                        </h3>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('font_family', uiLanguage)}</label>
+                                    <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} className="w-full p-2 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded text-sm font-mono focus:border-terminal-green outline-none dark:text-white">
+                                        {FONT_OPTIONS.map(font => (<option key={font.name} value={font.value}>{font.name}</option>))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('global_font_scale', uiLanguage)}</label>
+                                    <div className="flex items-center gap-4 bg-gray-100 dark:bg-black p-2 rounded border border-gray-300 dark:border-gray-700">
+                                        <span className="text-xs font-bold dark:text-gray-400">A</span>
+                                        <input type="range" min="12" max="24" step="1" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600 dark:accent-terminal-green"/>
+                                        <span className="text-xl font-bold dark:text-white">A</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <div className="flex-1 flex items-center justify-between p-3 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 rounded">
+                                     <span className="font-bold text-sm text-gray-700 dark:text-gray-300">{t('full_width', uiLanguage)}</span>
+                                     <button onClick={onToggleFullWidth} className={`w-12 h-6 rounded-full p-1 transition-colors ${isFullWidth ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                         <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isFullWidth ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                     </button>
+                                </div>
+                                <div className="flex-1 flex items-center justify-between p-3 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 rounded">
+                                     <span className="font-bold text-sm text-gray-700 dark:text-gray-300">{t('auto_hide_menu', uiLanguage)}</span>
+                                     <button onClick={() => setAutoHideHeader(!autoHideHeader)} className={`w-12 h-6 rounded-full p-1 transition-colors ${autoHideHeader ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                         <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoHideHeader ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                     </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Font Family Selection */}
+                    {/* SECTION 3: VISUAL FX */}
                     <div>
-                        <label className="block text-sm font-bold mb-2 uppercase text-gray-600 dark:text-terminal-green">{t('font_family', uiLanguage)}</label>
-                        <select 
-                            value={fontFamily}
-                            onChange={(e) => setFontFamily(e.target.value)}
-                            className="w-full p-2 bg-gray-200 dark:bg-black border border-gray-300 dark:border-gray-700 rounded text-sm font-mono"
-                        >
-                            {FONT_OPTIONS.map(font => (
-                                <option key={font.name} value={font.value}>{font.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Font Size Control */}
-                    <div>
-                        <label className="block text-sm font-bold mb-2 uppercase text-gray-600 dark:text-terminal-green">{t('global_font_scale', uiLanguage)}</label>
-                        <div className="flex items-center gap-4">
-                            <span className="text-xs font-bold">A</span>
-                            <input type="range" min="12" max="24" step="1" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600 dark:accent-terminal-green"/>
-                            <span className="text-xl font-bold">A</span>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-gray-800 pb-1">
+                            {t('settings_visuals', uiLanguage)}
+                        </h3>
+                        <div className="flex flex-col md:flex-row gap-4">
+                             <div className="flex-1 flex items-center justify-between p-3 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 rounded">
+                                 <span className="font-bold text-sm text-gray-700 dark:text-gray-300">{t('digital_background', uiLanguage)}</span>
+                                 <button onClick={() => setEnableBackgroundAnim(!enableBackgroundAnim)} className={`w-12 h-6 rounded-full p-1 transition-colors ${enableBackgroundAnim ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                     <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${enableBackgroundAnim ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                 </button>
+                             </div>
+                             <div className="flex-1 flex items-center justify-between p-3 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 rounded">
+                                 <span className="font-bold text-sm text-gray-700 dark:text-gray-300">{t('terminal_cursor', uiLanguage)}</span>
+                                 <button onClick={() => setUseCustomCursor(!useCustomCursor)} className={`w-12 h-6 rounded-full p-1 transition-colors ${useCustomCursor ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                     <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${useCustomCursor ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                 </button>
+                             </div>
                         </div>
                     </div>
 
-                    {/* Toggles */}
-                    <div className="space-y-3">
-                         <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">
-                             <span className="font-bold text-sm">{t('digital_background', uiLanguage)}</span>
-                             <button onClick={() => setEnableBackgroundAnim(!enableBackgroundAnim)} className={`w-12 h-6 rounded-full p-1 transition-colors ${enableBackgroundAnim ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${enableBackgroundAnim ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                             </button>
-                         </div>
-                         <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black">
-                             <span className="font-bold text-sm">{t('full_width', uiLanguage)}</span>
-                             <button onClick={onToggleFullWidth} className={`w-12 h-6 rounded-full p-1 transition-colors ${isFullWidth ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isFullWidth ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                             </button>
-                         </div>
-                    </div>
-
-                    {/* Advanced Settings */}
-                    <div className="pt-4 mt-4 border-t border-gray-300 dark:border-gray-800">
-                        <label className="block text-sm font-bold mb-2 uppercase text-gray-600 dark:text-terminal-green">{t('advanced_settings', uiLanguage)}</label>
+                    {/* SECTION 4: SYSTEM */}
+                    <div>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-gray-800 pb-1">
+                            {t('settings_system', uiLanguage)}
+                        </h3>
                         <a 
                             href="https://github.com/your-repo/issues" 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group"
+                            className="flex items-center justify-between p-4 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group rounded cursor-pointer"
                         >
-                            <span className="font-bold text-sm text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400 flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                {t('report_issue', uiLanguage)}
-                            </span>
-                            <span className="text-gray-400 group-hover:text-red-500">↗</span>
+                            <div className="flex flex-col">
+                                <span className="font-bold text-sm text-gray-800 dark:text-gray-200 group-hover:text-red-600 dark:group-hover:text-red-400 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    {t('report_issue', uiLanguage)}
+                                </span>
+                                <span className="text-[10px] text-gray-500 mt-1">Submit bug reports or feature requests via GitHub.</span>
+                            </div>
+                            <span className="text-gray-400 group-hover:text-red-500 transform group-hover:translate-x-1 transition-transform">➤</span>
                         </a>
                     </div>
+
                 </div>
 
-                <button 
-                    onClick={() => setShowSettings(false)}
-                    className="w-full mt-6 py-3 bg-gray-800 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold uppercase transition-colors shrink-0"
-                >
-                    {t('save_close', uiLanguage)}
-                </button>
+                {/* FOOTER ACTION */}
+                <div className="p-4 border-t border-gray-300 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
+                    <button 
+                        onClick={() => setShowSettings(false)}
+                        className="w-full py-3 bg-gray-800 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold uppercase transition-colors rounded shadow-lg"
+                    >
+                        {t('save_close', uiLanguage)}
+                    </button>
+                </div>
             </div>
         </div>
       )}
