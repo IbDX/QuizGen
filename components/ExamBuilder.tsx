@@ -12,6 +12,7 @@ interface ExamBuilderProps {
     onCancel: () => void;
     isFullWidth: boolean;
     lang: UILanguage;
+    onQuotaError: () => void;
 }
 
 interface GeneratedExamData {
@@ -20,7 +21,7 @@ interface GeneratedExamData {
     title: string;
 }
 
-export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCancel, isFullWidth, lang }) => {
+export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCancel, isFullWidth, lang, onQuotaError }) => {
     // State
     const [languageSelected, setLanguageSelected] = useState<boolean>(false);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -98,7 +99,10 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             setMessages(prev => [...prev, { role: 'model', text: cleanResponse }]);
             setQuickReplies(newSuggestions.slice(0, 3)); // Ensure max 3
 
-        } catch (error) {
+        } catch (error: any) {
+            if (error.message?.includes('429') || error.message?.toLowerCase().includes('quota')) {
+                onQuotaError();
+            }
             setMessages(prev => [...prev, { role: 'model', text: t('connection_error', lang) }]);
         } finally {
             setIsTyping(false);
@@ -116,8 +120,11 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
         try {
             const { questions, settings, title } = await generateExamFromBuilderChat(messages);
             setGeneratedData({ questions, settings, title });
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+            if (error.message?.includes('429') || error.message?.toLowerCase().includes('quota')) {
+                onQuotaError();
+            }
             alert("Failed to compile exam from chat. Please ensure the conversation has defined specific questions.");
             setIsFinalizing(false);
         }

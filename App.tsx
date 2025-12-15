@@ -85,6 +85,9 @@ const App: React.FC = () => {
       setConfirmModalState({ ...confirmModalState, isOpen: false });
   };
 
+  const handleQuotaError = () => {
+      setSystemStatus('QUOTA_LIMIT');
+  };
 
   const handleFilesAccepted = (files: Array<{base64: string; mime: string; name: string; hash: string}>) => {
     const uniqueBatch: typeof files = [];
@@ -264,8 +267,10 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
     } catch (e: any) {
       console.error(e);
       
-      if (e.message === "429_RATE_LIMIT" || e.message?.includes('429') || e.message?.includes('Quota')) {
-          setSystemStatus('QUOTA_LIMIT');
+      const isQuota = e.message === "429_RATE_LIMIT" || e.message?.includes('429') || e.message?.toLowerCase().includes('quota');
+
+      if (isQuota) {
+          handleQuotaError();
           alert(uiLanguage === 'ar' 
               ? "⚠️ النظام مشغول جداً (تجاوز الحصة). يرجى الانتظار دقيقة والمحاولة لاحقاً." 
               : "⚠️ HIGH TRAFFIC: System quota exceeded. Please wait 1 minute and try again.");
@@ -324,8 +329,8 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
       setAppState('EXAM');
     } catch (e: any) {
        console.error(e);
-       if (e.message?.includes('429') || e.message?.includes('Quota')) {
-           setSystemStatus('QUOTA_LIMIT');
+       if (e.message?.includes('429') || e.message?.toLowerCase().includes('quota')) {
+           handleQuotaError();
        }
        alert('Failed to generate remediation exam.');
        setAppState('RESULTS');
@@ -503,6 +508,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
                   onCancel={() => confirmAndNavigate(handleRestart)}
                   isFullWidth={isFullWidth}
                   lang={uiLanguage}
+                  onQuotaError={handleQuotaError}
               />
           )}
 
@@ -545,6 +551,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
               isFullWidth={isFullWidth}
               autoHideFooter={autoHideFooter}
               lang={uiLanguage}
+              onQuotaError={handleQuotaError}
             />
           )}
       </div>

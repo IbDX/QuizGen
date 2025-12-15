@@ -578,7 +578,8 @@ export const generateExam = async (
        console.warn(`Gemini Generation Attempt ${attempt + 1} failed:`, error);
        
        // Enhanced Rate Limit Handling (429)
-       const isRateLimit = error.message?.includes('429') || error.message?.includes('Quota') || error.status === 429 || error.code === 429;
+       // Use case-insensitive check for 'quota' to catch SDK specific messages
+       const isRateLimit = error.message?.includes('429') || error.message?.toLowerCase().includes('quota') || error.status === 429 || error.code === 429;
        
        if (isRateLimit) {
            console.warn("Rate limit hit. Waiting significantly longer...");

@@ -19,10 +19,11 @@ interface ResultsProps {
     isFullWidth: boolean;
     autoHideFooter: boolean;
     lang: UILanguage;
+    onQuotaError: () => void;
 }
 
 export const Results: React.FC<ResultsProps> = ({ 
-    questions, answers, onRestart, onRetake, onGenerateRemediation, onDownloadPDF, isFullWidth, autoHideFooter, lang 
+    questions, answers, onRestart, onRetake, onGenerateRemediation, onDownloadPDF, isFullWidth, autoHideFooter, lang, onQuotaError 
 }) => {
   // Grading State
   const [isGradingPhase, setIsGradingPhase] = useState(true);
@@ -93,8 +94,11 @@ export const Results: React.FC<ResultsProps> = ({
                           result = await gradeShortAnswer(q, String(ua.answer), lang);
                       }
                       updatedAnswers[uaIndex] = { ...ua, isCorrect: result.isCorrect, feedback: result.feedback };
-                  } catch (e) {
+                  } catch (e: any) {
                       console.error("Grading error", e);
+                      if (e.message?.includes('429') || e.message?.toLowerCase().includes('quota')) {
+                          onQuotaError();
+                      }
                       updatedAnswers[uaIndex] = { ...ua, isCorrect: false, feedback: "System Error: Automated grading failed." };
                   }
               }
