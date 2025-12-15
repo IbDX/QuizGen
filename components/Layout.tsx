@@ -227,35 +227,59 @@ export const Layout: React.FC<LayoutProps> = ({
       <header 
         className={`
             fixed top-0 left-0 right-0 z-40 
-            bg-gray-200/95 dark:bg-terminal-glass backdrop-blur-md 
-            border-b-2 border-gray-300 dark:border-terminal-border 
-            shadow-lg transition-transform duration-700 ease-in-out
+            bg-white/95 dark:bg-[#050505]/95 backdrop-blur-md 
+            border-b-2 border-gray-300 dark:border-terminal-green/50
+            shadow-[0_4px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_rgba(0,255,65,0.1)]
+            transition-transform duration-700 ease-in-out
             h-16 md:h-20 translate-y-0
             ${isMobileMenuOpen ? '' : (isHeaderVisible ? 'md:translate-y-0' : 'md:-translate-y-full')}
         `}
+        style={{
+            backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
+            backgroundSize: '20px 20px',
+            backgroundPosition: 'center',
+        }}
         onMouseLeave={handleMouseLeaveHeader}
         onMouseEnter={handleMouseEnterHeader}
       >
-        <div className="p-4 flex justify-between items-center h-full max-w-7xl mx-auto">
+        {/* Subtle Overlay to dampen pattern opacity */}
+        <div className="absolute inset-0 bg-white/90 dark:bg-[#050505]/90 pointer-events-none"></div>
+
+        <div className="relative p-4 flex justify-between items-center h-full max-w-7xl mx-auto z-10">
+            {/* LEFT: LOGO */}
             <div className="flex items-center gap-4">
                 <button 
                     onClick={onHome}
-                    className="relative group outline-none focus:outline-none"
+                    className="relative group outline-none focus:outline-none flex items-center gap-3"
                     title={t('home', uiLanguage)}
                 >
-                    <div className="relative w-12 h-12 md:w-14 md:h-14 flex items-center justify-center">
-                        <div className="absolute -inset-2 blur opacity-20 group-hover:opacity-50 transition duration-500 bg-terminal-green"></div>
-                        <div className="relative z-10 w-full h-full flex items-center justify-center">
-                            <ZPlusLogo theme={theme} />
-                        </div>
+                    <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border border-transparent dark:border-terminal-green/20 rounded bg-gray-100 dark:bg-black group-hover:border-terminal-green transition-colors overflow-hidden">
+                        <ZPlusLogo theme={theme} />
+                    </div>
+                    <div className="hidden sm:flex flex-col items-start leading-none">
+                        <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tighter">Z+ CORE</span>
+                        <span className="text-[9px] text-gray-500 dark:text-terminal-green font-mono tracking-widest">TERMINAL V1.5</span>
                     </div>
                 </button>
             </div>
             
-            <div className="hidden md:flex gap-4 items-center">
+            {/* CENTER: Status Indicator (Desktop) */}
+            <div className="hidden md:flex items-center gap-2 border border-gray-300 dark:border-terminal-green/30 px-3 py-1 rounded-sm bg-gray-50 dark:bg-[#0a0a0a]">
+                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.8)] animate-pulse"></div>
+                <span className="text-[10px] font-bold text-gray-600 dark:text-terminal-green tracking-widest">SYSTEM: ONLINE</span>
+            </div>
+
+            {/* RIGHT: DESKTOP TOOLS */}
+            <div className="hidden md:flex gap-0 items-center border border-gray-300 dark:border-terminal-green/30 rounded-sm overflow-hidden bg-white dark:bg-[#0a0a0a]">
                 <button
                     onClick={onToggleLibrary}
-                    className={`p-2 border transition-colors group ${isLibraryOpen ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-400 dark:border-terminal-border hover:bg-gray-300 dark:hover:bg-terminal-green dark:hover:text-terminal-btn-text text-gray-700 dark:text-terminal-green'}`}
+                    className={`
+                        h-10 w-12 flex items-center justify-center transition-all border-r border-gray-300 dark:border-terminal-green/30
+                        ${isLibraryOpen 
+                            ? 'bg-blue-600 text-white' 
+                            : 'text-gray-600 dark:text-terminal-green hover:bg-blue-600 dark:hover:bg-terminal-green hover:text-white dark:hover:text-black'
+                        }
+                    `}
                     title={t('library', uiLanguage)}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -265,7 +289,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
                 <button
                     onClick={() => setShowSettings(true)}
-                    className="p-2 border border-gray-400 dark:border-terminal-border hover:bg-gray-300 dark:hover:bg-terminal-green dark:hover:text-terminal-btn-text transition-colors text-gray-700 dark:text-terminal-green"
+                    className="h-10 w-12 flex items-center justify-center transition-all text-gray-600 dark:text-terminal-green hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-black"
                     title={t('settings', uiLanguage)}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -275,68 +299,77 @@ export const Layout: React.FC<LayoutProps> = ({
                 </button>
             </div>
 
+            {/* RIGHT: MOBILE MENU TOGGLE */}
             <div className="md:hidden">
                 <button 
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="p-2 text-gray-800 dark:text-terminal-green hover:bg-gray-200 dark:hover:bg-terminal-gray rounded border border-transparent hover:border-gray-400 dark:hover:border-terminal-border transition-all"
+                    className="p-2 text-gray-800 dark:text-terminal-green hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-black rounded border border-gray-400 dark:border-terminal-green/50 transition-all"
                 >
                     <div className="space-y-1.5">
-                        <div className={`w-6 h-0.5 bg-current transition-transform duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></div>
-                        <div className={`w-6 h-0.5 bg-current transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></div>
-                        <div className={`w-6 h-0.5 bg-current transition-transform duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></div>
+                        <div className={`w-5 h-0.5 bg-current transition-transform duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></div>
+                        <div className={`w-5 h-0.5 bg-current transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></div>
+                        <div className={`w-5 h-0.5 bg-current transition-transform duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></div>
                     </div>
                 </button>
             </div>
         </div>
 
-        {/* MOBILE MENU */}
-        <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out bg-gray-100 dark:bg-terminal-black border-b border-gray-300 dark:border-terminal-border ${isMobileMenuOpen ? 'max-h-[85vh] opacity-100 shadow-2xl overflow-y-auto' : 'max-h-0 opacity-0'}`}>
-            <div className="flex flex-col p-4 gap-4">
+        {/* MOBILE MENU PANEL */}
+        <div className={`
+            md:hidden fixed top-16 left-0 right-0 z-0 bg-gray-100 dark:bg-[#0c0c0c] border-b-2 border-gray-300 dark:border-terminal-green 
+            transition-all duration-300 ease-in-out origin-top shadow-2xl
+            ${isMobileMenuOpen ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0'}
+        `}>
+            <div className="p-4 space-y-4">
                  <div className="grid grid-cols-3 gap-3">
                      <button 
                         onClick={() => { onHome(); setIsMobileMenuOpen(false); }}
-                        className="p-3 flex justify-center items-center rounded border border-gray-300 dark:border-terminal-border hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-terminal-btn-text text-gray-700 dark:text-terminal-green transition-colors"
+                        className="flex flex-col items-center justify-center p-3 rounded bg-white dark:bg-[#151515] border border-gray-300 dark:border-terminal-gray text-gray-700 dark:text-terminal-green hover:border-blue-500 dark:hover:border-terminal-green transition-colors"
                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
+                        <span className="text-[10px] font-bold">HOME</span>
                      </button>
 
                      <button 
                         onClick={() => { onToggleLibrary(); setIsMobileMenuOpen(false); }}
-                        className={`p-3 flex justify-center items-center rounded border transition-colors ${isLibraryOpen ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-terminal-border hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-terminal-btn-text text-gray-700 dark:text-terminal-green'}`}
+                        className={`flex flex-col items-center justify-center p-3 rounded border transition-colors ${isLibraryOpen ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-[#151515] border-gray-300 dark:border-terminal-gray text-gray-700 dark:text-terminal-green hover:border-blue-500 dark:hover:border-terminal-green'}`}
                      >
-                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                          </svg>
+                         <span className="text-[10px] font-bold">LIBRARY</span>
                      </button>
 
                      <button 
                         onClick={() => { setShowSettings(true); setIsMobileMenuOpen(false); }}
-                        className="p-3 flex justify-center items-center rounded border border-gray-300 dark:border-terminal-border hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-terminal-btn-text text-gray-700 dark:text-terminal-green transition-colors"
+                        className="flex flex-col items-center justify-center p-3 rounded bg-white dark:bg-[#151515] border border-gray-300 dark:border-terminal-gray text-gray-700 dark:text-terminal-green hover:border-blue-500 dark:hover:border-terminal-green transition-colors"
                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
+                        <span className="text-[10px] font-bold">CONFIG</span>
                      </button>
                  </div>
 
                  {mobileActions && mobileActions.length > 0 && (
-                     <>
-                        <div className="border-t border-gray-300 dark:border-terminal-border my-2"></div>
-                        <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 px-1 uppercase tracking-wider">Actions</div>
-                        {mobileActions.map((action, i) => (
-                             <button
-                                key={i}
-                                onClick={() => { if(!action.disabled) { action.onClick(); setIsMobileMenuOpen(false); } }}
-                                disabled={action.disabled}
-                                className={`p-4 text-left font-bold text-sm border transition-colors ${getActionColor(action.variant)} ${action.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                             >
-                                {action.label}
-                             </button>
-                        ))}
-                     </>
+                     <div className="border-t border-gray-300 dark:border-terminal-green/30 pt-3 mt-3">
+                        <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 px-1 uppercase tracking-wider mb-2">Actions</div>
+                        <div className="flex flex-col gap-2">
+                            {mobileActions.map((action, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => { if(!action.disabled) { action.onClick(); setIsMobileMenuOpen(false); } }}
+                                    disabled={action.disabled}
+                                    className={`p-3 text-left font-bold text-sm border rounded transition-colors ${getActionColor(action.variant)} ${action.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    {action.label}
+                                </button>
+                            ))}
+                        </div>
+                     </div>
                  )}
             </div>
         </div>
