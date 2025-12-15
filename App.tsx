@@ -15,6 +15,7 @@ import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, Q
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 import { generateExamPDF } from './utils/pdfGenerator';
 import { t } from './utils/translations';
+import { saveToHistory } from './services/library';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('UPLOAD');
@@ -272,6 +273,11 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
 
   const handleExamComplete = (answers: UserAnswer[]) => {
     setUserAnswers(answers);
+    
+    // Auto-save to History
+    const title = preloadedExamTitle || `Auto-Saved Exam ${new Date().toLocaleTimeString()}`;
+    saveToHistory(questions, title);
+    
     setAppState('RESULTS');
   };
 

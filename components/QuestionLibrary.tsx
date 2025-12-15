@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Question, QuestionType, SavedExam, UILanguage } from '../types';
-import { getLibrary, removeQuestion, getSavedExams, removeExam, importSavedExam, triggerExamDownload } from '../services/library';
+import { getLibrary, removeQuestion, getSavedExams, removeExam, importSavedExam, triggerExamDownload, getHistory } from '../services/library';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
 import { GraphRenderer } from './GraphRenderer'; 
@@ -17,8 +17,9 @@ interface QuestionLibraryProps {
 export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, onLoadExam, lang = 'en' }) => {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [exams, setExams] = useState<SavedExam[]>([]);
+    const [history, setHistory] = useState<SavedExam[]>([]);
     const [filter, setFilter] = useState<string>('ALL');
-    const [activeTab, setActiveTab] = useState<'QUESTIONS' | 'EXAMS'>('QUESTIONS');
+    const [activeTab, setActiveTab] = useState<'QUESTIONS' | 'EXAMS' | 'HISTORY'>('QUESTIONS');
     const [isImporting, setIsImporting] = useState(false);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,6 +27,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
     useEffect(() => {
         setQuestions(getLibrary());
         setExams(getSavedExams());
+        setHistory(getHistory());
     }, []);
 
     const handleDeleteQuestion = (id: string) => {
@@ -48,16 +50,22 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
         const file = event.target.files?.[0];
         if (!file) return;
 
+        // Limit file size to 10MB
+        if (file.size > 10 * 1024 * 1024) {
+            alert(lang === 'ar' ? 'حجم الملف كبير جداً. الحد الأقصى 10 ميجابايت.' : 'File too large. Maximum size is 10MB.');
+            return;
+        }
+
         setIsImporting(true);
         try {
             const content = await file.text();
-            const success = await importSavedExam(content);
-            if (success) {
+            const result = await importSavedExam(content);
+            if (result.success) {
                 setExams(getSavedExams());
                 alert(t('import_success', lang));
                 setActiveTab('EXAMS'); 
             } else {
-                alert(t('import_failed', lang) + " (Invalid Format or Schema)");
+                alert(`${t('import_failed', lang)}: ${result.message || "Unknown error"}`);
             }
         } catch (err) {
             alert(t('import_failed', lang));
@@ -113,6 +121,12 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                         className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${activeTab === 'EXAMS' ? 'bg-white dark:bg-terminal-black shadow-sm text-purple-600 dark:text-terminal-green' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}
                     >
                         {t('saved_exams', lang)} ({exams.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('HISTORY')}
+                        className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${activeTab === 'HISTORY' ? 'bg-white dark:bg-terminal-black shadow-sm text-orange-600 dark:text-terminal-green' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}
+                    >
+                        HISTORY ({history.length})
                     </button>
                 </div>
             </div>
@@ -199,7 +213,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                         </div>
                     )}
                 </>
-            ) : (
+            ) : activeTab === 'EXAMS' ? (
                 <>
                     {exams.length === 0 ? (
                         <div className="text-center py-20 opacity-70 text-gray-500 dark:text-gray-400">
@@ -227,6 +241,36 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                                     </div>
                                     <button onClick={() => handleLoadExam(exam)} className="w-full py-3 bg-purple-600 hover:bg-purple-700 dark:bg-terminal-green dark:text-terminal-btn-text dark:hover:bg-terminal-dimGreen font-bold uppercase tracking-widest text-sm transition-colors">
                                         {t('load_retake', lang)}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
+            ) : (
+                // HISTORY TAB
+                <>
+                    {history.length === 0 ? (
+                        <div className="text-center py-20 opacity-70 text-gray-500 dark:text-gray-400">
+                            <div className="text-4xl mb-4 grayscale">🕰️</div>
+                            <p className="font-mono">NO RECENT HISTORY</p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-6 pb-20">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono uppercase tracking-widest mb-2 border-b border-gray-300 dark:border-terminal-gray pb-2">Last 3 Exams</div>
+                            {history.map((exam) => (
+                                <div key={exam.id} className="bg-gray-50 dark:bg-black border border-gray-300 dark:border-terminal-gray p-4 shadow-inner opacity-90 hover:opacity-100 transition-opacity">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <div>
+                                            <h4 className="font-bold text-md text-gray-700 dark:text-terminal-light">{exam.title}</h4>
+                                            <p className="text-[10px] text-gray-500 font-mono uppercase">{new Date(exam.date).toLocaleString()}</p>
+                                        </div>
+                                        <div className="bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 px-2 py-1 rounded text-xs font-bold border border-orange-200 dark:border-orange-800">
+                                            HISTORY
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handleLoadExam(exam)} className="w-full py-2 bg-gray-200 hover:bg-gray-300 dark:bg-terminal-gray dark:hover:bg-terminal-dimGreen dark:text-terminal-green font-bold uppercase tracking-wider text-xs transition-colors rounded">
+                                        RETAKE NOW
                                     </button>
                                 </div>
                             ))}

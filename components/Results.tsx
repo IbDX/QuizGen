@@ -56,6 +56,9 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   const [savedQuestions, setSavedQuestions] = useState<Record<string, boolean>>({});
   const [examSaved, setExamSaved] = useState(false);
   const [isFooterVisible, setIsFooterVisible] = useState(true);
+  
+  // New state to control visibility of filtered results
+  const [showAll, setShowAll] = useState(false);
 
   const [finalResults, setFinalResults] = useState<any[]>([]);
   const [gradingStatus, setGradingStatus] = useState<Record<string, boolean>>({});
@@ -162,6 +165,13 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   const grade = getLetterGrade(score);
   const isFailure = grade === 'F';
   const isPerfect = score === 100;
+
+  // Auto-show all if score is 100% or user toggles it
+  const effectiveShowAll = isPerfect || showAll;
+  
+  const visibleResults = effectiveShowAll 
+      ? finalResults 
+      : finalResults.filter(r => !r.isCorrect);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
@@ -301,8 +311,26 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         )}
       </div>
 
+      <div className="flex justify-between items-center mb-6 px-2">
+          <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              {effectiveShowAll ? 'Showing Full Exam' : `Showing ${finalResults.length - correctCount} Incorrect Answers`}
+          </div>
+          {!isPerfect && (
+              <button 
+                  onClick={() => setShowAll(!showAll)} 
+                  className="text-xs font-bold uppercase border border-gray-400 dark:border-terminal-gray px-3 py-1.5 rounded hover:bg-gray-200 dark:hover:bg-terminal-gray/50 transition-colors text-gray-700 dark:text-terminal-light"
+              >
+                  {showAll ? (lang === 'ar' ? 'عرض الأخطاء فقط' : 'Review Mistakes') : (lang === 'ar' ? 'عرض الاختبار كاملاً' : 'View Full Exam')}
+              </button>
+          )}
+      </div>
+
       <div className="space-y-8 mb-12 relative z-10">
-        {finalResults.map((item, idx) => {
+        {visibleResults.map((item, idx) => {
+          // Adjust display index logic: if filtered, show original question number?
+          // For now, let's show the original index from the main list.
+          const originalIndex = questions.findIndex(q => q.id === item.question.id);
+          
           const hasCodeBlockInText = item.question.text.includes('```');
           let displayText = item.question.text;
           if (item.question.codeSnippet && !hasCodeBlockInText && displayText.includes(item.question.codeSnippet)) {
@@ -317,7 +345,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-5 md:w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" /></svg>
                 </button>
                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-terminal-gray pr-8 rtl:pr-0 rtl:pl-8">
-                    <h3 className="font-bold text-lg dark:text-terminal-light">{t('question', lang)} {idx + 1}</h3>
+                    <h3 className="font-bold text-lg dark:text-terminal-light">{t('question', lang)} {originalIndex + 1}</h3>
                     {gradingStatus[item.question.id] ? (
                          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-500 dark:text-black animate-pulse">GRADING...</span>
                     ) : (
@@ -388,6 +416,12 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
             </div>
           )
         })}
+        {visibleResults.length === 0 && !isPerfect && (
+            <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+                <p>No incorrect answers found based on filtering.</p>
+                <button onClick={() => setShowAll(true)} className="text-blue-500 underline mt-2 text-sm">View all answers</button>
+            </div>
+        )}
       </div>
 
       {autoHideFooter && <div className="hidden md:block fixed bottom-0 left-0 w-full h-6 z-40 bg-transparent cursor-crosshair" onMouseEnter={handleMouseEnterFooter} />}
