@@ -5,6 +5,22 @@ import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILan
 // Helper for delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Helper to detect 429/Quota errors from various Google GenAI error shapes
+const isRateLimitError = (error: any): boolean => {
+    if (!error) return false;
+    // Check message string
+    const msg = (error.message || error.toString()).toLowerCase();
+    if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted')) return true;
+    
+    // Check object properties (Fetch response or SDK Error)
+    if (error.status === 429 || error.code === 429) return true;
+    
+    // Check nested error object (Google API common format)
+    if (error.error?.code === 429 || error.error?.status === 'RESOURCE_EXHAUSTED') return true;
+    
+    return false;
+};
+
 // Helper to generate schema based on preference
 const getExamSchema = (preference: QuestionFormatPreference): Schema => {
   let allowedDescription = "One of: 'MCQ', 'TRACING', 'CODING'";
@@ -577,11 +593,8 @@ export const generateExam = async (
     } catch (error: any) {
        console.warn(`Gemini Generation Attempt ${attempt + 1} failed:`, error);
        
-       // Enhanced Rate Limit Handling (429)
-       // Use case-insensitive check for 'quota' to catch SDK specific messages
-       const isRateLimit = error.message?.includes('429') || error.message?.toLowerCase().includes('quota') || error.status === 429 || error.code === 429;
-       
-       if (isRateLimit) {
+       // Use robust 429 detection logic
+       if (isRateLimitError(error)) {
            console.warn("Rate limit hit. Waiting significantly longer...");
            // Base wait of 10s + exponential backoff + jitter for rate limits
            const waitTime = 10000 + (3000 * Math.pow(2, attempt)) + (Math.random() * 2000);
@@ -595,7 +608,7 @@ export const generateExam = async (
        if (attempt >= maxRetries) {
            console.error("Gemini Generation Final Failure:", error);
            // Re-throw with clear message for UI
-           if (isRateLimit) throw new Error("429_RATE_LIMIT");
+           if (isRateLimitError(error)) throw new Error("429_RATE_LIMIT");
            throw error;
        }
     }
@@ -897,8 +910,12 @@ export const sendExamBuilderMessage = async (history: ChatMessage[], newMessage:
 
         const result = await chat.sendMessage({ message: newMessage });
         return result.text;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Exam Builder Chat Error", error);
+        // FIX: Propagate Rate Limit Errors
+        if (isRateLimitError(error)) {
+            throw new Error("429_RATE_LIMIT");
+        }
         throw new Error("Failed to communicate with Exam Builder Agent.");
     }
 }
@@ -946,8 +963,12 @@ export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promi
         }
         throw new Error("No exam JSON generated");
 
-    } catch (error) {
+    } catch (error: any) {
          console.error("Exam Builder Finalization Error", error);
+         // FIX: Propagate Rate Limit Errors
+         if (isRateLimitError(error)) {
+             throw new Error("429_RATE_LIMIT");
+         }
          throw error;
     }
 }

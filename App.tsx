@@ -267,7 +267,14 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
     } catch (e: any) {
       console.error(e);
       
-      const isQuota = e.message === "429_RATE_LIMIT" || e.message?.includes('429') || e.message?.toLowerCase().includes('quota');
+      // Enhanced 429 Detection to ensure UI goes red/offline
+      const isQuota = 
+          e.message === "429_RATE_LIMIT" || 
+          e.message?.includes('429') || 
+          e.message?.toLowerCase().includes('quota') ||
+          e.message?.toLowerCase().includes('resource_exhausted') ||
+          e.status === 429 ||
+          e.code === 429;
 
       if (isQuota) {
           handleQuotaError();
@@ -329,7 +336,13 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
       setAppState('EXAM');
     } catch (e: any) {
        console.error(e);
-       if (e.message?.includes('429') || e.message?.toLowerCase().includes('quota')) {
+       const isQuota = 
+            e.message?.includes('429') || 
+            e.message?.toLowerCase().includes('quota') ||
+            e.message?.toLowerCase().includes('resource_exhausted') ||
+            e.status === 429;
+
+       if (isQuota) {
            handleQuotaError();
        }
        alert('Failed to generate remediation exam.');
