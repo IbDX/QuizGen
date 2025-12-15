@@ -29,21 +29,21 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
 
         // 2. Fix: "interface Name {" -> "class Name { <<interface>>"
         if (cleaned.includes('classDiagram')) {
-             cleaned = cleaned.replace(/interface\s+(\w+)\s*\{/g, 'class $1 {\n<<interface>>');
-        }
-
-        // 3. Fix: "interface Name" without brackets in classDiagram context if defined separately
-        if (cleaned.includes('classDiagram') && !cleaned.includes('<<interface>>')) {
+             cleaned = cleaned.replace(/interface\s+(\w+)\s*\{/g, 'class $1 {\n<<interface>>\n');
+             
+             // Fix: "interface Name" (standalone definition)
              cleaned = cleaned.replace(/^\s*interface\s+(\w+)\s*$/gm, 'class $1 {\n<<interface>>\n}');
         }
 
-        // 4. Fix: "abstract class Name {" -> "class Name { <<abstract>>"
-        // LLMs often write "abstract class Name" which is invalid in Mermaid.
+        // 3. Fix: "abstract class Name {" -> "class Name { <<abstract>>"
         if (cleaned.includes('classDiagram')) {
-             cleaned = cleaned.replace(/^\s*abstract\s+class\s+(\w+)\s*\{/gm, 'class $1 {\n<<abstract>>');
-             // Also handle single line definition if exists
+             cleaned = cleaned.replace(/^\s*abstract\s+class\s+(\w+)\s*\{/gm, 'class $1 {\n<<abstract>>\n');
+             // Handle single line definition
              cleaned = cleaned.replace(/^\s*abstract\s+class\s+(\w+)\s*$/gm, 'class $1 {\n<<abstract>>\n}');
         }
+        
+        // 4. Fix: "class Name : member" -> "Name : member"
+        cleaned = cleaned.replace(/^\s*class\s+(\w+)\s*:/gm, '$1 :');
 
         return cleaned;
     };
@@ -53,7 +53,7 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
 
         const renderDiagram = async () => {
             try {
-                // Generate a unique ID for this diagram to prevent conflicts in DOM
+                // Generate a unique ID for this diagram
                 const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 
                 // Initialize if needed
@@ -61,7 +61,7 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
                     startOnLoad: false, 
                     theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default',
                     securityLevel: 'loose',
-                    logLevel: 'error', // Reduce console noise
+                    logLevel: 'error',
                 });
 
                 // Clean the code before rendering
@@ -72,7 +72,6 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
                 }
 
                 // Render the diagram
-                // mermaid.render returns an object { svg } in v10+
                 const { svg } = await window.mermaid.render(id, safeCode);
                 setSvg(svg);
                 setError(null);
