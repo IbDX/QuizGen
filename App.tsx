@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Layout, MobileAction } from './components/Layout';
+import { Layout, MobileAction, SystemStatus } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
 import { ExamConfig } from './components/ExamConfig';
 import { ExamBuilder } from './components/ExamBuilder';
@@ -32,6 +32,9 @@ const App: React.FC = () => {
   const [uiLanguage, setUiLanguage] = useState<UILanguage>('en');
   
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
+  
+  // Track API Token Health (Online / Quota Exceeded)
+  const [systemStatus, setSystemStatus] = useState<SystemStatus>('ONLINE');
 
   // State for the custom confirmation modal
   const [confirmModalState, setConfirmModalState] = useState({
@@ -218,6 +221,8 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
 
   const handleStartExam = async (examSettings: ExamSettings) => {
     setSettings(examSettings);
+    // Optimistically assume online when starting a new operation
+    setSystemStatus('ONLINE'); 
 
     // Case 1: Preloaded Exam (From Library)
     if (preloadedExamTitle) {
@@ -260,6 +265,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
       console.error(e);
       
       if (e.message === "429_RATE_LIMIT" || e.message?.includes('429') || e.message?.includes('Quota')) {
+          setSystemStatus('QUOTA_LIMIT');
           alert(uiLanguage === 'ar' 
               ? "⚠️ النظام مشغول جداً (تجاوز الحصة). يرجى الانتظار دقيقة والمحاولة لاحقاً." 
               : "⚠️ HIGH TRAFFIC: System quota exceeded. Please wait 1 minute and try again.");
@@ -289,6 +295,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
     setUserAnswers([]);
     setIsLibraryOpen(false);
     setPreloadedExamTitle(undefined);
+    setSystemStatus('ONLINE'); // Reset visual status on restart
   };
 
   const handleRetake = () => {
@@ -307,6 +314,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
 
   const handleRemediation = async (wrongIds: string[]) => {
     setAppState('GENERATING');
+    setSystemStatus('ONLINE'); // Reset to try again
     setLoadingMsg(uiLanguage === 'ar' ? 'تحليل نقاط الضعف...' : 'ANALYZING FAILURE POINTS... GENERATING TACTICAL REMEDIATION EXAM...');
     try {
       const newQuestions = await generateExamFromWrongAnswers(questions, wrongIds);
@@ -314,8 +322,11 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
       setUserAnswers([]);
       setPreloadedExamTitle(undefined); // Treat as new exam context
       setAppState('EXAM');
-    } catch (e) {
+    } catch (e: any) {
        console.error(e);
+       if (e.message?.includes('429') || e.message?.includes('Quota')) {
+           setSystemStatus('QUOTA_LIMIT');
+       }
        alert('Failed to generate remediation exam.');
        setAppState('RESULTS');
     }
@@ -410,6 +421,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
       uiLanguage={uiLanguage}
       onSetUiLanguage={setUiLanguage}
       forceStaticHeader={appState === 'UPLOAD'}
+      systemStatus={systemStatus}
     >
       <ConfirmModal 
         isOpen={confirmModalState.isOpen}

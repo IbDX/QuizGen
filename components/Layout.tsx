@@ -12,6 +12,8 @@ export interface MobileAction {
     disabled?: boolean;
 }
 
+export type SystemStatus = 'ONLINE' | 'QUOTA_LIMIT' | 'OFFLINE';
+
 interface LayoutProps {
   children: React.ReactNode;
   onHome: () => void;
@@ -25,6 +27,7 @@ interface LayoutProps {
   uiLanguage: UILanguage;
   onSetUiLanguage: (lang: UILanguage) => void;
   forceStaticHeader?: boolean;
+  systemStatus?: SystemStatus;
 }
 
 export type ThemeOption = 'light' | 'dark' | 'palestine';
@@ -147,7 +150,8 @@ export const Layout: React.FC<LayoutProps> = ({
     children, onHome, onToggleLibrary, isLibraryOpen, isFullWidth, onToggleFullWidth,
     autoHideFooter = true, onToggleAutoHideFooter, mobileActions,
     uiLanguage, onSetUiLanguage,
-    forceStaticHeader = false
+    forceStaticHeader = false,
+    systemStatus = 'ONLINE'
 }) => {
   const [theme, setTheme] = useState<ThemeOption>('dark');
   const [showSettings, setShowSettings] = useState(false);
@@ -196,6 +200,28 @@ export const Layout: React.FC<LayoutProps> = ({
       backgroundImage: 'radial-gradient(circle at 50% 0%, #1b231d 0%, #0b0f0c 70%)'
   } : {};
 
+  // Status Styling Logic
+  const getStatusColor = () => {
+      switch(systemStatus) {
+          case 'QUOTA_LIMIT': return 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]';
+          case 'OFFLINE': return 'bg-gray-500 shadow-none';
+          case 'ONLINE': default: return 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.8)]';
+      }
+  };
+
+  const getStatusTextColor = () => {
+      switch(systemStatus) {
+          case 'QUOTA_LIMIT': return 'text-red-600 dark:text-red-500';
+          case 'OFFLINE': return 'text-gray-500 dark:text-gray-500';
+          case 'ONLINE': default: return 'text-gray-600 dark:text-terminal-green';
+      }
+  };
+
+  const getStatusBorderColor = () => {
+      if (systemStatus === 'QUOTA_LIMIT') return 'border-red-500 dark:border-red-500/50';
+      return 'border-gray-300 dark:border-terminal-green/30';
+  };
+
   return (
     <div 
         className={`min-h-screen flex flex-col font-mono selection:bg-terminal-green selection:text-terminal-btn-text ${useCustomCursor ? 'custom-cursor' : ''} relative overflow-x-hidden transition-colors duration-500`} 
@@ -228,9 +254,9 @@ export const Layout: React.FC<LayoutProps> = ({
         className={`
             fixed top-0 left-0 right-0 z-40 
             bg-white/95 dark:bg-[#050505]/95 backdrop-blur-md 
-            border-b-2 border-gray-300 dark:border-terminal-green/50
+            border-b-2 ${systemStatus === 'QUOTA_LIMIT' ? 'border-red-500' : 'border-gray-300 dark:border-terminal-green/50'}
             shadow-[0_4px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_rgba(0,255,65,0.1)]
-            transition-transform duration-700 ease-in-out
+            transition-all duration-700 ease-in-out
             h-16 md:h-20 translate-y-0
             ${isMobileMenuOpen ? '' : (isHeaderVisible ? 'md:translate-y-0' : 'md:-translate-y-full')}
         `}
@@ -264,9 +290,11 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
             
             {/* CENTER: Status Indicator (Desktop) */}
-            <div className="hidden md:flex items-center gap-2 border border-gray-300 dark:border-terminal-green/30 px-3 py-1 rounded-sm bg-gray-50 dark:bg-[#0a0a0a]">
-                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.8)] animate-pulse"></div>
-                <span className="text-[10px] font-bold text-gray-600 dark:text-terminal-green tracking-widest">SYSTEM: ONLINE</span>
+            <div className={`hidden md:flex items-center gap-2 border ${getStatusBorderColor()} px-3 py-1 rounded-sm bg-gray-50 dark:bg-[#0a0a0a]`}>
+                <div className={`w-2 h-2 rounded-full ${getStatusColor()} animate-pulse`}></div>
+                <span className={`text-[10px] font-bold ${getStatusTextColor()} tracking-widest uppercase`}>
+                    SYSTEM: {systemStatus.replace('_', ' ')}
+                </span>
             </div>
 
             {/* RIGHT: DESKTOP TOOLS */}
@@ -321,6 +349,13 @@ export const Layout: React.FC<LayoutProps> = ({
             ${isMobileMenuOpen ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0'}
         `}>
             <div className="p-4 space-y-4">
+                 <div className="flex items-center gap-2 border border-gray-300 dark:border-terminal-green/30 px-3 py-2 rounded-sm bg-gray-200 dark:bg-[#151515] mb-4 justify-center">
+                    <div className={`w-2 h-2 rounded-full ${getStatusColor()} animate-pulse`}></div>
+                    <span className={`text-[10px] font-bold ${getStatusTextColor()} tracking-widest uppercase`}>
+                        SYSTEM: {systemStatus.replace('_', ' ')}
+                    </span>
+                 </div>
+
                  <div className="grid grid-cols-3 gap-3">
                      <button 
                         onClick={() => { onHome(); setIsMobileMenuOpen(false); }}
