@@ -335,7 +335,21 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
         return isCorrect;
      });
      const score = Math.round((correctCount / questions.length) * 100);
-     const getGrade = (s: number) => s >= 97 ? 'A+' : s >= 93 ? 'A' : s >= 90 ? 'A-' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 50 ? 'D' : 'F';
+     const getGrade = (s: number) => {
+        if (s >= 97) return 'Z+';
+        if (s >= 93) return 'A';
+        if (s >= 90) return 'A-';
+        if (s >= 87) return 'B+';
+        if (s >= 83) return 'B';
+        if (s >= 80) return 'B-';
+        if (s >= 77) return 'C+';
+        if (s >= 73) return 'C';
+        if (s >= 70) return 'C-';
+        if (s >= 67) return 'D+';
+        if (s >= 63) return 'D';
+        if (s >= 60) return 'D-';
+        return 'F';
+     };
      generateExamPDF(questions, score, getGrade(score), "User");
   };
   
@@ -515,6 +529,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
               onRestart={handleRestart}
               onRetake={handleRetake}
               onGenerateRemediation={handleRemediation}
+              onDownloadPDF={handleDownloadPDF}
               isFullWidth={isFullWidth}
               autoHideFooter={autoHideFooter}
               lang={uiLanguage}

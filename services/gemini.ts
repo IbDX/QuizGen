@@ -698,11 +698,14 @@ export const gradeCodingAnswer = async (question: Question, code: string, lang: 
     });
 
     if (response.text) {
-      return JSON.parse(response.text);
+      // Heuristic cleaning: sometimes models wrap JSON in markdown despite schema config
+      const cleanJson = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanJson);
     }
     return { isCorrect: false, feedback: "AI grading failed to parse response." };
   } catch (error) {
-    return { isCorrect: false, feedback: "Error connecting to AI grading service." };
+    console.error("AI Grading Error:", error);
+    return { isCorrect: false, feedback: "Error connecting to AI grading service. Please try again." };
   }
 };
 
@@ -748,10 +751,12 @@ export const gradeShortAnswer = async (question: Question, answer: string, lang:
     });
 
     if (response.text) {
-        return JSON.parse(response.text);
+        const cleanJson = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanJson);
     }
     return { isCorrect: false, feedback: "Grading Error." };
   } catch (e) {
+      console.error("AI Short Answer Grading Error:", e);
       return { isCorrect: false, feedback: "Grading Service Unavailable." };
   }
 };

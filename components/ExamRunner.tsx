@@ -93,7 +93,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   };
 
   const handleFinish = () => {
-    if (inputError) return;
+    if (inputError || isGrading) return;
     onComplete(Array.from(answers.values()));
   };
 
@@ -189,6 +189,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   };
 
   const nextQuestion = () => {
+    if (isGrading) return;
     setShowFeedback(false);
     setCurrentFeedback("");
     setInputError(null);
@@ -199,6 +200,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   };
   
   const prevQuestion = () => {
+    if (isGrading) return;
     setShowFeedback(false);
     setCurrentFeedback("");
     setInputError(null);
@@ -209,7 +211,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   };
 
   const jumpToQuestion = (index: number) => {
-    if (isOneWay) return;
+    if (isOneWay || isGrading) return;
     setShowFeedback(false);
     setCurrentFeedback("");
     setInputError(null);
@@ -273,7 +275,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                     <button
                         key={idx}
                         onClick={() => jumpToQuestion(idx)}
-                        disabled={isOneWay}
+                        disabled={isOneWay || isGrading}
                         className={`
                             w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs font-bold border transition-all touch-manipulation
                             ${isCurrent 
@@ -282,7 +284,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                                     ? `bg-gray-200 dark:bg-terminal-dimGreen text-gray-700 dark:text-terminal-black border-gray-300 dark:border-terminal-dimGreen ${isOneWay ? 'opacity-50 cursor-not-allowed' : ''}` 
                                     : `bg-transparent text-gray-400 dark:text-terminal-green border-gray-300 dark:border-terminal-gray ${!isOneWay && 'hover:border-terminal-green'}`
                             }
-                            ${isOneWay ? 'cursor-not-allowed' : ''}
+                            ${isOneWay || isGrading ? 'cursor-not-allowed' : ''}
                         `}
                     >
                         {lang === 'ar' ? toArabicNumerals(idx + 1) : idx + 1}
@@ -486,10 +488,10 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         <div className="mt-8 pt-4 border-t border-gray-200 dark:border-terminal-gray flex flex-row rtl:flex-row-reverse items-center justify-between">
              <button 
                 onClick={prevQuestion} 
-                disabled={currentIndex === 0 || isOneWay}
+                disabled={currentIndex === 0 || isOneWay || isGrading}
                 className={`
                     flex items-center justify-center p-3 md:p-4 rounded-full transition-all group active:scale-95
-                    ${currentIndex === 0 || isOneWay 
+                    ${currentIndex === 0 || isOneWay || isGrading
                         ? 'opacity-30 cursor-not-allowed text-gray-400' 
                         : 'text-terminal-green hover:bg-terminal-green/10 cursor-pointer'
                     }
@@ -515,7 +517,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                  {isLastQuestion && (
                     <button 
                         onClick={handleFinish}
-                        disabled={!!inputError}
+                        disabled={!!inputError || isGrading}
                         className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen shadow text-sm tracking-wider disabled:opacity-50 uppercase rounded transition-colors whitespace-nowrap"
                     >
                         {t('submit', lang)}
@@ -525,10 +527,10 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
              <button 
                 onClick={nextQuestion}
-                disabled={isLastQuestion} 
+                disabled={isLastQuestion || isGrading} 
                 className={`
                     flex items-center justify-center p-3 md:p-4 rounded-full transition-all group active:scale-95
-                    ${isLastQuestion
+                    ${isLastQuestion || isGrading
                         ? 'opacity-0 pointer-events-none' 
                         : 'text-terminal-green hover:bg-terminal-green/10 cursor-pointer'
                     }

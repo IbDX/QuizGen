@@ -34,6 +34,10 @@ const FileItem: React.FC<FileItemProps> = ({
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isHovering, setIsHovering] = useState(false);
     const [loadingPreview, setLoadingPreview] = useState(false);
+    
+    // Refs for positioning the fixed tooltip
+    const itemRef = useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = useState<{top: number, left: number, width: number} | null>(null);
 
     useEffect(() => {
         if (!isHovering) return;
@@ -73,11 +77,20 @@ const FileItem: React.FC<FileItemProps> = ({
         }
     }, [isHovering, file]);
 
+    const handleMouseEnter = () => {
+        if (itemRef.current) {
+            const rect = itemRef.current.getBoundingClientRect();
+            setCoords({ top: rect.top, left: rect.left, width: rect.width });
+            setIsHovering(true);
+        }
+    };
+
     return (
         <div 
+            ref={itemRef}
             className="relative group"
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={() => { setIsHovering(false); setCoords(null); }}
         >
             {/* File Chip */}
             <div className="flex justify-between items-center p-3 bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-terminal-green transition-all shadow-sm">
@@ -97,13 +110,18 @@ const FileItem: React.FC<FileItemProps> = ({
                 </button>
             </div>
 
-            {/* Hover Preview Tooltip */}
-            {isHovering && (
-                <div className={`
-                    absolute z-50 bottom-full mb-2 p-2 bg-white dark:bg-black border border-gray-300 dark:border-terminal-green shadow-2xl rounded-lg
-                    ${lang === 'ar' ? 'right-0' : 'left-0'}
-                    w-48 h-auto animate-fade-in pointer-events-none
-                `}>
+            {/* Hover Preview Tooltip - Fixed Position to avoid clipping and z-index issues */}
+            {isHovering && coords && (
+                <div 
+                    className="fixed z-[9999] p-2 bg-white dark:bg-black border border-gray-300 dark:border-terminal-green shadow-2xl rounded-lg w-48 h-auto animate-fade-in pointer-events-none"
+                    style={{
+                        top: coords.top - 12,
+                        // For RTL: align right edge of tooltip with right edge of item
+                        // 192px is roughly w-48 (12rem)
+                        left: lang === 'ar' ? (coords.left + coords.width - 192) : coords.left,
+                        transform: 'translateY(-100%)'
+                    }}
+                >
                     {loadingPreview ? (
                         <div className="h-32 flex items-center justify-center text-xs text-gray-500">Generating Preview...</div>
                     ) : previewUrl ? (
@@ -111,7 +129,8 @@ const FileItem: React.FC<FileItemProps> = ({
                     ) : (
                         <div className="h-20 flex items-center justify-center text-xs text-gray-400 italic">No Preview</div>
                     )}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-3 h-3 bg-white dark:bg-black border-b border-r border-gray-300 dark:border-terminal-green transform rotate-45"></div>
+                    {/* Arrow */}
+                    <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-black border-b border-r border-gray-300 dark:border-terminal-green transform rotate-45"></div>
                 </div>
             )}
         </div>

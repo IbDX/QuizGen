@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Question, UserAnswer, QuestionType, UILanguage, LeaderboardEntry } from '../types';
 import { t } from '../utils/translations';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -7,6 +7,7 @@ import { CodeWindow } from './CodeWindow';
 import { GraphRenderer } from './GraphRenderer';
 import { DiagramRenderer } from './DiagramRenderer';
 import { saveFullExam, triggerExamDownload } from '../services/library';
+import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini';
 
 interface ResultsProps {
     questions: Question[];
@@ -14,40 +15,112 @@ interface ResultsProps {
     onRestart: () => void;
     onRetake: () => void;
     onGenerateRemediation: (ids: string[]) => void;
+    onDownloadPDF: () => void;
     isFullWidth: boolean;
     autoHideFooter: boolean;
     lang: UILanguage;
 }
 
 export const Results: React.FC<ResultsProps> = ({ 
-    questions, answers, onRestart, onRetake, onGenerateRemediation, isFullWidth, autoHideFooter, lang 
+    questions, answers, onRestart, onRetake, onGenerateRemediation, onDownloadPDF, isFullWidth, autoHideFooter, lang 
 }) => {
+  // Grading State
+  const [isGradingPhase, setIsGradingPhase] = useState(true);
+  const [gradingProgress, setGradingProgress] = useState({ current: 0, total: 0 });
+  const [finalAnswers, setFinalAnswers] = useState<UserAnswer[]>([]);
+  
+  // Results State
   const [score, setScore] = useState(0);
   const [isElite, setIsElite] = useState(false);
-  const [viewMode, setViewMode] = useState<'ERRORS_ONLY' | 'ALL'>('ERRORS_ONLY'); // Default to errors only
+  const [viewMode, setViewMode] = useState<'ERRORS_ONLY' | 'ALL'>('ERRORS_ONLY'); 
   const [agentName, setAgentName] = useState('');
   const [savedToLeaderboard, setSavedToLeaderboard] = useState(false);
   const [wrongQuestionIds, setWrongQuestionIds] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   
+  // 1. Post-Processing Grading Loop
   useEffect(() => {
+      const runGrading = async () => {
+          // Identify questions needing AI grading that haven't been graded yet
+          // (e.g. from One-Way mode or skipped 'Check' in Two-Way)
+          const pendingGrading = questions.filter(q => {
+              const ua = answers.find(a => a.questionId === q.id);
+              // Must have an answer provided to grade
+              if (!ua) return false; 
+              // Skip if already graded (e.g. Two-Way mode check)
+              if (ua.isCorrect !== undefined) return false;
+              // Only grade subjective types
+              return q.type === QuestionType.CODING || q.type === QuestionType.SHORT_ANSWER;
+          });
+
+          if (pendingGrading.length === 0) {
+              setFinalAnswers(answers);
+              setIsGradingPhase(false);
+              return;
+          }
+
+          setGradingProgress({ current: 0, total: pendingGrading.length });
+          const updatedAnswers = [...answers];
+
+          for (let i = 0; i < pendingGrading.length; i++) {
+              const q = pendingGrading[i];
+              const uaIndex = updatedAnswers.findIndex(a => a.questionId === q.id);
+              const ua = updatedAnswers[uaIndex];
+
+              // Skip empty answers locally to save API calls
+              if (!String(ua.answer).trim()) {
+                  updatedAnswers[uaIndex] = { ...ua, isCorrect: false, feedback: t('no_answer_provided', lang) };
+              } else {
+                  try {
+                      let result;
+                      if (q.type === QuestionType.CODING) {
+                          result = await gradeCodingAnswer(q, String(ua.answer), lang);
+                      } else {
+                          result = await gradeShortAnswer(q, String(ua.answer), lang);
+                      }
+                      updatedAnswers[uaIndex] = { ...ua, isCorrect: result.isCorrect, feedback: result.feedback };
+                  } catch (e) {
+                      console.error("Grading error", e);
+                      updatedAnswers[uaIndex] = { ...ua, isCorrect: false, feedback: "System Error: Automated grading failed." };
+                  }
+              }
+              
+              setGradingProgress({ current: i + 1, total: pendingGrading.length });
+          }
+
+          setFinalAnswers(updatedAnswers);
+          setIsGradingPhase(false);
+      };
+
+      runGrading();
+  }, [questions, answers, lang]);
+
+  // 2. Score Calculation (Runs only after grading is complete)
+  useEffect(() => {
+    if (isGradingPhase) return;
+
     let correctCount = 0;
     const wrongIds: string[] = [];
 
     questions.forEach(q => {
-        const ua = answers.find(a => a.questionId === q.id);
+        const ua = finalAnswers.find(a => a.questionId === q.id);
         let isCorrect = false;
 
         if (ua) {
             if (q.type === QuestionType.MCQ) {
+                // MCQ Deterministic Check
+                // Note: Standard MCQ check. If options exist, use index. Else (text input), treat as failure if no AI grading logic hit (fallback).
                 if (typeof ua.answer === 'number' && ua.answer === q.correctOptionIndex) {
                     isCorrect = true;
                 }
             } else if (q.type === QuestionType.TRACING) {
+                // Tracing Deterministic Check
                 const userTxt = String(ua.answer).trim().toLowerCase();
                 const correctTxt = String(q.tracingOutput || "").trim().toLowerCase();
                 if (userTxt === correctTxt) isCorrect = true;
             } else {
+                // AI Graded Check (CODING / SHORT_ANSWER)
                 if (ua.isCorrect === true) isCorrect = true;
             }
         }
@@ -61,13 +134,17 @@ export const Results: React.FC<ResultsProps> = ({
     setIsElite(calculatedScore === 100);
     setWrongQuestionIds(wrongIds);
     
-    // Automatically switch to ALL view if score is 100% so user sees something
     if (calculatedScore === 100) {
         setViewMode('ALL');
     }
-  }, [questions, answers]);
 
-  // NEW GRADE LOGIC: Top grade is Z+
+    const handleScroll = () => setShowScrollTop(window.scrollY > 300);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isGradingPhase, finalAnswers, questions]);
+
+  // --- RENDERING HELPERS ---
+  
   const getGrade = (s: number) => {
       if (s >= 97) return 'Z+';
       if (s >= 93) return 'A';
@@ -90,14 +167,12 @@ export const Results: React.FC<ResultsProps> = ({
 
   const handleSaveScore = () => {
       if (!agentName.trim() || !canPublish) return;
-      
       const newEntry: LeaderboardEntry = {
           name: agentName.slice(0, 10).toUpperCase(),
           score: score,
           date: new Date().toISOString(),
           isElite: isElite
       };
-
       const stored = localStorage.getItem('exam_leaderboard');
       const leaderboard = stored ? JSON.parse(stored) : [];
       localStorage.setItem('exam_leaderboard', JSON.stringify([...leaderboard, newEntry]));
@@ -114,7 +189,8 @@ export const Results: React.FC<ResultsProps> = ({
       await triggerExamDownload(questions, `Exam_Result_${score}_${Date.now()}`);
   };
 
-  // Weak Point aggregation
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
   const weakTopics = useMemo(() => {
       if (wrongQuestionIds.length === 0) return [];
       const topics = new Set<string>();
@@ -126,12 +202,38 @@ export const Results: React.FC<ResultsProps> = ({
       return Array.from(topics);
   }, [wrongQuestionIds, questions]);
 
+  // Loading Screen for Grading
+  if (isGradingPhase) {
+      return (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 animate-fade-in">
+              <div className="w-16 h-16 border-4 border-terminal-green border-t-transparent rounded-full animate-spin"></div>
+              <div className="text-center">
+                  <h2 className="text-xl font-bold font-mono text-terminal-green mb-2">
+                      {lang === 'ar' ? 'جاري تقييم الإجابات...' : 'ANALYZING SUBMISSIONS...'}
+                  </h2>
+                  <p className="text-gray-500 font-mono text-sm">
+                      {lang === 'ar' ? 'استخدام الذكاء الاصطناعي لتقدير الأسئلة المقالية والبرمجية.' : 'Using Neural Core to grade coding & short answers.'}
+                  </p>
+                  <div className="mt-4 bg-gray-200 dark:bg-gray-800 rounded-full h-2 w-64 overflow-hidden mx-auto">
+                      <div 
+                          className="bg-blue-600 dark:bg-terminal-green h-full transition-all duration-300"
+                          style={{ width: `${(gradingProgress.current / (gradingProgress.total || 1)) * 100}%` }}
+                      ></div>
+                  </div>
+                  <p className="mt-2 text-xs font-mono text-gray-400">
+                      {gradingProgress.current} / {gradingProgress.total}
+                  </p>
+              </div>
+          </div>
+      );
+  }
+
   const displayedQuestions = viewMode === 'ALL' 
       ? questions 
       : questions.filter(q => wrongQuestionIds.includes(q.id));
 
   return (
-    <div className={`mx-auto transition-all duration-300 animate-fade-in pb-24 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>
+    <div className={`mx-auto transition-all duration-300 animate-fade-in pb-12 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>
         
         {/* HERO SECTION */}
         <div className={`
@@ -225,10 +327,13 @@ export const Results: React.FC<ResultsProps> = ({
             )}
         </div>
 
-        {/* TOP ACTIONS GRID */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        {/* TOP ACTIONS GRID (5 Columns) */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
             <button onClick={handleSaveExam} className="p-3 bg-gray-100 dark:bg-[#111] hover:bg-gray-200 dark:hover:bg-[#222] border border-gray-300 dark:border-gray-700 rounded text-gray-700 dark:text-terminal-green font-bold text-[10px] md:text-xs uppercase tracking-wider transition-colors">
                 {saveStatus || t('save', lang)}
+            </button>
+            <button onClick={onDownloadPDF} className="p-3 bg-gray-100 dark:bg-[#111] hover:bg-gray-200 dark:hover:bg-[#222] border border-gray-300 dark:border-gray-700 rounded text-gray-700 dark:text-terminal-green font-bold text-[10px] md:text-xs uppercase tracking-wider transition-colors">
+                {t('pdf_report', lang)}
             </button>
             <button onClick={handleDownloadExam} className="p-3 bg-gray-100 dark:bg-[#111] hover:bg-gray-200 dark:hover:bg-[#222] border border-gray-300 dark:border-gray-700 rounded text-gray-700 dark:text-terminal-green font-bold text-[10px] md:text-xs uppercase tracking-wider transition-colors">
                 {t('download_zplus', lang)}
@@ -303,7 +408,7 @@ export const Results: React.FC<ResultsProps> = ({
             {displayedQuestions.map((q, idx) => {
                 // Find actual index in original array
                 const realIndex = questions.findIndex(orig => orig.id === q.id);
-                const ua = answers.find(a => a.questionId === q.id);
+                const ua = finalAnswers.find(a => a.questionId === q.id);
                 
                 let isCorrect = false;
                 let userAnswerDisplay = t('no_answer_provided', lang);
@@ -315,12 +420,13 @@ export const Results: React.FC<ResultsProps> = ({
                         userAnswerDisplay = q.options[ua.answer] || String(ua.answer);
                     }
 
-                    // Check logic repeated for display
+                    // Score Display Logic using finalAnswers which has isCorrect set
                     if (q.type === QuestionType.MCQ && typeof ua.answer === 'number') {
                         if(ua.answer === q.correctOptionIndex) isCorrect = true;
                     } else if (q.type === QuestionType.TRACING) {
                             if(String(ua.answer).trim().toLowerCase() === String(q.tracingOutput||"").trim().toLowerCase()) isCorrect = true;
                     } else {
+                        // AI Graded
                         if(ua.isCorrect) isCorrect = true;
                     }
                     
@@ -359,8 +465,8 @@ export const Results: React.FC<ResultsProps> = ({
                                 </div>
                             </div>
                             
-                            {/* Always show analysis for wrong answers in this view, regardless of viewMode */}
-                            {(!isCorrect) && (
+                            {/* Analysis: Show if WRONG OR if viewMode is ALL (to review correct answers) */}
+                            {(!isCorrect || viewMode === 'ALL') && (
                                 <div>
                                     <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('analysis', lang)}:</h4>
                                     <div className="text-gray-600 dark:text-gray-300">
@@ -392,23 +498,16 @@ export const Results: React.FC<ResultsProps> = ({
             })}
         </div>
 
-        {/* FIXED FOOTER BAR */}
-        {!autoHideFooter && (
-             <div className="fixed bottom-0 left-0 w-full bg-gray-200/95 dark:bg-[#151515]/95 backdrop-blur-md border-t border-gray-300 dark:border-terminal-gray p-4 z-40 flex justify-between items-center shadow-[0_-5px_15px_rgba(0,0,0,0.1)]">
-                 <div className="text-xs font-mono text-gray-500 hidden md:block">
-                     SESSION ID: {Date.now().toString(36).toUpperCase()}
-                 </div>
-                 <div className="flex gap-2 w-full md:w-auto justify-end">
-                     {/* Footer actions mirroring top for convenience */}
-                     <button onClick={handleSaveExam} className="px-4 py-2 bg-white hover:bg-gray-100 dark:bg-[#222] dark:hover:bg-[#333] border border-gray-300 dark:border-gray-600 rounded text-gray-800 dark:text-terminal-green font-bold text-xs shadow-sm">
-                         {t('save', lang)}
-                     </button>
-                     <button onClick={onRestart} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-bold text-xs shadow-sm">
-                         {t('restart', lang)}
-                     </button>
-                 </div>
-             </div>
-        )}
+        {/* Scroll To Top Button (Fixed Bottom Left) */}
+        <button 
+            onClick={scrollToTop}
+            className={`fixed bottom-6 left-6 z-50 p-3 bg-gray-800 text-white dark:bg-terminal-green dark:text-black rounded-full shadow-lg hover:scale-110 transition-all duration-300 ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}
+            title="Scroll to Top"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+        </button>
     </div>
   );
 };
