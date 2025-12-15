@@ -7,7 +7,7 @@
 
 ### Core Philosophy
 1.  **Stateless Logic:** The backend (Gemini) provides intelligence on demand; the state is held transiently in the React Client.
-2.  **Persistence Strategy:** `localStorage` is used for the "Library" and "Leaderboard" to persist data across reloads without requiring user authentication.
+2.  **Persistence Strategy:** `localStorage` is used for the "Library", "History", and "Leaderboard" to persist data across reloads without requiring user authentication.
 3.  **Mobile-First Design:** The UI structure (seen in `Layout.tsx` and `ExamBuilder.tsx`) prioritizes touch targets, safe areas, and responsive constraints.
 
 ---
@@ -115,6 +115,7 @@ stateDiagram-v2
 *   **LocalStorage:** Stores:
     *   `zplus_question_library`: JSON array of individual saved questions.
     *   `zplus_exam_library`: JSON array of full exam snapshots.
+    *   `zplus_exam_history`: JSON array of the last 3 completed exams (Auto-saved).
     *   `exam_leaderboard`: High scores.
 
 ---

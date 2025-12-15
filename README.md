@@ -31,10 +31,14 @@ An advanced, terminal-themed AI examination platform that parses documents to cr
 
 ### 4. Grading & Analytics
 -   **AI Grading:** Automated analysis of custom code submissions with semantic feedback.
+-   **Smart Result Filtering:** By default, results focus on mistakes for efficient review. Toggle "View Full Exam" to see correct answers.
 -   **Weak Point Analysis:** Identifies struggle areas and provides curated video/reading resources.
 -   **Tactical Remediation:** One-click generation of specific makeup exams targeting your weak points.
 -   **Leaderboard & Badges:** Track performance and earn the **Z+ Elite Badge** for perfect scores.
--   **Library System:** Save individual questions or full exams to local storage for later review.
+-   **Library System:**
+    -   **Persistence:** Save individual questions or full exams.
+    -   **History:** Automatically saves the last 3 sessions for quick retakes.
+    -   **Security:** Prevents duplicate imports via content hashing and enforces 10MB limits.
 
 ### 5. Advanced UI/UX
 -   **Themes:** Choose between **Light**, **Terminal (Dark)**, and **Palestine** themes.
@@ -52,7 +56,7 @@ For a deep dive into how the system works internally, please refer to the techni
 
 1.  [**Architecture & Stack**](technical_readme/01_architecture_stack.md) - Overview of the React state machine, routing, and tech stack.
 2.  [**AI Generation Engine**](technical_readme/02_ai_generation_engine.md) - How Gemini 2.5 is prompted, schema validation, and context parsing.
-3.  [**Security & Validation**](technical_readme/03_security_validation.md) - VirusTotal integration, Magic Byte checking, and input sanitization.
+3.  [**Security & Validation**](technical_readme/03_security_validation.md) - VirusTotal integration, Magic Byte checking, library hashing, and input sanitization.
 4.  [**Rendering System**](technical_readme/04_rendering_visuals.md) - How Graphs, Diagrams (Mermaid), and Markdown/Math (LaTeX) are rendered.
 5.  [**Grading Logic**](technical_readme/05_grading_logic.md) - The hybrid grading system (Deterministic vs. LLM-based evaluation).
 

@@ -7,7 +7,7 @@ Z+ implements a "Defense in Depth" strategy. Since the application runs client-s
 
 ```mermaid
 flowchart LR
-    User[User Upload] --> SizeCheck{Size < 10MB?}
+    User[User Upload] --> SizeCheck{Size < 15MB?}
     SizeCheck -- No --> Reject[Reject File]
     SizeCheck -- Yes --> MagicByte{Magic Bytes Valid?}
     MagicByte -- No --> Reject
@@ -74,3 +74,19 @@ Users often try to "jailbreak" AI exam tools (e.g., "Ignore previous instruction
 *   **No `eval()`:** The application **never** executes user-submitted code.
 *   **Static Analysis:** Code "execution" is simulated by sending the code to the AI model, which performs static analysis to predict the output or grade the logic. This prevents malicious JS from running in the user's browser.
 *   **Storage Safety:** Data in `localStorage` is serialized JSON. It is never rendered directly to the DOM without passing through React's escaping mechanisms or the `MarkdownRenderer` sanitizer.
+
+---
+
+## 5. Library Integrity Protection
+
+To keep the local library clean and performant, we enforce specific constraints during the import of `.zplus` files.
+
+### Duplicate Prevention
+When importing a saved exam:
+1.  **Content Hashing:** We calculate the **SHA-256** hash of the imported content string.
+2.  **Signature Matching:** We generate a unique signature for the imported exam based on a sorted list of its question IDs (`JSON.stringify(ids.sort())`).
+3.  **Comparison:** We compare this signature against all existing exams in the library. If a match is found, the import is rejected with a "Duplicate" alert.
+
+### Resource Limits
+*   **File Size:** Imports are strictly limited to **10MB** to prevent `localStorage` quotas from being exceeded or crashing the browser.
+*   **History Rotation:** The `zplus_exam_history` is capped at 3 entries. New entries push out the oldest ones automatically (FIFO).
