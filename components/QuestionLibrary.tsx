@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Question, QuestionType, SavedExam, UILanguage } from '../types';
-import { getLibrary, removeQuestion, getSavedExams, removeExam, importSavedExam } from '../services/library';
+import { getLibrary, removeQuestion, getSavedExams, removeExam, importSavedExam, triggerExamDownload } from '../services/library';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
 import { GraphRenderer } from './GraphRenderer'; // Import GraphRenderer
@@ -19,6 +19,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
     const [exams, setExams] = useState<SavedExam[]>([]);
     const [filter, setFilter] = useState<string>('ALL');
     const [activeTab, setActiveTab] = useState<'QUESTIONS' | 'EXAMS'>('QUESTIONS');
+    const [isImporting, setIsImporting] = useState(false);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,42 +48,31 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
         fileInputRef.current?.click();
     };
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const content = e.target?.result as string;
-                const parsed = JSON.parse(content);
-                const success = importSavedExam(parsed);
-                if (success) {
-                    setExams(getSavedExams());
-                    alert(t('import_success', lang));
-                    setActiveTab('EXAMS'); // Switch to exams tab to show imported item
-                } else {
-                    alert(t('import_failed', lang));
-                }
-            } catch (err) {
-                alert(t('import_failed', lang));
+        setIsImporting(true);
+        try {
+            const content = await file.text();
+            const success = await importSavedExam(content);
+            if (success) {
+                setExams(getSavedExams());
+                alert(t('import_success', lang));
+                setActiveTab('EXAMS'); 
+            } else {
+                alert(t('import_failed', lang) + " (Invalid Format or Schema)");
             }
-        };
-        reader.readAsText(file);
-        // Reset input value to allow selecting same file again if needed
-        event.target.value = '';
+        } catch (err) {
+            alert(t('import_failed', lang));
+        } finally {
+            setIsImporting(false);
+            if(fileInputRef.current) fileInputRef.current.value = '';
+        }
     };
 
-    const handleExportExam = (exam: SavedExam) => {
-        const dataStr = JSON.stringify(exam, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-        
-        const exportFileDefaultName = `${exam.title.replace(/\s+/g, '_')}_${Date.now()}.zplus`;
-        
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', exportFileDefaultName);
-        linkElement.click();
+    const handleExportExam = async (exam: SavedExam) => {
+        await triggerExamDownload(exam.questions, exam.title);
     };
 
     // Calculate unique types dynamically from the loaded questions
@@ -116,12 +106,17 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                     {/* IMPORT BUTTON */}
                     <button 
                         onClick={handleImportClick}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold rounded border border-gray-300 dark:border-gray-600 transition-colors"
+                        disabled={isImporting}
+                        className={`flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold rounded border border-gray-300 dark:border-gray-600 transition-colors ${isImporting ? 'opacity-50 cursor-wait' : ''}`}
                         title="Import Exam File (.zplus)"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
+                        {isImporting ? (
+                            <span className="animate-spin">↻</span>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                        )}
                         <span className="hidden sm:inline">{t('import_exam', lang)}</span>
                     </button>
                 </div>

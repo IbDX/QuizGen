@@ -1,9 +1,8 @@
 
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, sendExamBuilderMessage, generateExamFromBuilderChat } from '../services/gemini';
 import { Question, ExamSettings } from '../types';
-import { saveFullExam } from '../services/library';
+import { saveFullExam, triggerExamDownload } from '../services/library';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { t } from '../utils/translations';
 import { UILanguage } from '../types';
@@ -138,22 +137,9 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
         }
     };
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         if (generatedData) {
-            const exportData = {
-                id: `exam_${Date.now()}`,
-                title: generatedData.title,
-                date: new Date().toISOString(),
-                questions: generatedData.questions
-            };
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            const exportFileDefaultName = `${generatedData.title.replace(/\s+/g, '_')}_${Date.now()}.zplus`;
-            
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
+            await triggerExamDownload(generatedData.questions, generatedData.title);
         }
     };
 

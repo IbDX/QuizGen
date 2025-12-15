@@ -38,6 +38,7 @@ An advanced, terminal-themed AI examination platform that parses documents to cr
 
 ### 5. Advanced UI/UX
 -   **Themes:** Choose between **Light**, **Terminal (Dark)**, and **Palestine** themes.
+-   **Theme-Adaptive Controls:** UI elements like the Photo Fetcher and Mode Selection buttons adapt colors dynamically to the selected theme (Blue/Gray for Light, Neon Green for Terminal, Red/Green for Palestine).
 -   **AI System Agent:** A floating support bot (`AiHelper`) available to assist with platform navigation and troubleshooting.
 -   **Responsive Design:** Mobile-first architecture with touch-optimized controls and auto-hiding menus.
 -   **PDF Reports:** Generate professional PDF reports of your exam performance.

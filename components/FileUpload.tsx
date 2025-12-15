@@ -1,5 +1,4 @@
 
-
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64, validateBatchSize } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -399,23 +398,30 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
       </div>
 
-      <form onSubmit={handleUrlSubmit} className="flex flex-col sm:flex-row gap-2">
-          <input 
-            type="url" 
-            ref={urlInputRef}
-            placeholder="https://example.com/document.pdf" 
-            className="flex-grow bg-gray-100 dark:bg-gray-900 border border-gray-400 dark:border-gray-700 p-3 md:p-3 font-mono text-sm outline-none focus:border-terminal-green rounded-sm dark:text-white"
-            value={urlInput}
-            onChange={handleUrlChange}
-            onPaste={handleUrlPaste}
-            disabled={globalStatus !== 'IDLE'}
-          />
+      <form onSubmit={handleUrlSubmit} className="flex flex-col sm:flex-row gap-3 relative z-10">
+          <div className="relative flex-grow group">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 dark:from-terminal-green dark:to-terminal-dimGreen rounded-md blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
+              <input 
+                  type="url" 
+                  ref={urlInputRef}
+                  placeholder="https://example.com/document.pdf" 
+                  className="relative w-full bg-white dark:bg-black border-2 border-gray-300 dark:border-terminal-gray p-3 pl-10 font-mono text-sm outline-none focus:border-blue-500 dark:focus:border-terminal-green rounded-md dark:text-terminal-light placeholder-gray-400 dark:placeholder-gray-600 transition-all shadow-sm"
+                  value={urlInput}
+                  onChange={handleUrlChange}
+                  onPaste={handleUrlPaste}
+                  disabled={globalStatus !== 'IDLE'}
+              />
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-terminal-green">
+                  🌐
+              </div>
+          </div>
           <button 
              type="submit" 
              disabled={!urlInput || globalStatus !== 'IDLE'}
-             className="w-full sm:w-auto px-6 py-3 md:py-0 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-400 dark:border-gray-600 font-bold text-sm disabled:opacity-50 rounded-sm dark:text-gray-200"
+             className="relative overflow-hidden group w-full sm:w-auto px-8 py-3 bg-gray-900 dark:bg-terminal-green text-white dark:text-black font-bold text-sm uppercase rounded-md transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-lg"
           >
-            {t('fetch', lang)}
+            <span className="relative z-10">{t('fetch', lang)}</span>
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
           </button>
       </form>
       <div className="text-center mt-2 text-[9px] text-gray-400 dark:text-gray-500">
@@ -423,50 +429,52 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
       </div>
 
       {/* DEMO & AI BUILDER SECTION */}
-      <div className="flex flex-col items-center mt-6">
-          <div className="h-px bg-gray-300 dark:bg-gray-700 w-full mb-6"></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-8">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-            {/* DEMO CARD */}
-            <div className="bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-4 rounded-lg flex flex-col items-center gap-2 hover:border-terminal-green transition-colors group">
-                <div className="w-12 h-12 rounded bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-xl">
-                    ⚡
-                </div>
-                <div className="text-center">
-                    <h4 className="font-bold text-gray-800 dark:text-gray-100">{t('quick_test', lang)}</h4>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-3 leading-tight">
-                         Instant diagnostic simulation.
-                    </p>
-                    <button 
-                        onClick={onLoadDemo}
-                        disabled={globalStatus !== 'IDLE'}
-                        className="w-full py-2 bg-gray-300 dark:bg-gray-800 text-gray-800 dark:text-gray-300 font-bold text-xs hover:bg-terminal-green hover:text-black transition-colors uppercase rounded-sm"
-                    >
-                        {t('load_demo', lang)}
-                    </button>
-                </div>
-            </div>
-
-            {/* AI BUILDER CARD */}
-            <div className="bg-gray-100 dark:bg-gray-900 border border-blue-400 dark:border-blue-600 p-4 rounded-lg flex flex-col items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group shadow-md">
-                <div className="w-12 h-12 rounded bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-xl animate-pulse">
-                    🤖
-                </div>
-                <div className="text-center">
-                    <h4 className="font-bold text-blue-800 dark:text-blue-300">{t('builder_card_title', lang)}</h4>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-3 leading-tight">
-                         {t('builder_card_desc', lang)}
-                    </p>
-                    <button 
-                        onClick={onStartBuilder}
-                        disabled={globalStatus !== 'IDLE'}
-                        className="w-full py-2 bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors uppercase rounded-sm shadow-sm"
-                    >
-                        {t('start_builder', lang)}
-                    </button>
-                </div>
-            </div>
+          {/* DEMO CARD */}
+          <div className="relative group overflow-hidden bg-white dark:bg-black border-2 border-gray-200 dark:border-terminal-gray hover:border-yellow-500 dark:hover:border-yellow-500 rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              
+              <div className="flex flex-col items-center relative z-10">
+                  <div className="w-16 h-16 rounded-full bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform border border-yellow-200 dark:border-yellow-700/50">
+                      ⚡
+                  </div>
+                  <h4 className="font-bold text-lg text-gray-800 dark:text-terminal-light mb-1 font-mono">{t('quick_test', lang)}</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 text-center leading-relaxed max-w-[200px]">
+                      Instant diagnostic simulation. No files required.
+                  </p>
+                  <button 
+                      onClick={onLoadDemo}
+                      disabled={globalStatus !== 'IDLE'}
+                      className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-white dark:text-black font-bold text-xs uppercase tracking-widest rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                      <span>🚀</span> {t('load_demo', lang)}
+                  </button>
+              </div>
           </div>
+
+          {/* AI BUILDER CARD */}
+          <div className="relative group overflow-hidden bg-white dark:bg-black border-2 border-gray-200 dark:border-terminal-gray hover:border-blue-500 dark:hover:border-terminal-green rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 dark:from-terminal-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              
+              <div className="flex flex-col items-center relative z-10">
+                  <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-terminal-green/10 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform border border-blue-200 dark:border-terminal-green/30">
+                      🤖
+                  </div>
+                  <h4 className="font-bold text-lg text-gray-800 dark:text-terminal-light mb-1 font-mono">{t('builder_card_title', lang)}</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 text-center leading-relaxed max-w-[200px]">
+                      {t('builder_card_desc', lang)}
+                  </p>
+                  <button 
+                      onClick={onStartBuilder}
+                      disabled={globalStatus !== 'IDLE'}
+                      className="w-full py-3 bg-blue-600 dark:bg-terminal-green hover:bg-blue-500 dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold text-xs uppercase tracking-widest rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                      <span>✨</span> {t('start_builder', lang)}
+                  </button>
+              </div>
+          </div>
+
       </div>
     </div>
   );

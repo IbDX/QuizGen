@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Question, ExamSettings, UILanguage } from '../types';
-import { saveFullExam } from '../services/library';
+import { saveFullExam, triggerExamDownload } from '../services/library';
 import { t } from '../utils/translations';
 
 interface ExamReadyScreenProps {
@@ -22,21 +22,8 @@ export const ExamReadyScreen: React.FC<ExamReadyScreenProps> = ({ questions, set
         setTimeout(() => setSaveStatus(null), 2000);
     };
 
-    const handleDownload = () => {
-        const exportData = {
-            id: `exam_${Date.now()}`,
-            title: displayTitle,
-            date: new Date().toISOString(),
-            questions: questions
-        };
-        const dataStr = JSON.stringify(exportData, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-        const exportFileDefaultName = `${displayTitle.replace(/\s+/g, '_')}_${Date.now()}.zplus`;
-        
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', exportFileDefaultName);
-        linkElement.click();
+    const handleDownload = async () => {
+        await triggerExamDownload(questions, displayTitle);
     };
 
     return (
