@@ -144,38 +144,36 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
     };
 
     return (
-        // CONTAINER STRATEGY:
-        // Mobile: Fixed full screen (inset-0 top-16) to sit exactly under navbar. No rounding.
-        // Desktop: Relative card, centered, rounded, shadow.
+        // MAIN TERMINAL CONTAINER
         <div className={`
-            fixed inset-0 top-16 z-30 flex flex-col bg-white dark:bg-[#050505] 
+            fixed inset-0 top-16 z-30 flex flex-col bg-[#050505] 
             md:static md:z-0 md:h-[calc(100vh-12rem)] md:min-h-[600px] md:mt-8 md:rounded-lg md:border-2 md:border-terminal-green md:shadow-[0_0_30px_rgba(0,255,65,0.15)]
             ${isFullWidth ? 'md:max-w-none' : 'md:max-w-5xl md:mx-auto'}
+            relative overflow-hidden
         `}>
-            
-            {/* Header - Matches Layout.tsx Header Style */}
+            {/* GRID PATTERN BACKGROUND */}
             <div 
-                className="bg-white/95 dark:bg-[#111]/95 backdrop-blur border-b border-gray-200 dark:border-terminal-green/30 p-3 md:p-4 flex justify-between items-center shrink-0 shadow-sm z-20 relative overflow-hidden"
-                style={{
-                    backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
-                    backgroundSize: '12px 12px',
-                    opacity: 0.95
+                className="absolute inset-0 opacity-10 pointer-events-none" 
+                style={{ 
+                    backgroundImage: 'radial-gradient(circle, #00ff41 1px, transparent 1px)', 
+                    backgroundSize: '20px 20px' 
                 }}
-            >
-                {/* Subtle Overlay to dampen pattern opacity */}
-                <div className="absolute inset-0 bg-white/90 dark:bg-[#111]/90 pointer-events-none"></div>
-
-                <div className="flex items-center gap-3 relative z-10">
-                    <div className="w-10 h-10 bg-gray-100 dark:bg-black rounded border border-gray-300 dark:border-terminal-green flex items-center justify-center">
-                        <span className="text-xl">🤖</span>
+            ></div>
+            
+            {/* TACTICAL HEADER */}
+            <div className="bg-[#0c0c0c] border-b border-terminal-green/50 p-4 flex justify-between items-center shrink-0 z-20 shadow-md">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-black rounded border border-terminal-green flex items-center justify-center relative overflow-hidden group">
+                        <span className="text-xl relative z-10">🤖</span>
+                        <div className="absolute inset-0 bg-terminal-green/10 group-hover:bg-terminal-green/20 transition-colors"></div>
                     </div>
                     <div>
-                        <h2 className="font-bold text-base md:text-lg text-gray-800 dark:text-terminal-light font-mono tracking-wider leading-none">
+                        <h2 className="font-bold text-lg text-white font-mono tracking-[0.2em] leading-none mb-1">
                             {t('builder_title', lang)}
                         </h2>
-                        <div className="flex items-center gap-2 mt-1">
-                            <div className="w-1.5 h-1.5 bg-terminal-green rounded-full animate-pulse"></div>
-                            <span className="text-[9px] text-gray-500 dark:text-terminal-green font-mono tracking-widest">
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-terminal-green rounded-full animate-pulse shadow-[0_0_5px_#00ff41]"></div>
+                            <span className="text-[9px] text-terminal-green font-mono tracking-widest font-bold">
                                 NET: SECURE
                             </span>
                         </div>
@@ -183,7 +181,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                 </div>
                 <button 
                     onClick={onCancel}
-                    className="relative z-10 px-4 py-2 rounded text-[10px] font-bold font-mono border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-terminal-light hover:border-red-500 hover:text-red-600 dark:hover:border-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors uppercase tracking-wider"
+                    className="px-4 py-2 bg-transparent border border-gray-700 text-gray-400 font-bold font-mono text-[10px] uppercase tracking-wider hover:border-red-500 hover:text-red-500 transition-colors rounded-sm"
                 >
                     {t('abort', lang)}
                 </button>
@@ -191,10 +189,8 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
 
             {/* If Exam is Generated, Show Success Overlay */}
             {generatedData ? (
-                <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white dark:bg-[#050505] animate-fade-in relative z-50">
-                     <div className="max-w-md w-full text-center space-y-6 bg-gray-50 dark:bg-[#0c0c0c] p-8 rounded-xl border border-gray-300 dark:border-terminal-green shadow-2xl relative overflow-hidden">
-                        {/* Grid Background for Card */}
-                        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '10px 10px' }}></div>
+                <div className="flex-grow flex flex-col items-center justify-center p-6 bg-[#050505] animate-fade-in relative z-50">
+                     <div className="max-w-md w-full text-center space-y-6 bg-[#0c0c0c] p-8 rounded-lg border border-terminal-green shadow-[0_0_50px_rgba(0,255,65,0.1)] relative">
                         
                         <div className="relative z-10">
                             <div className="w-16 h-16 bg-terminal-green rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(0,255,65,0.4)] mb-6 text-black border-4 border-black/20">
@@ -203,22 +199,22 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                 </svg>
                             </div>
                             
-                            <h3 className="text-2xl font-bold font-mono text-gray-900 dark:text-white mb-2 tracking-tight">{t('exam_ready', lang)}</h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-xs font-mono">{t('exam_ready_desc', lang)}</p>
+                            <h3 className="text-2xl font-bold font-mono text-white mb-2 tracking-tight">{t('exam_ready', lang)}</h3>
+                            <p className="text-gray-400 text-xs font-mono">{t('exam_ready_desc', lang)}</p>
                         </div>
 
-                        <div className="relative z-10 text-left bg-white dark:bg-[#151515] p-4 rounded border border-gray-200 dark:border-terminal-green/30 space-y-3 text-xs font-mono shadow-inner">
-                            <div className="flex justify-between border-b border-dashed border-gray-200 dark:border-gray-800 pb-2">
+                        <div className="relative z-10 text-left bg-[#151515] p-4 rounded border border-terminal-green/30 space-y-3 text-xs font-mono">
+                            <div className="flex justify-between border-b border-dashed border-gray-800 pb-2">
                                 <span className="text-gray-500 uppercase">{t('suggested_title', lang)}</span>
-                                <span className="font-bold text-blue-600 dark:text-terminal-green">{generatedData.title}</span>
+                                <span className="font-bold text-terminal-green">{generatedData.title}</span>
                             </div>
-                            <div className="flex justify-between border-b border-dashed border-gray-200 dark:border-gray-800 pb-2">
+                            <div className="flex justify-between border-b border-dashed border-gray-800 pb-2">
                                 <span className="text-gray-500 uppercase">{t('questions_count', lang)}</span>
-                                <span className="font-bold dark:text-white">{generatedData.questions.length}</span>
+                                <span className="font-bold text-white">{generatedData.questions.length}</span>
                             </div>
-                            <div className="flex justify-between border-b border-dashed border-gray-200 dark:border-gray-800 pb-2">
+                            <div className="flex justify-between border-b border-dashed border-gray-800 pb-2">
                                 <span className="text-gray-500 uppercase">{t('time_limit', lang)}</span>
-                                <span className="font-bold dark:text-white">
+                                <span className="font-bold text-white">
                                     {generatedData.settings.timeLimitMinutes 
                                         ? `${generatedData.settings.timeLimitMinutes} ${t('minutes', lang)}` 
                                         : '∞'}
@@ -226,14 +222,14 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-500 uppercase">{t('mode', lang)}</span>
-                                <span className="font-bold dark:text-white">{generatedData.settings.mode}</span>
+                                <span className="font-bold text-white">{generatedData.settings.mode}</span>
                             </div>
                         </div>
 
                         <div className="relative z-10 grid grid-cols-1 gap-3 pt-2">
                             <button 
                                 onClick={handleStartExam}
-                                className="w-full py-3 bg-gray-900 dark:bg-terminal-green text-white dark:text-black font-bold uppercase tracking-widest rounded hover:scale-[1.02] active:scale-95 transition-all shadow-lg text-sm"
+                                className="w-full py-3 bg-terminal-green text-black font-bold uppercase tracking-widest rounded hover:bg-terminal-dimGreen active:scale-95 transition-all shadow-lg text-sm"
                             >
                                 {t('start_now', lang)}
                             </button>
@@ -241,13 +237,13 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                             <div className="grid grid-cols-2 gap-3">
                                 <button 
                                     onClick={handleSaveToLibrary}
-                                    className="w-full py-2 border border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-bold uppercase text-[10px] tracking-wider rounded transition-colors"
+                                    className="w-full py-2 border border-purple-500 text-purple-400 hover:bg-purple-900/20 font-bold uppercase text-[10px] tracking-wider rounded transition-colors"
                                 >
                                     {saveStatus || t('save_library', lang)}
                                 </button>
                                 <button 
                                     onClick={handleDownload}
-                                    className="w-full py-2 border border-gray-400 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 font-bold uppercase text-[10px] tracking-wider rounded transition-colors"
+                                    className="w-full py-2 border border-gray-600 text-gray-400 hover:bg-gray-800 font-bold uppercase text-[10px] tracking-wider rounded transition-colors"
                                 >
                                     {t('download_zplus', lang)}
                                 </button>
@@ -257,29 +253,29 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                 </div>
             ) : !languageSelected ? (
                 // LANGUAGE SELECTION SCREEN
-                <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white dark:bg-[#050505] animate-fade-in overflow-y-auto">
+                <div className="flex-grow flex flex-col items-center justify-center p-6 bg-[#050505] animate-fade-in overflow-y-auto relative z-10">
                     <div className="max-w-md w-full text-center space-y-8">
                         <div className="space-y-3">
                              <div className="text-5xl mb-6 animate-bounce">👋</div>
-                             <h3 className="text-2xl font-bold text-gray-900 dark:text-white font-mono">{t('init_system', lang)}</h3>
-                             <p className="text-gray-500 text-sm">{t('select_lang_msg', lang)}</p>
+                             <h3 className="text-2xl font-bold text-white font-mono">{t('init_system', lang)}</h3>
+                             <p className="text-gray-500 text-sm font-mono">{t('select_lang_msg', lang)}</p>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                             <button 
                                 onClick={() => handleLanguageSelect('en')}
-                                className="p-6 border-2 border-gray-200 dark:border-gray-800 hover:border-blue-500 dark:hover:border-terminal-green bg-gray-50 dark:bg-[#121212] rounded-xl transition-all group flex flex-row md:flex-col items-center justify-center gap-4 active:scale-95"
+                                className="p-6 border border-gray-800 hover:border-terminal-green bg-[#111] hover:bg-[#1a1a1a] rounded transition-all group flex flex-row md:flex-col items-center justify-center gap-4 active:scale-95"
                             >
                                 <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">🇺🇸</span>
-                                <span className="font-bold font-mono text-lg text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-terminal-green">ENGLISH</span>
+                                <span className="font-bold font-mono text-lg text-gray-300 group-hover:text-terminal-green">ENGLISH</span>
                             </button>
 
                             <button 
                                 onClick={() => handleLanguageSelect('ar')}
-                                className="p-6 border-2 border-gray-200 dark:border-gray-800 hover:border-green-500 dark:hover:border-terminal-green bg-gray-50 dark:bg-[#121212] rounded-xl transition-all group flex flex-row md:flex-col items-center justify-center gap-4 active:scale-95"
+                                className="p-6 border border-gray-800 hover:border-terminal-green bg-[#111] hover:bg-[#1a1a1a] rounded transition-all group flex flex-row md:flex-col items-center justify-center gap-4 active:scale-95"
                             >
                                 <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">🇸🇦</span>
-                                <span className="font-bold font-sans text-lg text-gray-700 dark:text-gray-300 group-hover:text-green-600 dark:group-hover:text-terminal-green">العربية</span>
+                                <span className="font-bold font-sans text-lg text-gray-300 group-hover:text-terminal-green">العربية</span>
                             </button>
                         </div>
                     </div>
@@ -288,31 +284,36 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                 // CHAT INTERFACE
                 <>
                     {/* Chat Area */}
-                    <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-6 bg-white dark:bg-[#050505] scroll-smooth">
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-6 bg-[#050505] scroll-smooth relative z-10">
                         {messages.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
                                 <div className={`
-                                    max-w-[90%] md:max-w-[75%] rounded-lg px-4 py-3 shadow-sm text-sm md:text-base leading-relaxed break-words relative border-l-4
+                                    max-w-[90%] md:max-w-[75%] px-4 py-3 text-sm md:text-base leading-relaxed break-words relative
                                     ${m.role === 'user' 
-                                        ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-500 text-gray-800 dark:text-blue-100 rounded-br-none' 
-                                        : 'bg-gray-100 dark:bg-[#1a1a1a] border-gray-400 dark:border-terminal-green text-gray-800 dark:text-gray-300 rounded-bl-none'
+                                        ? 'border-r-2 border-gray-500 bg-[#151515] text-gray-300' 
+                                        : 'border-l-2 border-terminal-green bg-[#111] text-gray-200 shadow-[0_0_10px_rgba(0,0,0,0.5)]'
                                     }
                                 `}>
                                     {m.role === 'model' && (
-                                        <div className="text-[9px] font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wider flex items-center gap-1 border-b border-gray-200 dark:border-gray-700 pb-1">
-                                            <span>🤖</span> {t('agent_role', lang)}
+                                        <div className="text-[10px] font-bold text-terminal-green mb-3 uppercase tracking-widest flex items-center gap-2 border-b border-terminal-green/20 pb-2">
+                                            <span className="text-lg">🤖</span> {t('agent_role', lang)}
                                         </div>
                                     )}
-                                    <MarkdownRenderer content={m.text} className={m.role === 'user' ? 'text-gray-800 dark:text-white' : ''} />
+                                    {m.role === 'user' && (
+                                        <div className="text-[9px] font-bold text-gray-500 mb-2 uppercase tracking-widest text-right">
+                                            USER_INPUT
+                                        </div>
+                                    )}
+                                    <MarkdownRenderer content={m.text} className={m.role === 'user' ? 'text-gray-300 font-mono' : 'font-mono'} />
                                 </div>
                             </div>
                         ))}
                         {isTyping && (
                             <div className="flex justify-start animate-pulse">
-                                <div className="bg-gray-100 dark:bg-[#1a1a1a] border border-gray-200 dark:border-terminal-green/30 px-4 py-3 rounded-lg rounded-bl-none flex gap-1 items-center">
-                                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce"></span>
-                                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce delay-100"></span>
-                                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce delay-200"></span>
+                                <div className="bg-[#111] border-l-2 border-terminal-green/50 px-4 py-3 flex gap-1 items-center">
+                                    <span className="w-1.5 h-1.5 bg-terminal-green rounded-full animate-bounce"></span>
+                                    <span className="w-1.5 h-1.5 bg-terminal-green rounded-full animate-bounce delay-100"></span>
+                                    <span className="w-1.5 h-1.5 bg-terminal-green rounded-full animate-bounce delay-200"></span>
                                 </div>
                             </div>
                         )}
@@ -321,12 +322,12 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                     </div>
 
                     {/* Controls Area */}
-                    <div className="bg-white dark:bg-[#111] border-t border-gray-200 dark:border-terminal-green/30 shrink-0 pb-safe">
+                    <div className="bg-[#0c0c0c] border-t border-terminal-green/30 shrink-0 pb-safe z-20">
                         
                         {isFinalizing ? (
                             <div className="flex flex-col items-center justify-center py-8 gap-4 px-6">
                                 <div className="text-terminal-green font-mono font-bold text-base md:text-lg animate-pulse">{t('compiling', lang)}</div>
-                                <div className="w-full max-w-md h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                <div className="w-full max-w-md h-1 bg-gray-800 rounded-full overflow-hidden">
                                     <div className="h-full bg-terminal-green animate-progress"></div>
                                 </div>
                             </div>
@@ -339,7 +340,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                             <button
                                                 key={idx}
                                                 onClick={() => handleSendMessage(reply)}
-                                                className="whitespace-nowrap px-4 py-2 bg-white dark:bg-[#1a1a1a] border border-blue-200 dark:border-terminal-green/50 hover:border-blue-500 dark:hover:border-terminal-green hover:bg-blue-50 dark:hover:bg-terminal-green hover:text-blue-700 dark:hover:text-black rounded text-[10px] font-bold font-mono uppercase tracking-wide text-gray-600 dark:text-terminal-green transition-all shadow-sm active:scale-95"
+                                                className="whitespace-nowrap px-4 py-2 bg-[#1a1a1a] border border-terminal-green/30 hover:border-terminal-green hover:bg-terminal-green hover:text-black rounded text-[10px] font-bold font-mono uppercase tracking-wide text-terminal-green transition-all shadow-sm active:scale-95"
                                             >
                                                 {reply}
                                             </button>
@@ -347,31 +348,31 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                     </div>
                                 )}
 
-                                <form onSubmit={handleFormSubmit} className="flex gap-2 items-end bg-gray-50 dark:bg-[#0c0c0c] p-2 rounded border border-gray-300 dark:border-terminal-green/30 focus-within:border-blue-500 dark:focus-within:border-terminal-green transition-colors">
+                                <form onSubmit={handleFormSubmit} className="flex gap-0 items-end bg-black p-0 border border-terminal-green/50 focus-within:border-terminal-green transition-colors">
+                                    <div className="pl-3 py-3 text-terminal-green animate-pulse">➤</div>
                                     <textarea 
                                         ref={textareaRef}
                                         rows={1}
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
-                                        // Removed onKeyDown to allow natural multi-line behavior
                                         placeholder={lang === 'ar' ? "اكتب ردك هنا..." : "Type your response here..."}
-                                        className="flex-grow p-2 bg-transparent outline-none font-mono text-gray-800 dark:text-white resize-none max-h-40 min-h-[24px] text-sm md:text-base leading-relaxed placeholder-gray-400 dark:placeholder-gray-600"
+                                        className="flex-grow p-3 bg-transparent outline-none font-mono text-white resize-none max-h-40 min-h-[24px] text-sm md:text-base leading-relaxed placeholder-gray-600"
                                         autoFocus
                                     />
                                     <button 
                                         type="submit"
                                         disabled={!input.trim() || isTyping}
-                                        className="p-2 bg-blue-600 dark:bg-terminal-green text-white dark:text-black rounded hover:bg-blue-700 dark:hover:bg-terminal-dimGreen disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-90 flex-shrink-0 w-10 h-10 flex items-center justify-center font-bold"
+                                        className="px-4 py-3 bg-terminal-green text-black hover:bg-terminal-dimGreen disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold h-full flex items-center justify-center uppercase text-xs tracking-wider"
                                     >
-                                        ➤
+                                        SEND
                                     </button>
                                 </form>
 
-                                <div className="flex justify-end">
+                                <div className="flex justify-end pt-2">
                                     <button 
                                         onClick={handleCompileExam}
                                         disabled={messages.length < 2}
-                                        className="w-full md:w-auto px-6 py-3 bg-gray-900 dark:bg-gray-800 text-white dark:text-terminal-green font-bold text-[10px] font-mono uppercase tracking-widest hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-95 rounded border border-gray-700 dark:border-terminal-green disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full md:w-auto px-6 py-3 bg-[#151515] text-terminal-green border border-terminal-green font-bold text-[10px] font-mono uppercase tracking-widest hover:bg-terminal-green hover:text-black transition-all active:scale-95 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {t('builder_generate', lang)}
                                     </button>
