@@ -388,21 +388,31 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-8">
           
           {/* DEMO CARD */}
-          <div className="relative group overflow-hidden bg-white dark:bg-[#1a1a1a] border-2 border-gray-200 dark:border-terminal-border hover:border-yellow-500 dark:hover:border-yellow-500 rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="relative group overflow-hidden bg-white dark:bg-[#0a0a0a] border-2 border-gray-200 dark:border-terminal-green/30 hover:border-yellow-500 dark:hover:border-yellow-500 rounded-lg p-6 transition-all duration-300 hover:shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:-translate-y-1">
+              <div 
+                  className="absolute inset-0 opacity-5 dark:opacity-10 pointer-events-none transition-opacity duration-500" 
+                  style={{ 
+                      backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', 
+                      backgroundSize: '10px 10px' 
+                  }}
+              ></div>
+              <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
+                  <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"></div>
+                  <span className="text-[8px] font-bold font-mono text-yellow-600 dark:text-yellow-500 tracking-widest">SYS: READY</span>
+              </div>
               
               <div className="flex flex-col items-center relative z-10">
-                  <div className="w-16 h-16 rounded-full bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform border border-yellow-200 dark:border-yellow-700/50">
+                  <div className="w-16 h-16 rounded-full bg-yellow-50 dark:bg-yellow-900/10 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform border border-yellow-200 dark:border-yellow-700/50 shadow-inner">
                       ⚡
                   </div>
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-terminal-light mb-1 font-mono">{t('quick_test', lang)}</h4>
+                  <h4 className="font-bold text-lg text-gray-800 dark:text-terminal-light mb-1 font-mono tracking-wide">{t('quick_test', lang)}</h4>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 text-center leading-relaxed max-w-[200px]">
                       Instant diagnostic simulation. No files required.
                   </p>
                   <button 
                       onClick={onLoadDemo}
                       disabled={globalStatus !== 'IDLE'}
-                      className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-white dark:text-black font-bold text-xs uppercase tracking-widest rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-white dark:bg-[#111] hover:bg-yellow-500 hover:text-black border border-gray-300 dark:border-terminal-gray hover:border-yellow-500 text-gray-700 dark:text-terminal-green font-bold text-xs uppercase tracking-widest rounded transition-all active:scale-95 flex items-center justify-center gap-2 group-hover:border-yellow-500"
                   >
                       <span>🚀</span> {t('load_demo', lang)}
                   </button>
@@ -410,21 +420,31 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           </div>
 
           {/* AI BUILDER CARD */}
-          <div className="relative group overflow-hidden bg-white dark:bg-[#1a1a1a] border-2 border-gray-200 dark:border-terminal-border hover:border-blue-500 dark:hover:border-terminal-green rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 dark:from-terminal-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="relative group overflow-hidden bg-white dark:bg-[#0a0a0a] border-2 border-gray-200 dark:border-terminal-green/30 hover:border-blue-500 dark:hover:border-terminal-green rounded-lg p-6 transition-all duration-300 hover:shadow-[0_0_20px_rgba(37,99,235,0.3)] dark:hover:shadow-[0_0_20px_rgba(0,255,65,0.2)] hover:-translate-y-1">
+              <div 
+                  className="absolute inset-0 opacity-5 dark:opacity-10 pointer-events-none transition-opacity duration-500" 
+                  style={{ 
+                      backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', 
+                      backgroundSize: '10px 10px' 
+                  }}
+              ></div>
+              <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
+                  <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-terminal-green rounded-full animate-pulse"></div>
+                  <span className="text-[8px] font-bold font-mono text-blue-600 dark:text-terminal-green tracking-widest">AI: ONLINE</span>
+              </div>
               
               <div className="flex flex-col items-center relative z-10">
-                  <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-terminal-green/10 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform border border-blue-200 dark:border-terminal-green/30">
+                  <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-terminal-green/10 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform border border-blue-200 dark:border-terminal-green/30 shadow-inner">
                       🤖
                   </div>
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-terminal-light mb-1 font-mono">{t('builder_card_title', lang)}</h4>
+                  <h4 className="font-bold text-lg text-gray-800 dark:text-terminal-light mb-1 font-mono tracking-wide">{t('builder_card_title', lang)}</h4>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 text-center leading-relaxed max-w-[200px]">
                       {t('builder_card_desc', lang)}
                   </p>
                   <button 
                       onClick={onStartBuilder}
                       disabled={globalStatus !== 'IDLE'}
-                      className="w-full py-3 bg-blue-600 dark:bg-terminal-green hover:bg-blue-500 dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-btn-text font-bold text-xs uppercase tracking-widest rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-white dark:bg-[#111] hover:bg-blue-600 dark:hover:bg-terminal-green hover:text-white dark:hover:text-black border border-gray-300 dark:border-terminal-gray hover:border-blue-600 dark:hover:border-terminal-green text-gray-700 dark:text-terminal-green font-bold text-xs uppercase tracking-widest rounded transition-all active:scale-95 flex items-center justify-center gap-2 group-hover:border-blue-500 dark:group-hover:border-terminal-green"
                   >
                       <span>✨</span> {t('start_builder', lang)}
                   </button>

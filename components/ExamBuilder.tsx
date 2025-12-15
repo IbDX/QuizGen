@@ -153,22 +153,37 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             ${isFullWidth ? 'md:max-w-none' : 'md:max-w-5xl md:mx-auto'}
         `}>
             
-            {/* Header */}
-            <div className="bg-gray-50 dark:bg-[#111] backdrop-blur border-b border-gray-200 dark:border-terminal-green/30 p-3 md:p-4 flex justify-between items-center shrink-0 shadow-sm z-20">
-                <div className="flex items-center gap-3">
-                    <div className="w-2.5 h-2.5 bg-terminal-green rounded-full animate-pulse shadow-[0_0_8px_var(--color-term-green)]"></div>
+            {/* Header - Matches Layout.tsx Header Style */}
+            <div 
+                className="bg-white/95 dark:bg-[#111]/95 backdrop-blur border-b border-gray-200 dark:border-terminal-green/30 p-3 md:p-4 flex justify-between items-center shrink-0 shadow-sm z-20 relative overflow-hidden"
+                style={{
+                    backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '12px 12px',
+                    opacity: 0.95
+                }}
+            >
+                {/* Subtle Overlay to dampen pattern opacity */}
+                <div className="absolute inset-0 bg-white/90 dark:bg-[#111]/90 pointer-events-none"></div>
+
+                <div className="flex items-center gap-3 relative z-10">
+                    <div className="w-10 h-10 bg-gray-100 dark:bg-black rounded border border-gray-300 dark:border-terminal-green flex items-center justify-center">
+                        <span className="text-xl">🤖</span>
+                    </div>
                     <div>
                         <h2 className="font-bold text-base md:text-lg text-gray-800 dark:text-terminal-light font-mono tracking-wider leading-none">
                             {t('builder_title', lang)}
                         </h2>
-                        <span className="text-[10px] text-gray-500 dark:text-terminal-green/70 font-mono tracking-widest hidden md:inline-block">
-                            {t('builder_mode', lang)}
-                        </span>
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className="w-1.5 h-1.5 bg-terminal-green rounded-full animate-pulse"></div>
+                            <span className="text-[9px] text-gray-500 dark:text-terminal-green font-mono tracking-widest">
+                                NET: SECURE
+                            </span>
+                        </div>
                     </div>
                 </div>
                 <button 
                     onClick={onCancel}
-                    className="px-3 py-1.5 rounded text-xs font-bold font-mono border border-gray-300 dark:border-gray-700 dark:text-terminal-light hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                    className="relative z-10 px-4 py-2 rounded text-[10px] font-bold font-mono border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-terminal-light hover:border-red-500 hover:text-red-600 dark:hover:border-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors uppercase tracking-wider"
                 >
                     {t('abort', lang)}
                 </button>
@@ -177,29 +192,32 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             {/* If Exam is Generated, Show Success Overlay */}
             {generatedData ? (
                 <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white dark:bg-[#050505] animate-fade-in relative z-50">
-                     <div className="max-w-md w-full text-center space-y-6 bg-gray-50 dark:bg-[#121212] p-8 rounded-xl border border-gray-200 dark:border-terminal-green/50 shadow-2xl">
-                        <div className="w-16 h-16 bg-terminal-green rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(0,255,65,0.4)]">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-black" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                        </div>
+                     <div className="max-w-md w-full text-center space-y-6 bg-gray-50 dark:bg-[#0c0c0c] p-8 rounded-xl border border-gray-300 dark:border-terminal-green shadow-2xl relative overflow-hidden">
+                        {/* Grid Background for Card */}
+                        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '10px 10px' }}></div>
                         
-                        <div>
-                            <h3 className="text-2xl font-bold font-mono text-gray-900 dark:text-white mb-2">{t('exam_ready', lang)}</h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">{t('exam_ready_desc', lang)}</p>
+                        <div className="relative z-10">
+                            <div className="w-16 h-16 bg-terminal-green rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(0,255,65,0.4)] mb-6 text-black border-4 border-black/20">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            
+                            <h3 className="text-2xl font-bold font-mono text-gray-900 dark:text-white mb-2 tracking-tight">{t('exam_ready', lang)}</h3>
+                            <p className="text-gray-500 dark:text-gray-400 text-xs font-mono">{t('exam_ready_desc', lang)}</p>
                         </div>
 
-                        <div className="text-left bg-white dark:bg-[#050505] p-4 rounded border border-gray-200 dark:border-terminal-border/50 space-y-2 text-sm font-mono">
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">{t('suggested_title', lang)}:</span>
+                        <div className="relative z-10 text-left bg-white dark:bg-[#151515] p-4 rounded border border-gray-200 dark:border-terminal-green/30 space-y-3 text-xs font-mono shadow-inner">
+                            <div className="flex justify-between border-b border-dashed border-gray-200 dark:border-gray-800 pb-2">
+                                <span className="text-gray-500 uppercase">{t('suggested_title', lang)}</span>
                                 <span className="font-bold text-blue-600 dark:text-terminal-green">{generatedData.title}</span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">{t('questions_count', lang)}:</span>
+                            <div className="flex justify-between border-b border-dashed border-gray-200 dark:border-gray-800 pb-2">
+                                <span className="text-gray-500 uppercase">{t('questions_count', lang)}</span>
                                 <span className="font-bold dark:text-white">{generatedData.questions.length}</span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">{t('time_limit', lang)}:</span>
+                            <div className="flex justify-between border-b border-dashed border-gray-200 dark:border-gray-800 pb-2">
+                                <span className="text-gray-500 uppercase">{t('time_limit', lang)}</span>
                                 <span className="font-bold dark:text-white">
                                     {generatedData.settings.timeLimitMinutes 
                                         ? `${generatedData.settings.timeLimitMinutes} ${t('minutes', lang)}` 
@@ -207,15 +225,15 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-500">{t('mode', lang)}:</span>
+                                <span className="text-gray-500 uppercase">{t('mode', lang)}</span>
                                 <span className="font-bold dark:text-white">{generatedData.settings.mode}</span>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3">
+                        <div className="relative z-10 grid grid-cols-1 gap-3 pt-2">
                             <button 
                                 onClick={handleStartExam}
-                                className="w-full py-3 bg-terminal-green hover:bg-terminal-dimGreen text-black font-bold uppercase tracking-widest rounded transition-colors shadow-lg"
+                                className="w-full py-3 bg-gray-900 dark:bg-terminal-green text-white dark:text-black font-bold uppercase tracking-widest rounded hover:scale-[1.02] active:scale-95 transition-all shadow-lg text-sm"
                             >
                                 {t('start_now', lang)}
                             </button>
@@ -223,13 +241,13 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                             <div className="grid grid-cols-2 gap-3">
                                 <button 
                                     onClick={handleSaveToLibrary}
-                                    className="w-full py-2 border border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-bold uppercase text-xs rounded transition-colors"
+                                    className="w-full py-2 border border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-bold uppercase text-[10px] tracking-wider rounded transition-colors"
                                 >
                                     {saveStatus || t('save_library', lang)}
                                 </button>
                                 <button 
                                     onClick={handleDownload}
-                                    className="w-full py-2 border border-gray-400 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 font-bold uppercase text-xs rounded transition-colors"
+                                    className="w-full py-2 border border-gray-400 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 font-bold uppercase text-[10px] tracking-wider rounded transition-colors"
                                 >
                                     {t('download_zplus', lang)}
                                 </button>
@@ -274,27 +292,27 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                         {messages.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
                                 <div className={`
-                                    max-w-[90%] md:max-w-[75%] rounded-2xl px-4 py-3 shadow-sm text-sm md:text-base leading-relaxed break-words relative
+                                    max-w-[90%] md:max-w-[75%] rounded-lg px-4 py-3 shadow-sm text-sm md:text-base leading-relaxed break-words relative border-l-4
                                     ${m.role === 'user' 
-                                        ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-sm' 
-                                        : 'bg-gray-100 dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#333] text-gray-800 dark:text-gray-200 rounded-bl-sm'
+                                        ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-500 text-gray-800 dark:text-blue-100 rounded-br-none' 
+                                        : 'bg-gray-100 dark:bg-[#1a1a1a] border-gray-400 dark:border-terminal-green text-gray-800 dark:text-gray-300 rounded-bl-none'
                                     }
                                 `}>
                                     {m.role === 'model' && (
-                                        <div className="text-[9px] font-bold text-gray-400 mb-1 uppercase tracking-wider flex items-center gap-1">
+                                        <div className="text-[9px] font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wider flex items-center gap-1 border-b border-gray-200 dark:border-gray-700 pb-1">
                                             <span>🤖</span> {t('agent_role', lang)}
                                         </div>
                                     )}
-                                    <MarkdownRenderer content={m.text} className={m.role === 'user' ? 'text-white' : ''} />
+                                    <MarkdownRenderer content={m.text} className={m.role === 'user' ? 'text-gray-800 dark:text-white' : ''} />
                                 </div>
                             </div>
                         ))}
                         {isTyping && (
                             <div className="flex justify-start animate-pulse">
-                                <div className="bg-gray-100 dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#333] px-4 py-3 rounded-2xl rounded-bl-sm flex gap-1 items-center">
-                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
-                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100"></span>
-                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-200"></span>
+                                <div className="bg-gray-100 dark:bg-[#1a1a1a] border border-gray-200 dark:border-terminal-green/30 px-4 py-3 rounded-lg rounded-bl-none flex gap-1 items-center">
+                                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce"></span>
+                                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce delay-100"></span>
+                                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce delay-200"></span>
                                 </div>
                             </div>
                         )}
@@ -321,7 +339,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                             <button
                                                 key={idx}
                                                 onClick={() => handleSendMessage(reply)}
-                                                className="whitespace-nowrap px-4 py-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-full text-xs font-bold text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors shadow-sm active:scale-95"
+                                                className="whitespace-nowrap px-4 py-2 bg-white dark:bg-[#1a1a1a] border border-blue-200 dark:border-terminal-green/50 hover:border-blue-500 dark:hover:border-terminal-green hover:bg-blue-50 dark:hover:bg-terminal-green hover:text-blue-700 dark:hover:text-black rounded text-[10px] font-bold font-mono uppercase tracking-wide text-gray-600 dark:text-terminal-green transition-all shadow-sm active:scale-95"
                                             >
                                                 {reply}
                                             </button>
@@ -329,7 +347,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                     </div>
                                 )}
 
-                                <form onSubmit={handleFormSubmit} className="flex gap-2 items-end bg-gray-100 dark:bg-[#050505] p-2 rounded-xl border border-transparent dark:border-[#333] focus-within:border-blue-400 dark:focus-within:border-terminal-green transition-colors">
+                                <form onSubmit={handleFormSubmit} className="flex gap-2 items-end bg-gray-50 dark:bg-[#0c0c0c] p-2 rounded border border-gray-300 dark:border-terminal-green/30 focus-within:border-blue-500 dark:focus-within:border-terminal-green transition-colors">
                                     <textarea 
                                         ref={textareaRef}
                                         rows={1}
@@ -337,17 +355,15 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                         onChange={(e) => setInput(e.target.value)}
                                         // Removed onKeyDown to allow natural multi-line behavior
                                         placeholder={lang === 'ar' ? "اكتب ردك هنا..." : "Type your response here..."}
-                                        className="flex-grow p-2 bg-transparent outline-none font-sans text-gray-800 dark:text-white resize-none max-h-40 min-h-[24px] text-sm md:text-base leading-relaxed"
+                                        className="flex-grow p-2 bg-transparent outline-none font-mono text-gray-800 dark:text-white resize-none max-h-40 min-h-[24px] text-sm md:text-base leading-relaxed placeholder-gray-400 dark:placeholder-gray-600"
                                         autoFocus
                                     />
                                     <button 
                                         type="submit"
                                         disabled={!input.trim() || isTyping}
-                                        className="p-2 bg-blue-600 dark:bg-terminal-green text-white dark:text-black rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-90 flex-shrink-0 w-10 h-10 flex items-center justify-center"
+                                        className="p-2 bg-blue-600 dark:bg-terminal-green text-white dark:text-black rounded hover:bg-blue-700 dark:hover:bg-terminal-dimGreen disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-90 flex-shrink-0 w-10 h-10 flex items-center justify-center font-bold"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 rtl:rotate-180" viewBox="0 0 20 20" fill="currentColor">
-                                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                                        </svg>
+                                        ➤
                                     </button>
                                 </form>
 
@@ -355,7 +371,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                     <button 
                                         onClick={handleCompileExam}
                                         disabled={messages.length < 2}
-                                        className="w-full md:w-auto px-6 py-3 bg-gray-900 dark:bg-gray-800 text-white dark:text-terminal-green font-bold text-xs uppercase tracking-widest hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-95 rounded-lg border border-gray-700 dark:border-terminal-green disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full md:w-auto px-6 py-3 bg-gray-900 dark:bg-gray-800 text-white dark:text-terminal-green font-bold text-[10px] font-mono uppercase tracking-widest hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-95 rounded border border-gray-700 dark:border-terminal-green disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {t('builder_generate', lang)}
                                     </button>
