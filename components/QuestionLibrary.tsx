@@ -1,12 +1,5 @@
 
-
-
-
-
-
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Question, QuestionType, SavedExam, UILanguage } from '../types';
 import { getLibrary, removeQuestion, getSavedExams, removeExam } from '../services/library';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -48,6 +41,13 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
         }
     };
 
+    // Calculate unique types dynamically from the loaded questions
+    const availableFilters = useMemo(() => {
+        const types = new Set(questions.map(q => q.type));
+        const typeList = Array.from(types).sort();
+        return ['ALL', ...typeList];
+    }, [questions]);
+
     const filteredQuestions = filter === 'ALL' 
         ? questions 
         : questions.filter(q => q.type === filter);
@@ -81,14 +81,14 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
             {activeTab === 'QUESTIONS' ? (
                 <>
                     {/* Filters */}
-                    <div className="flex gap-2 mb-8">
-                        {['ALL', 'MCQ', 'TRACING', 'CODING'].map(f => (
+                    <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+                        {availableFilters.map(f => (
                             <button
                                 key={f}
                                 onClick={() => setFilter(f)}
-                                className={`px-4 py-2 text-sm font-bold border ${filter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-transparent border-gray-400 dark:border-gray-600 hover:border-blue-400'}`}
+                                className={`px-4 py-2 text-sm font-bold border whitespace-nowrap rounded-sm transition-colors ${filter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-transparent border-gray-400 dark:border-gray-600 hover:border-blue-400 dark:text-gray-300'}`}
                             >
-                                {f}
+                                {f === 'ALL' ? (lang === 'ar' ? 'الكل' : 'ALL') : f.replace('_', ' ')}
                             </button>
                         ))}
                     </div>
