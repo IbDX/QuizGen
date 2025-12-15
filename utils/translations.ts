@@ -124,6 +124,10 @@ export const translations = {
         "no_saved_exams": "NO SAVED EXAMS",
         "load_retake": "LOAD & RETAKE EXAM",
         "library_empty": "QUESTION LIBRARY IS EMPTY",
+        "import_exam": "IMPORT EXAM (.zplus)",
+        "export_exam": "EXPORT",
+        "import_success": "Exam imported successfully.",
+        "import_failed": "Invalid .zplus file.",
 
         // AI Helper
         "ai_helper_title": "SYSTEM SUPPORT",
@@ -254,6 +258,10 @@ export const translations = {
         "no_saved_exams": "لا توجد اختبارات محفوظة",
         "load_retake": "تحميل وإعادة الاختبار",
         "library_empty": "مكتبة الأسئلة فارغة",
+        "import_exam": "استيراد اختبار (.zplus)",
+        "export_exam": "تصدير",
+        "import_success": "تم استيراد الاختبار بنجاح.",
+        "import_failed": "ملف .zplus غير صالح.",
 
         // AI Helper
         "ai_helper_title": "دعم النظام",

@@ -1,4 +1,5 @@
 
+
 import { Question, SavedExam } from "../types";
 
 const QUESTION_STORAGE_KEY = "zplus_question_library";
@@ -61,6 +62,28 @@ export const saveFullExam = (questions: Question[], title?: string) => {
     const newExams = [newExam, ...exams];
     localStorage.setItem(EXAM_STORAGE_KEY, JSON.stringify(newExams));
     return newExam.id;
+};
+
+export const importSavedExam = (examData: any): boolean => {
+    try {
+        if (!examData || !examData.questions || !Array.isArray(examData.questions)) return false;
+        
+        const exams = getSavedExams();
+        // Create new entry to avoid ID collision and ensure compatibility
+        const newExam: SavedExam = {
+            id: `exam_imp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            title: examData.title ? `${examData.title} (Imported)` : `Imported Exam ${new Date().toLocaleDateString()}`,
+            date: new Date().toISOString(),
+            questions: examData.questions
+        };
+        
+        const newExams = [newExam, ...exams];
+        localStorage.setItem(EXAM_STORAGE_KEY, JSON.stringify(newExams));
+        return true;
+    } catch (e) {
+        console.error("Import failed", e);
+        return false;
+    }
 };
 
 export const removeExam = (examId: string) => {

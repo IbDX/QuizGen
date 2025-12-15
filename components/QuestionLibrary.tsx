@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Question, QuestionType, SavedExam, UILanguage } from '../types';
-import { getLibrary, removeQuestion, getSavedExams, removeExam } from '../services/library';
+import { getLibrary, removeQuestion, getSavedExams, removeExam, importSavedExam } from '../services/library';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
 import { GraphRenderer } from './GraphRenderer'; // Import GraphRenderer
@@ -19,6 +19,8 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
     const [exams, setExams] = useState<SavedExam[]>([]);
     const [filter, setFilter] = useState<string>('ALL');
     const [activeTab, setActiveTab] = useState<'QUESTIONS' | 'EXAMS'>('QUESTIONS');
+    
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         setQuestions(getLibrary());
@@ -41,6 +43,48 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
         }
     };
 
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const content = e.target?.result as string;
+                const parsed = JSON.parse(content);
+                const success = importSavedExam(parsed);
+                if (success) {
+                    setExams(getSavedExams());
+                    alert(t('import_success', lang));
+                    setActiveTab('EXAMS'); // Switch to exams tab to show imported item
+                } else {
+                    alert(t('import_failed', lang));
+                }
+            } catch (err) {
+                alert(t('import_failed', lang));
+            }
+        };
+        reader.readAsText(file);
+        // Reset input value to allow selecting same file again if needed
+        event.target.value = '';
+    };
+
+    const handleExportExam = (exam: SavedExam) => {
+        const dataStr = JSON.stringify(exam, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        
+        const exportFileDefaultName = `${exam.title.replace(/\s+/g, '_')}_${Date.now()}.zplus`;
+        
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+    };
+
     // Calculate unique types dynamically from the loaded questions
     const availableFilters = useMemo(() => {
         const types = new Set(questions.map(q => q.type));
@@ -54,11 +98,33 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
 
     return (
         <div className={`mx-auto transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                accept=".zplus,.json" 
+                className="hidden" 
+            />
+
             <div className="flex flex-col md:flex-row items-center justify-between mb-8 border-b border-gray-300 dark:border-gray-700 pb-4 gap-4">
-                <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
-                    <span className="text-blue-600 dark:text-blue-400 mx-2">📚</span>
-                    {t('library', lang)}
-                </h2>
+                <div className="flex items-center gap-4">
+                    <h2 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <span className="text-blue-600 dark:text-blue-400">📚</span>
+                        {t('library', lang)}
+                    </h2>
+                    
+                    {/* IMPORT BUTTON */}
+                    <button 
+                        onClick={handleImportClick}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold rounded border border-gray-300 dark:border-gray-600 transition-colors"
+                        title="Import Exam File (.zplus)"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span className="hidden sm:inline">{t('import_exam', lang)}</span>
+                    </button>
+                </div>
                 
                 {/* TAB SWITCHER */}
                 <div className="flex bg-gray-200 dark:bg-gray-800 p-1 rounded">
@@ -203,19 +269,31 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                     ) : (
                         <div className="grid gap-6 pb-20">
                             {exams.map((exam) => (
-                                <div key={exam.id} className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-800 p-6 shadow-md hover:border-purple-500 transition-colors relative">
+                                <div key={exam.id} className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-800 p-6 shadow-md hover:border-purple-500 transition-colors relative group">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
                                             <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200">{exam.title}</h3>
                                             <p className="text-xs text-gray-500 font-mono">{new Date(exam.date).toLocaleString()}</p>
                                         </div>
-                                        <button 
-                                            onClick={() => handleDeleteExam(exam.id)}
-                                            className="text-gray-400 hover:text-red-500 p-1"
-                                            title="Delete Exam"
-                                        >
-                                            ✕
-                                        </button>
+                                        
+                                        <div className="flex items-center gap-2">
+                                             <button 
+                                                onClick={() => handleExportExam(exam)}
+                                                className="text-gray-400 hover:text-blue-500 p-1"
+                                                title={t('export_exam', lang)}
+                                             >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                </svg>
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeleteExam(exam.id)}
+                                                className="text-gray-400 hover:text-red-500 p-1"
+                                                title="Delete Exam"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
                                     </div>
                                     
                                     <div className="flex items-center gap-4 mb-6 text-sm">
