@@ -132,9 +132,9 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                     </div>
 
                     {questions.length === 0 ? (
-                        <div className="text-center py-20 opacity-50 dark:text-terminal-gray">
-                            <div className="text-4xl mb-4">📂</div>
-                            <p>{t('library_empty', lang)}</p>
+                        <div className="text-center py-20 opacity-70 text-gray-500 dark:text-gray-400">
+                            <div className="text-4xl mb-4 grayscale">📂</div>
+                            <p className="font-mono">{t('library_empty', lang)}</p>
                         </div>
                     ) : (
                         <div className="space-y-8 pb-20">
@@ -202,9 +202,9 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
             ) : (
                 <>
                     {exams.length === 0 ? (
-                        <div className="text-center py-20 opacity-50 dark:text-terminal-gray">
-                            <div className="text-4xl mb-4">💾</div>
-                            <p>{t('no_saved_exams', lang)}</p>
+                        <div className="text-center py-20 opacity-70 text-gray-500 dark:text-gray-400">
+                            <div className="text-4xl mb-4 grayscale">💾</div>
+                            <p className="font-mono">{t('no_saved_exams', lang)}</p>
                         </div>
                     ) : (
                         <div className="grid gap-6 pb-20">

@@ -29,7 +29,6 @@ interface LayoutProps {
 
 export type ThemeOption = 'light' | 'dark' | 'palestine';
 
-// ... (CURSORS SVGs omitted for brevity, assume identical to previous file content)
 const CURSOR_DEFAULT_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M2 2L9 21L12.5 12.5L21 9L2 2Z" fill="#000000" stroke="#00ff41" stroke-width="1.5" stroke-linejoin="round"/>
@@ -369,23 +368,136 @@ export const Layout: React.FC<LayoutProps> = ({
                         ✕
                     </button>
                 </div>
-                {/* ... (Settings content omitted for brevity, logic remains identical) ... */}
-                {/* Re-use the settings content from previous turn but ensure dark:border-terminal-border is used instead of gray-800 */}
+                
                 <div className="overflow-y-auto custom-scrollbar flex-grow p-6 space-y-8">
-                    {/* Simplified Settings Body for brevity, assuming minimal structure changes */}
+                    
+                    {/* 1. INTERFACE SECTION */}
                     <div>
                         <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-terminal-border pb-1">{t('settings_interface', uiLanguage)}</h3>
+                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Theme */}
                             <div>
                                 <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('ui_theme', uiLanguage)}</label>
                                 <div className="grid grid-cols-3 gap-2">
-                                     <button onClick={() => setTheme('light')} className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'light' ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>LIGHT</button>
-                                     <button onClick={() => setTheme('dark')} className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'dark' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>TERMINAL</button>
-                                     <button onClick={() => setTheme('palestine')} className={`p-2 border rounded text-xs font-bold transition-all relative overflow-hidden ${theme === 'palestine' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>PALESTINE</button>
+                                        <button onClick={() => setTheme('light')} className={`p-2 border rounded text-[10px] font-bold transition-all ${theme === 'light' ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>LIGHT</button>
+                                        <button onClick={() => setTheme('dark')} className={`p-2 border rounded text-[10px] font-bold transition-all ${theme === 'dark' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>TERMINAL</button>
+                                        <button onClick={() => setTheme('palestine')} className={`p-2 border rounded text-[10px] font-bold transition-all relative overflow-hidden ${theme === 'palestine' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>PALESTINE</button>
                                 </div>
+                            </div>
+
+                            {/* Language */}
+                            <div>
+                                <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('system_language', uiLanguage)}</label>
+                                <div className="flex gap-2">
+                                    <button onClick={() => onSetUiLanguage('en')} className={`flex-1 p-2 border rounded text-xs font-bold transition-all ${uiLanguage === 'en' ? 'bg-gray-800 text-white dark:bg-terminal-green dark:text-black' : 'bg-white dark:bg-terminal-black text-gray-500 border-gray-300 dark:border-gray-700'}`}>ENGLISH</button>
+                                    <button onClick={() => onSetUiLanguage('ar')} className={`flex-1 p-2 border rounded text-xs font-bold transition-all ${uiLanguage === 'ar' ? 'bg-gray-800 text-white dark:bg-terminal-green dark:text-black' : 'bg-white dark:bg-terminal-black text-gray-500 border-gray-300 dark:border-gray-700'}`}>العربية</button>
+                                </div>
+                            </div>
+
+                            {/* Font Family */}
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('font_family', uiLanguage)}</label>
+                                <select 
+                                    value={fontFamily} 
+                                    onChange={(e) => setFontFamily(e.target.value)}
+                                    className="w-full p-2 bg-gray-100 dark:bg-terminal-black border border-gray-300 dark:border-terminal-border rounded text-sm outline-none focus:border-blue-500 dark:focus:border-terminal-green dark:text-terminal-light"
+                                >
+                                    {FONT_OPTIONS.map((font) => (
+                                        <option key={font.name} value={font.value}>{font.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Font Scale */}
+                            <div className="md:col-span-2">
+                                <div className="flex justify-between mb-2">
+                                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('global_font_scale', uiLanguage)}</label>
+                                    <span className="text-xs font-mono text-gray-500 dark:text-terminal-green">{fontSize}px</span>
+                                </div>
+                                <input 
+                                    type="range" 
+                                    min="12" 
+                                    max="20" 
+                                    step="1" 
+                                    value={fontSize}
+                                    onChange={(e) => setFontSize(parseInt(e.target.value))}
+                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600 dark:accent-terminal-green"
+                                />
                             </div>
                         </div>
                     </div>
+
+                    {/* 2. DISPLAY SECTION */}
+                    <div>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-terminal-border pb-1">{t('settings_display', uiLanguage)}</h3>
+                        <div className="space-y-3">
+                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
+                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('full_width', uiLanguage)}</span>
+                                <div className={`w-10 h-5 rounded-full relative transition-colors ${isFullWidth ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                    <input type="checkbox" checked={isFullWidth} onChange={onToggleFullWidth} className="hidden" />
+                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${isFullWidth ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
+                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('auto_hide_menu', uiLanguage)}</span>
+                                <div className={`w-10 h-5 rounded-full relative transition-colors ${autoHideHeader ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                    <input type="checkbox" checked={autoHideHeader} onChange={() => setAutoHideHeader(!autoHideHeader)} className="hidden" />
+                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${autoHideHeader ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
+                                </div>
+                            </label>
+
+                            {onToggleAutoHideFooter && (
+                                <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
+                                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('auto_hide_footer', uiLanguage)}</span>
+                                    <div className={`w-10 h-5 rounded-full relative transition-colors ${autoHideFooter ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                        <input type="checkbox" checked={autoHideFooter} onChange={onToggleAutoHideFooter} className="hidden" />
+                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${autoHideFooter ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
+                                    </div>
+                                </label>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 3. VISUAL FX SECTION */}
+                    <div>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-terminal-border pb-1">{t('settings_visuals', uiLanguage)}</h3>
+                        <div className="space-y-3">
+                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
+                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('matrix_rain', uiLanguage)}</span>
+                                <div className={`w-10 h-5 rounded-full relative transition-colors ${enableBackgroundAnim ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                    <input type="checkbox" checked={enableBackgroundAnim} onChange={() => setEnableBackgroundAnim(!enableBackgroundAnim)} className="hidden" />
+                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${enableBackgroundAnim ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
+                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('terminal_cursor', uiLanguage)}</span>
+                                <div className={`w-10 h-5 rounded-full relative transition-colors ${useCustomCursor ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                    <input type="checkbox" checked={useCustomCursor} onChange={() => setUseCustomCursor(!useCustomCursor)} className="hidden" />
+                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${useCustomCursor ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* 4. SYSTEM SECTION */}
+                    <div>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-terminal-border pb-1">{t('settings_system', uiLanguage)}</h3>
+                        <a 
+                            href="https://github.com/your-repo/terminal-exam-gen/issues" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 hover:bg-red-50 dark:hover:bg-red-900/10 hover:border-red-400 dark:hover:border-red-500 transition-colors group"
+                        >
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400">
+                                {t('report_issue', uiLanguage)}
+                            </span>
+                            <span className="text-gray-400 dark:text-gray-500 group-hover:text-red-500">↗</span>
+                        </a>
+                    </div>
+
                 </div>
                 <div className="p-4 border-t border-gray-300 dark:border-terminal-border bg-gray-50 dark:bg-terminal-gray/20">
                     <button onClick={() => setShowSettings(false)} className="w-full py-3 bg-gray-800 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-btn-text font-bold uppercase transition-colors rounded shadow-lg">{t('save_close', uiLanguage)}</button>

@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
-import { GraphRenderer } from './GraphRenderer'; // Import GraphRenderer
-import { DiagramRenderer } from './DiagramRenderer'; // Import DiagramRenderer
+import { GraphRenderer } from './GraphRenderer'; 
+import { DiagramRenderer } from './DiagramRenderer'; 
 import { generateExamPDF } from '../utils/pdfGenerator';
 import { saveQuestion, removeQuestion, isQuestionSaved, saveFullExam } from '../services/library';
 import { sanitizeInput } from '../utils/security';
 import { t } from '../utils/translations';
-import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini'; // Import grading services
+import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini'; 
 
 interface ResultsProps {
   questions: Question[];
@@ -24,7 +24,6 @@ interface ResultsProps {
 
 const getTopicResources = (topicRaw: string) => {
   const topic = topicRaw.toLowerCase().trim();
-  // Hardcoded curated list for common topics
   const RESOURCES: Record<string, { video: string, read: string }> = {
     'pointers': { video: 'https://www.youtube.com/results?search_query=pointers+in+c%2B%2B+explained', read: 'https://www.geeksforgeeks.org/pointers-in-c-cpp/' },
     'recursion': { video: 'https://www.youtube.com/results?search_query=recursion+explained+computer+science', read: 'https://www.freecodecamp.org/news/recursion-in-programming-explained/' },
@@ -35,11 +34,9 @@ const getTopicResources = (topicRaw: string) => {
 
   if (RESOURCES[topic]) return RESOURCES[topic];
 
-  // Smart Fallback
   let searchSuffix = " explanation";
   let readSuffix = " guide concepts";
   
-  // Basic language detection for search query
   if (topic.match(/[\u0600-\u06FF]/)) {
        searchSuffix = " شرح";
        readSuffix = " مفاهيم";
@@ -60,13 +57,10 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   const [examSaved, setExamSaved] = useState(false);
   const [isFooterVisible, setIsFooterVisible] = useState(true);
 
-  // State to hold processed results and grading status
   const [finalResults, setFinalResults] = useState<any[]>([]);
   const [gradingStatus, setGradingStatus] = useState<Record<string, boolean>>({});
 
-  // Effect for Post-Exam AI Grading
   useEffect(() => {
-    // 1. Initial Processing (Standard MCQ and Tracing are graded instantly)
     const initialProcessed = questions.map(q => {
       const ua = answers.find(a => a.questionId === q.id);
       let isCorrect: boolean | undefined = undefined;
@@ -81,7 +75,6 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
         };
       }
 
-      // Explicitly check for Standard MCQ (options exist)
       const isStandardMCQ = q.type === QuestionType.MCQ && q.options && q.options.length > 0;
 
       if (isStandardMCQ) {
@@ -89,7 +82,6 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       } else if (q.type === QuestionType.TRACING) {
           isCorrect = String(ua.answer).trim().toLowerCase() === String(q.tracingOutput || "").trim().toLowerCase();
       } else if (q.type === QuestionType.CODING || q.type === QuestionType.SHORT_ANSWER || !isStandardMCQ) {
-          // These types need AI Grading or have already been graded in 2-way mode
           if (ua.isCorrect !== undefined) {
               isCorrect = ua.isCorrect;
               feedback = ua.feedback || feedback;
@@ -100,13 +92,11 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
     });
     setFinalResults(initialProcessed);
 
-    // 2. Identify and Grade Ungraded Questions (Coding OR Short Answer)
     const toGrade = initialProcessed.filter(p => {
-        // Standard MCQ check again
         const isStandardMCQ = p.question.type === QuestionType.MCQ && p.question.options && p.question.options.length > 0;
         const needsAiGrading = p.question.type === QuestionType.CODING || 
                                p.question.type === QuestionType.SHORT_ANSWER || 
-                               !isStandardMCQ; // Fallback for MCQ without options (Short Answer hack)
+                               !isStandardMCQ;
         
         return needsAiGrading && p.answer && p.isCorrect === undefined;
     });
@@ -119,11 +109,9 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
       const gradePromises = toGrade.map(async item => {
         let result = { isCorrect: false, feedback: "Grading Error" };
         
-        // Pass 'lang' for correct feedback language
         if (item.question.type === QuestionType.CODING) {
              result = await gradeCodingAnswer(item.question, String(item.answer), lang);
         } else {
-             // Use Short Answer grader for SHORT_ANSWER or pseudo-MCQ
              result = await gradeShortAnswer(item.question, String(item.answer), lang);
         }
 
@@ -145,10 +133,10 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
           });
           return updatedResults;
         });
-        setGradingStatus({}); // Clear grading status
+        setGradingStatus({}); 
       });
     }
-  }, [questions, answers, lang]); // Added lang as dependency to refresh feedback language
+  }, [questions, answers, lang]);
 
   useEffect(() => {
     if (!autoHideFooter) { setIsFooterVisible(true); return; }
@@ -159,7 +147,6 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   const handleMouseEnterFooter = () => { if (autoHideFooter) setIsFooterVisible(true); };
   const handleMouseLeaveFooter = () => { if (autoHideFooter) setIsFooterVisible(false); };
   
-  // Calculate score based on finalResults
   const correctCount = finalResults.filter(r => r.isCorrect).length;
   const wrongIds = finalResults.filter(r => !r.isCorrect).map(r => r.question.id);
   const wrongTopics: Record<string, number> = finalResults
@@ -171,7 +158,6 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
     }, {});
 
   const score = finalResults.length > 0 ? Math.round((correctCount / finalResults.length) * 100) : 0;
-  // Updated Grading Scale: A(90+), B(75+), C(50+), F(<50)
   const getLetterGrade = (s: number) => s >= 90 ? 'A' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 50 ? 'D' : 'F';
   const grade = getLetterGrade(score);
   const isFailure = grade === 'F';
@@ -213,7 +199,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
   };
 
   return (
-    <div className={`pb-28 transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl mx-auto'}`}>
+    <div className={`pb-32 transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl mx-auto'}`}>
       
       {isFailure && (
           <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-20 dark:opacity-10">
@@ -222,7 +208,7 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
           </div>
       )}
 
-      <div className="text-center mb-8 md:mb-12 border-b border-gray-300 dark:border-terminal-dimGreen pb-8 relative z-10">
+      <div className="text-center mb-8 md:mb-12 border-b border-gray-300 dark:border-terminal-border pb-8 relative z-10">
         
         {isFailure ? (
              <div className="bg-terminal-alert text-white py-2 font-bold tracking-[0.2em] md:tracking-[0.5em] uppercase mb-8 animate-pulse text-sm md:text-base">⚠ {t('critical_failure', lang)} ⚠</div>
@@ -406,21 +392,27 @@ export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart,
 
       {autoHideFooter && <div className="hidden md:block fixed bottom-0 left-0 w-full h-6 z-40 bg-transparent cursor-crosshair" onMouseEnter={handleMouseEnterFooter} />}
       
-      <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-terminal-black border-t border-gray-300 dark:border-terminal-green gap-4 justify-center items-center shadow-[0_-5px_20px_rgba(0,0,0,0.2)] z-50 transition-transform duration-500 ease-in-out hidden md:flex xl:flex-row ${autoHideFooter ? (isFooterVisible ? 'md:translate-y-0' : 'md:translate-y-full') : ''}`} onMouseLeave={handleMouseLeaveFooter} onMouseEnter={handleMouseEnterFooter}>
-        {!isPublished ? (
-            isFailure ? <div className="text-terminal-alert font-bold border border-terminal-alert p-3 bg-red-50 dark:bg-terminal-alert/20 text-center w-full xl:w-auto text-sm tracking-widest">✖ {t('system_locked', lang)}</div> :
-             <div className="flex gap-2 w-full xl:w-auto">
-                <input type="text" placeholder={t('enter_agent_name', lang)} value={userName} onChange={handleNameChange} maxLength={20} className="bg-gray-100 dark:bg-terminal-black border border-gray-400 dark:border-terminal-gray p-2 font-mono outline-none focus:border-terminal-green flex-grow xl:w-48 dark:text-terminal-green"/>
-                <button onClick={handlePublish} disabled={!userName || !!nameError} className="px-4 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen disabled:opacity-50 transition-colors">{t('publish', lang)}</button>
-             </div>
-        ) : <div className="text-terminal-green font-bold px-4 py-2 border border-terminal-green bg-green-50 dark:bg-terminal-green/20 rounded w-full xl:w-auto text-center">✓ {t('published', lang)}: {userName}</div>}
+      <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-terminal-black/95 backdrop-blur-md border-t-2 border-gray-300 dark:border-terminal-green flex flex-col md:flex-row gap-4 justify-between items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-50 transition-transform duration-500 ease-in-out md:px-8 ${autoHideFooter ? (isFooterVisible ? 'translate-y-0' : 'translate-y-full') : ''}`} onMouseLeave={handleMouseLeaveFooter} onMouseEnter={handleMouseEnterFooter}>
+        <div className="flex-1 w-full md:w-auto">
+            {!isPublished ? (
+                isFailure ? <div className="text-terminal-alert font-bold border border-terminal-alert p-3 bg-red-50 dark:bg-terminal-alert/20 text-center w-full text-xs tracking-widest uppercase">✖ {t('system_locked', lang)}</div> :
+                <div className="flex gap-2 w-full">
+                    <input type="text" placeholder={t('enter_agent_name', lang)} value={userName} onChange={handleNameChange} maxLength={20} className="bg-gray-100 dark:bg-terminal-gray/30 border border-gray-400 dark:border-terminal-border p-2.5 text-sm font-mono outline-none focus:border-terminal-green flex-grow dark:text-terminal-green rounded-md"/>
+                    <button onClick={handlePublish} disabled={!userName || !!nameError} className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen hover:text-white disabled:opacity-50 transition-colors uppercase tracking-wider text-xs rounded-md shadow-md">{t('publish', lang)}</button>
+                </div>
+            ) : <div className="text-terminal-green font-bold px-4 py-2 border border-terminal-green bg-green-50 dark:bg-terminal-green/10 rounded w-full text-center tracking-widest text-xs uppercase">✓ {t('published', lang)}: {userName}</div>}
+        </div>
 
-        <div className="flex gap-2 w-full xl:w-auto justify-center">
-            <button onClick={handleSaveExam} className="px-4 py-2 border border-purple-400 dark:border-purple-600 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-bold transition-colors">{examSaved ? `✓ ${t('saved', lang)}` : `💾 ${t('save', lang)}`}</button>
-            <button onClick={handleDownloadPDF} className="px-4 py-2 border border-orange-400 dark:border-orange-600 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 font-bold transition-colors">{t('pdf_report', lang)}</button>
-            <button onClick={onRetake} className="px-4 py-2 border border-blue-400 dark:border-terminal-green text-blue-600 dark:text-terminal-green hover:bg-blue-50 dark:hover:bg-terminal-green/20 font-bold transition-colors">{t('retake', lang)}</button>
-            <button onClick={onRestart} className="px-4 py-2 border border-gray-400 dark:border-terminal-gray hover:bg-gray-200 dark:hover:bg-terminal-gray/50 font-bold transition-colors dark:text-terminal-light">{t('restart', lang)}</button>
-            {wrongIds.length > 0 && <button onClick={() => onGenerateRemediation(wrongIds)} className="px-6 py-2 bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-lg transition-all">{t('remediate', lang)} ({wrongIds.length})</button>}
+        <div className="flex flex-wrap justify-center gap-3 w-full md:w-auto">
+            <button onClick={handleSaveExam} className="px-4 py-2.5 border border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-bold transition-all text-xs uppercase tracking-wider rounded-md">{examSaved ? `✓ ${t('saved', lang)}` : `💾 ${t('save', lang)}`}</button>
+            <button onClick={handleDownloadPDF} className="px-4 py-2.5 border border-orange-500 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 font-bold transition-all text-xs uppercase tracking-wider rounded-md">{t('pdf_report', lang)}</button>
+            
+            <div className="h-8 w-px bg-gray-300 dark:bg-terminal-border hidden md:block"></div>
+            
+            <button onClick={onRetake} className="px-6 py-2.5 bg-blue-600 dark:bg-terminal-green text-white dark:text-black font-bold hover:brightness-110 shadow-md transition-all text-xs uppercase tracking-wider rounded-md">{t('retake', lang)}</button>
+            <button onClick={onRestart} className="px-6 py-2.5 border border-gray-400 dark:border-terminal-border text-gray-600 dark:text-terminal-light hover:bg-gray-200 dark:hover:bg-terminal-gray/50 font-bold transition-all text-xs uppercase tracking-wider rounded-md">{t('restart', lang)}</button>
+            
+            {wrongIds.length > 0 && <button onClick={() => onGenerateRemediation(wrongIds)} className="px-6 py-2.5 bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-lg transition-all text-xs uppercase tracking-wider rounded-md">{t('remediate', lang)} ({wrongIds.length})</button>}
         </div>
       </div>
     </div>
