@@ -42,6 +42,7 @@ An advanced, terminal-themed AI examination platform that parses documents to cr
     -   **Smart Import:** Detects duplicate exams and validates JSON schema integrity.
 
 ### 5. Advanced UI/UX
+-   **Reliability & Quota Management:** The system automatically detects API `429 Too Many Requests` errors (Quota Exhausted) during exam generation, chatting, or grading. It immediately transitions the global UI to a "System Offline" (Red Status) mode to prevent request spamming and informs the user clearly.
 -   **Themes:** Choose between **Light**, **Terminal (Dark)**, and **Palestine** themes.
 -   **Theme-Adaptive Controls:** UI elements like the Photo Fetcher and Mode Selection buttons adapt colors dynamically.
 -   **Smart Navigation:** "Scroll to Top" buttons and sticky headers improve usability on long exams.

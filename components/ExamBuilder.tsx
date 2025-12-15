@@ -100,7 +100,11 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             setQuickReplies(newSuggestions.slice(0, 3)); // Ensure max 3
 
         } catch (error: any) {
-            if (error.message === "429_RATE_LIMIT" || error.message?.includes('429') || error.message?.toLowerCase().includes('quota')) {
+            // SPECIFIC 429 HANDLING
+            if (error.message === "429_RATE_LIMIT" || 
+                error.message?.includes('429') || 
+                error.message?.toLowerCase().includes('quota') ||
+                error.message?.toLowerCase().includes('resource_exhausted')) {
                 onQuotaError();
             }
             setMessages(prev => [...prev, { role: 'model', text: t('connection_error', lang) }]);
@@ -122,7 +126,11 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             setGeneratedData({ questions, settings, title });
         } catch (error: any) {
             console.error(error);
-            if (error.message === "429_RATE_LIMIT" || error.message?.includes('429') || error.message?.toLowerCase().includes('quota')) {
+            // SPECIFIC 429 HANDLING
+            if (error.message === "429_RATE_LIMIT" || 
+                error.message?.includes('429') || 
+                error.message?.toLowerCase().includes('quota') ||
+                error.message?.toLowerCase().includes('resource_exhausted')) {
                 onQuotaError();
             }
             alert("Failed to compile exam from chat. Please ensure the conversation has defined specific questions.");

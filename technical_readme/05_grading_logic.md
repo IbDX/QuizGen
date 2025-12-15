@@ -22,7 +22,8 @@ graph TD
     ImmediateCheck --> AI_API[Call Gemini API]
     BatchGrade --> AI_API
     
-    AI_API --> Feedback[Return JSON: {isCorrect, feedback}]
+    AI_API -- Success --> Feedback["Return JSON: {isCorrect, feedback}"]
+    AI_API -- 429 Error --> QuotaHandler[Trigger System Offline]
 ```
 
 ---

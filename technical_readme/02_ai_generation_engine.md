@@ -16,20 +16,27 @@ sequenceDiagram
 
     User->>App: Uploads PDF (Base64)
     App->>Gemini: Send Base64 + System Prompt + JSON Schema
-    Gemini->>Gemini: Phase 1: Parse Text
-    Gemini->>Gemini: Phase 2: Identify Visuals (Coords)
-    Gemini->>Gemini: Phase 3: Classify & Format
-    Gemini-->>App: Returns JSON Array (Questions)
     
-    loop For Each Question
-        alt Has VisualBounds?
-            App->>PDFjs: Render Page to Canvas
-            App->>App: Crop Canvas using [ymin, xmin, ymax, xmax]
-            App->>App: Store cropped image as Base64 in Question object
+    alt API Success
+        Gemini->>Gemini: Phase 1: Parse Text
+        Gemini->>Gemini: Phase 2: Identify Visuals (Coords)
+        Gemini->>Gemini: Phase 3: Classify & Format
+        Gemini-->>App: Returns JSON Array (Questions)
+        
+        loop For Each Question
+            alt Has VisualBounds?
+                App->>PDFjs: Render Page to Canvas
+                App->>App: Crop Canvas using [ymin, xmin, ymax, xmax]
+                App->>App: Store cropped image as Base64 in Question object
+            end
         end
+        
+        App-->>User: Display Interactive Exam
+    else API Rate Limit (429)
+        Gemini--xApp: Error: Resource Exhausted
+        App->>App: Trigger onQuotaError()
+        App-->>User: Update UI to Red/Offline Status
     end
-    
-    App-->>User: Display Interactive Exam
 ```
 
 ---
@@ -121,3 +128,12 @@ The `ExamBuilder` uses a separate prompt flow designed for negotiation.
 1.  **Conversational History:** Each message is appended to a history array passed to `ai.chats.create()`.
 2.  **Suggestion Engine:** The prompt instructs Gemini to append `||SUGGESTIONS|| ["Option A", "Option B"]` at the end of every reply. The UI parses this separator to create clickable "Quick Reply" chips.
 3.  **Override Signal:** When the user clicks "Generate", the app sends a hidden system message: `SYSTEM OVERRIDE: Generate JSON now`. This forces the model to switch from "Chat Persona" to "Data Generation Mode".
+
+### Error Propagation & Quota Management
+
+To maintain system stability, the Exam Builder is tightly integrated with the global `SystemStatus` state in `App.tsx`.
+
+1.  **Error Interception:** If the Gemini API returns a `429` (Quota Exceeded) error during a chat turn or final compilation, the `gemini.ts` service detects the `RESOURCE_EXHAUSTED` code.
+2.  **Standardized Exception:** Instead of throwing a generic `Error`, it throws a specific string: `"429_RATE_LIMIT"`.
+3.  **Global Lock:** The `ExamBuilder.tsx` component catches this specific exception and invokes the `onQuotaError()` callback.
+4.  **UI Update:** This changes the top bar status from **ONLINE (Green)** to **QUOTA LIMIT (Red)**, alerting the user to wait before attempting further interactions.

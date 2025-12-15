@@ -7,9 +7,9 @@ Z+ implements a "Defense in Depth" strategy. Since the application runs client-s
 
 ```mermaid
 flowchart LR
-    User[User Upload] --> SizeCheck{Size < 15MB?}
+    User[User Upload] --> SizeCheck{"Size < 15MB?"}
     SizeCheck -- No --> Reject[Reject File]
-    SizeCheck -- Yes --> MagicByte{Magic Bytes Valid?}
+    SizeCheck -- Yes --> MagicByte{"Magic Bytes Valid?"}
     MagicByte -- No --> Reject
     MagicByte -- Yes --> HashCalc[Calculate SHA-256]
     HashCalc --> VT[VirusTotal API]
