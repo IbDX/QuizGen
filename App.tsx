@@ -10,16 +10,27 @@ import { Results } from './components/Results';
 import { Leaderboard } from './components/Leaderboard';
 import { QuestionLibrary } from './components/QuestionLibrary';
 import { LoadingScreen } from './components/LoadingScreen';
-import { ConfirmModal } from './components/ConfirmModal'; // Import the custom modal
-import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference, UILanguage, SavedExam } from './types';
+import { ConfirmModal } from './components/ConfirmModal'; 
+import { SettingsView } from './components/SettingsView';
+import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference, UILanguage, SavedExam, ThemeOption } from './types';
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 import { generateExamPDF } from './utils/pdfGenerator';
 import { t } from './utils/translations';
 import { saveToHistory } from './services/library';
 
+const FONT_OPTIONS = [
+    { name: 'Fira Code', value: "'Fira Code', monospace" },
+    { name: 'JetBrains Mono', value: "'JetBrains Mono', monospace" },
+    { name: 'Roboto Mono', value: "'Roboto Mono', monospace" },
+    { name: 'Cairo (Arabic)', value: "'Cairo', sans-serif" },
+    { name: 'Courier New', value: "'Courier New', Courier, monospace" },
+];
+
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('UPLOAD');
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
   const [uploadedFiles, setUploadedFiles] = useState<Array<{base64: string; mime: string; name: string; hash: string}>>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [settings, setSettings] = useState<ExamSettings | null>(null);
@@ -31,12 +42,17 @@ const App: React.FC = () => {
   const [autoHideFooter, setAutoHideFooter] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<UILanguage>('en');
   
+  // Visual Settings State (Lifted from Layout)
+  const [theme, setTheme] = useState<ThemeOption>('dark');
+  const [fontSize, setFontSize] = useState(16);
+  const [useCustomCursor, setUseCustomCursor] = useState(true);
+  const [fontFamily, setFontFamily] = useState(FONT_OPTIONS[0].value);
+  const [autoHideHeader, setAutoHideHeader] = useState(false);
+  const [enableBackgroundAnim, setEnableBackgroundAnim] = useState(false);
+
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
-  
-  // Track API Token Health (Online / Quota Exceeded)
   const [systemStatus, setSystemStatus] = useState<SystemStatus>('ONLINE');
 
-  // State for the custom confirmation modal
   const [confirmModalState, setConfirmModalState] = useState({
     isOpen: false,
     title: '',
@@ -44,27 +60,35 @@ const App: React.FC = () => {
     onConfirm: () => {},
   });
 
+  // Effect: Apply Theme Classes
+  useEffect(() => {
+    document.documentElement.classList.remove('dark', 'theme-palestine');
+    if (theme === 'dark') document.documentElement.classList.add('dark');
+    else if (theme === 'palestine') document.documentElement.classList.add('dark', 'theme-palestine');
+  }, [theme]);
+
+  // Effect: Apply Font Settings
+  useEffect(() => { document.documentElement.style.fontSize = `${fontSize}px`; }, [fontSize]);
+  useEffect(() => { document.body.style.fontFamily = fontFamily; }, [fontFamily]);
+
   useEffect(() => {
     document.documentElement.dir = uiLanguage === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = uiLanguage;
   }, [uiLanguage]);
 
-  // Browser-level exit confirmation (refresh, close tab)
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (appState === 'EXAM') {
         const message = t('exit_exam_warning_body', uiLanguage);
         event.preventDefault();
-        event.returnValue = message; // For older browsers
-        return message; // For modern browsers
+        event.returnValue = message; 
+        return message; 
       }
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [appState, uiLanguage]);
 
-  // In-app navigation confirmation logic
   const confirmAndNavigate = (navigationAction: () => void) => {
     if (appState === 'EXAM' || appState === 'BUILDER') {
       setConfirmModalState({
@@ -108,7 +132,7 @@ const App: React.FC = () => {
     }
 
     setUploadedFiles(uniqueBatch);
-    setPreloadedExamTitle(undefined); // Reset preloaded title on new upload
+    setPreloadedExamTitle(undefined);
     setAppState('CONFIG');
   };
 
@@ -141,11 +165,6 @@ const App: React.FC = () => {
       }
       return updated;
     });
-  };
-
-  const handleReplaceFiles = () => {
-    setUploadedFiles([]);
-    setAppState('UPLOAD');
   };
 
   const handleDemoLoad = () => {
@@ -211,12 +230,11 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
   
   const handleBuilderExamGenerated = (generatedQuestions: Question[], builderSettings: Partial<ExamSettings>, title?: string) => {
       setQuestions(generatedQuestions);
-      // Use settings from builder if provided, otherwise defaults
       setSettings({
           timeLimitMinutes: builderSettings.timeLimitMinutes || 0,
           mode: builderSettings.mode || ExamMode.ONE_WAY,
           formatPreference: QuestionFormatPreference.MIXED,
-          outputLanguage: 'en', // Builder handles language in chat
+          outputLanguage: 'en',
       });
       if (title) setPreloadedExamTitle(title);
       setAppState('EXAM');
@@ -224,16 +242,13 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
 
   const handleStartExam = async (examSettings: ExamSettings) => {
     setSettings(examSettings);
-    // Optimistically assume online when starting a new operation
     setSystemStatus('ONLINE'); 
 
-    // Case 1: Preloaded Exam (From Library)
     if (preloadedExamTitle) {
         setAppState('EXAM');
         return;
     }
 
-    // Case 2: New Generation
     if (uploadedFiles.length === 0) return;
     setAppState('GENERATING');
     setLoadingMsg(uiLanguage === 'ar' 
@@ -260,14 +275,10 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
       if (generatedQuestions.length === 0) throw new Error("No questions generated");
       
       setQuestions(generatedQuestions);
-      
-      // NEW FLOW: Go to Ready Screen instead of directly to EXAM
       setAppState('EXAM_READY');
 
     } catch (e: any) {
       console.error(e);
-      
-      // Enhanced 429 Detection to ensure UI goes red/offline
       const isQuota = 
           e.message === "429_RATE_LIMIT" || 
           e.message?.includes('429') || 
@@ -284,18 +295,14 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
       } else {
           alert('Failed to generate exam. Please try different files or simpler instructions.');
       }
-      
-      setAppState('CONFIG'); // Go back to config instead of upload so they can retry
+      setAppState('CONFIG');
     }
   };
 
   const handleExamComplete = (answers: UserAnswer[]) => {
     setUserAnswers(answers);
-    
-    // Auto-save to History
     const title = preloadedExamTitle || `Auto-Saved Exam ${new Date().toLocaleTimeString()}`;
     saveToHistory(questions, title);
-    
     setAppState('RESULTS');
   };
 
@@ -306,8 +313,9 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
     setSettings(null);
     setUserAnswers([]);
     setIsLibraryOpen(false);
+    setIsSettingsOpen(false);
     setPreloadedExamTitle(undefined);
-    setSystemStatus('ONLINE'); // Reset visual status on restart
+    setSystemStatus('ONLINE');
   };
 
   const handleRetake = () => {
@@ -318,21 +326,21 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
   const handleLoadSavedExam = (exam: SavedExam) => {
       setQuestions(exam.questions);
       setPreloadedExamTitle(exam.title);
-      setUploadedFiles([]); // Clear files as we are loading existing questions
+      setUploadedFiles([]);
       setUserAnswers([]);
       setIsLibraryOpen(false);
-      setAppState('CONFIG'); // Go to CONFIG instead of EXAM
+      setAppState('CONFIG');
   };
 
   const handleRemediation = async (wrongIds: string[]) => {
     setAppState('GENERATING');
-    setSystemStatus('ONLINE'); // Reset to try again
+    setSystemStatus('ONLINE');
     setLoadingMsg(uiLanguage === 'ar' ? 'تحليل نقاط الضعف...' : 'ANALYZING FAILURE POINTS... GENERATING TACTICAL REMEDIATION EXAM...');
     try {
       const newQuestions = await generateExamFromWrongAnswers(questions, wrongIds);
       setQuestions(newQuestions);
       setUserAnswers([]);
-      setPreloadedExamTitle(undefined); // Treat as new exam context
+      setPreloadedExamTitle(undefined);
       setAppState('EXAM');
     } catch (e: any) {
        console.error(e);
@@ -383,7 +391,13 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
   };
   
   const handleToggleLibrary = () => {
+      if (!isLibraryOpen) setIsSettingsOpen(false); // Close settings if opening lib
       setIsLibraryOpen(prev => !prev);
+  };
+
+  const handleToggleSettings = () => {
+      if (!isSettingsOpen) setIsLibraryOpen(false); // Close lib if opening settings
+      setIsSettingsOpen(prev => !prev);
   };
 
   const getMobileActions = (): MobileAction[] => {
@@ -431,6 +445,8 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
       onHome={() => confirmAndNavigate(handleRestart)}
       onToggleLibrary={handleToggleLibrary}
       isLibraryOpen={isLibraryOpen}
+      onToggleSettings={handleToggleSettings}
+      isSettingsOpen={isSettingsOpen}
       isFullWidth={isFullWidth} 
       onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
       autoHideFooter={autoHideFooter}
@@ -440,6 +456,11 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
       onSetUiLanguage={setUiLanguage}
       forceStaticHeader={appState === 'UPLOAD'}
       systemStatus={systemStatus}
+      // Pass Visual Props
+      theme={theme}
+      autoHideHeader={autoHideHeader}
+      enableBackgroundAnim={enableBackgroundAnim}
+      useCustomCursor={useCustomCursor}
     >
       <ConfirmModal 
         isOpen={confirmModalState.isOpen}
@@ -487,7 +508,29 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
           />
       )}
 
-      <div className={isLibraryOpen ? 'hidden' : ''}>
+      {isSettingsOpen && (
+          <SettingsView
+              isFullWidth={isFullWidth}
+              onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
+              theme={theme}
+              setTheme={setTheme}
+              uiLanguage={uiLanguage}
+              setUiLanguage={setUiLanguage}
+              fontFamily={fontFamily}
+              setFontFamily={setFontFamily}
+              fontSize={fontSize}
+              setFontSize={setFontSize}
+              autoHideHeader={autoHideHeader}
+              setAutoHideHeader={setAutoHideHeader}
+              enableBackgroundAnim={enableBackgroundAnim}
+              setEnableBackgroundAnim={setEnableBackgroundAnim}
+              useCustomCursor={useCustomCursor}
+              setUseCustomCursor={setUseCustomCursor}
+              onClose={() => setIsSettingsOpen(false)}
+          />
+      )}
+
+      <div className={isLibraryOpen || isSettingsOpen ? 'hidden' : ''}>
           {appState === 'UPLOAD' && (
             <>
               <FileUpload 

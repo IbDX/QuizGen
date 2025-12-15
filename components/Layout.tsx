@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BackgroundEffect } from './BackgroundEffect';
-import { UILanguage } from '../types';
+import { UILanguage, ThemeOption } from '../types';
 import { t } from '../utils/translations';
 import { AiHelper } from './AiHelper';
 
@@ -19,6 +19,8 @@ interface LayoutProps {
   onHome: () => void;
   onToggleLibrary: () => void;
   isLibraryOpen: boolean;
+  onToggleSettings: () => void;
+  isSettingsOpen: boolean;
   isFullWidth: boolean;
   onToggleFullWidth: () => void;
   autoHideFooter?: boolean;
@@ -28,9 +30,13 @@ interface LayoutProps {
   onSetUiLanguage: (lang: UILanguage) => void;
   forceStaticHeader?: boolean;
   systemStatus?: SystemStatus;
+  
+  // Visual Props
+  theme: ThemeOption;
+  autoHideHeader: boolean;
+  enableBackgroundAnim: boolean;
+  useCustomCursor: boolean;
 }
-
-export type ThemeOption = 'light' | 'dark' | 'palestine';
 
 const CURSOR_DEFAULT_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -103,14 +109,6 @@ const CURSORS = {
     crosshair: b64(CURSOR_CROSSHAIR_SVG)
 };
 
-const FONT_OPTIONS = [
-    { name: 'Fira Code', value: "'Fira Code', monospace" },
-    { name: 'JetBrains Mono', value: "'JetBrains Mono', monospace" },
-    { name: 'Roboto Mono', value: "'Roboto Mono', monospace" },
-    { name: 'Cairo (Arabic)', value: "'Cairo', sans-serif" },
-    { name: 'Courier New', value: "'Courier New', Courier, monospace" },
-];
-
 const ZPlusLogo: React.FC<{ theme: ThemeOption }> = ({ theme }) => {
     const isPalestine = theme === 'palestine';
     const isLight = theme === 'light';
@@ -147,32 +145,17 @@ const ZPlusLogo: React.FC<{ theme: ThemeOption }> = ({ theme }) => {
 };
 
 export const Layout: React.FC<LayoutProps> = ({ 
-    children, onHome, onToggleLibrary, isLibraryOpen, isFullWidth, onToggleFullWidth,
+    children, onHome, onToggleLibrary, isLibraryOpen, onToggleSettings, isSettingsOpen, isFullWidth, onToggleFullWidth,
     autoHideFooter = true, onToggleAutoHideFooter, mobileActions,
     uiLanguage, onSetUiLanguage,
     forceStaticHeader = false,
-    systemStatus = 'ONLINE'
+    systemStatus = 'ONLINE',
+    theme, autoHideHeader, enableBackgroundAnim, useCustomCursor
 }) => {
-  const [theme, setTheme] = useState<ThemeOption>('dark');
-  const [showSettings, setShowSettings] = useState(false);
-  const [fontSize, setFontSize] = useState(16);
-  const [useCustomCursor, setUseCustomCursor] = useState(true);
-  const [fontFamily, setFontFamily] = useState(FONT_OPTIONS[0].value);
-  const [autoHideHeader, setAutoHideHeader] = useState(false);
-  const [enableBackgroundAnim, setEnableBackgroundAnim] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const shouldAutoHideHeader = autoHideHeader && !forceStaticHeader;
-
-  useEffect(() => {
-    document.documentElement.classList.remove('dark', 'theme-palestine');
-    if (theme === 'dark') document.documentElement.classList.add('dark');
-    else if (theme === 'palestine') document.documentElement.classList.add('dark', 'theme-palestine');
-  }, [theme]);
-
-  useEffect(() => { document.documentElement.style.fontSize = `${fontSize}px`; }, [fontSize]);
-  useEffect(() => { document.body.style.fontFamily = fontFamily; }, [fontFamily]);
 
   useEffect(() => {
       if (!shouldAutoHideHeader) { setIsHeaderVisible(true); return; }
@@ -181,7 +164,7 @@ export const Layout: React.FC<LayoutProps> = ({
   }, [shouldAutoHideHeader, isMobileMenuOpen]);
 
   const handleMouseEnterHeader = () => { if (shouldAutoHideHeader) setIsHeaderVisible(true); };
-  const handleMouseLeaveHeader = () => { if (shouldAutoHideHeader && !isMobileMenuOpen && !showSettings) setIsHeaderVisible(false); };
+  const handleMouseLeaveHeader = () => { if (shouldAutoHideHeader && !isMobileMenuOpen && !isSettingsOpen) setIsHeaderVisible(false); };
 
   const getActionColor = (variant?: string) => {
       switch(variant) {
@@ -316,8 +299,14 @@ export const Layout: React.FC<LayoutProps> = ({
                 </button>
 
                 <button
-                    onClick={() => setShowSettings(true)}
-                    className="h-10 w-12 flex items-center justify-center transition-all text-gray-600 dark:text-terminal-green hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-black"
+                    onClick={onToggleSettings}
+                    className={`
+                        h-10 w-12 flex items-center justify-center transition-all
+                        ${isSettingsOpen 
+                            ? 'bg-gray-300 dark:bg-terminal-green text-black' 
+                            : 'text-gray-600 dark:text-terminal-green hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-black'
+                        }
+                    `}
                     title={t('settings', uiLanguage)}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -378,8 +367,8 @@ export const Layout: React.FC<LayoutProps> = ({
                      </button>
 
                      <button 
-                        onClick={() => { setShowSettings(true); setIsMobileMenuOpen(false); }}
-                        className="flex flex-col items-center justify-center p-3 rounded bg-white dark:bg-[#151515] border border-gray-300 dark:border-terminal-gray text-gray-700 dark:text-terminal-green hover:border-blue-500 dark:hover:border-terminal-green transition-colors"
+                        onClick={() => { onToggleSettings(); setIsMobileMenuOpen(false); }}
+                        className={`flex flex-col items-center justify-center p-3 rounded border transition-colors ${isSettingsOpen ? 'bg-gray-800 text-white dark:bg-terminal-green dark:text-black border-gray-800 dark:border-terminal-green' : 'bg-white dark:bg-[#151515] border-gray-300 dark:border-terminal-gray text-gray-700 dark:text-terminal-green hover:border-blue-500 dark:hover:border-terminal-green'}`}
                      >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -415,148 +404,6 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="relative z-10">{children}</div>
         </div>
       </main>
-
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 cursor-default">
-            <div className="bg-white dark:bg-[#0c0c0c] border-2 border-gray-300 dark:border-terminal-green w-full max-w-2xl shadow-2xl p-0 animate-fade-in relative max-h-[90vh] overflow-hidden flex flex-col rounded-lg">
-                <div className="p-4 border-b border-gray-300 dark:border-terminal-border flex justify-between items-center bg-gray-50 dark:bg-[#111]">
-                    <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-terminal-green">
-                        <span className="text-2xl">⚙️</span> {t('system_preferences', uiLanguage)}
-                    </h2>
-                    <button 
-                        onClick={() => setShowSettings(false)}
-                        className="text-gray-500 hover:text-red-500 hover:bg-gray-200 dark:hover:bg-red-900/20 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
-                    >
-                        ✕
-                    </button>
-                </div>
-                
-                <div className="overflow-y-auto custom-scrollbar flex-grow p-6 space-y-8">
-                    
-                    {/* 1. INTERFACE SECTION */}
-                    <div>
-                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-terminal-border pb-1">{t('settings_interface', uiLanguage)}</h3>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Theme */}
-                            <div>
-                                <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('ui_theme', uiLanguage)}</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                        <button onClick={() => setTheme('light')} className={`p-2 border rounded text-[10px] font-bold transition-all ${theme === 'light' ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>LIGHT</button>
-                                        <button onClick={() => setTheme('dark')} className={`p-2 border rounded text-[10px] font-bold transition-all ${theme === 'dark' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>TERMINAL</button>
-                                        <button onClick={() => setTheme('palestine')} className={`p-2 border rounded text-[10px] font-bold transition-all relative overflow-hidden ${theme === 'palestine' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>PALESTINE</button>
-                                </div>
-                            </div>
-
-                            {/* Language */}
-                            <div>
-                                <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('system_language', uiLanguage)}</label>
-                                <div className="flex gap-2">
-                                    <button onClick={() => onSetUiLanguage('en')} className={`flex-1 p-2 border rounded text-xs font-bold transition-all ${uiLanguage === 'en' ? 'bg-gray-800 text-white dark:bg-terminal-green dark:text-black' : 'bg-white dark:bg-terminal-black text-gray-500 border-gray-300 dark:border-gray-700'}`}>ENGLISH</button>
-                                    <button onClick={() => onSetUiLanguage('ar')} className={`flex-1 p-2 border rounded text-xs font-bold transition-all ${uiLanguage === 'ar' ? 'bg-gray-800 text-white dark:bg-terminal-green dark:text-black' : 'bg-white dark:bg-terminal-black text-gray-500 border-gray-300 dark:border-gray-700'}`}>العربية</button>
-                                </div>
-                            </div>
-
-                            {/* Font Family */}
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('font_family', uiLanguage)}</label>
-                                <select 
-                                    value={fontFamily} 
-                                    onChange={(e) => setFontFamily(e.target.value)}
-                                    className="w-full p-2 bg-gray-100 dark:bg-terminal-black border border-gray-300 dark:border-terminal-border rounded text-sm outline-none focus:border-blue-500 dark:focus:border-terminal-green dark:text-terminal-light"
-                                >
-                                    {FONT_OPTIONS.map((font) => (
-                                        <option key={font.name} value={font.value}>{font.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Font Scale */}
-                            <div className="md:col-span-2">
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('global_font_scale', uiLanguage)}</label>
-                                    <span className="text-xs font-mono text-gray-500 dark:text-terminal-green">{fontSize}px</span>
-                                </div>
-                                <input 
-                                    type="range" 
-                                    min="12" 
-                                    max="20" 
-                                    step="1" 
-                                    value={fontSize}
-                                    onChange={(e) => setFontSize(parseInt(e.target.value))}
-                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600 dark:accent-terminal-green"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 2. DISPLAY SECTION */}
-                    <div>
-                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-terminal-border pb-1">{t('settings_display', uiLanguage)}</h3>
-                        <div className="space-y-3">
-                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
-                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('full_width', uiLanguage)}</span>
-                                <div className={`w-10 h-5 rounded-full relative transition-colors ${isFullWidth ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                    <input type="checkbox" checked={isFullWidth} onChange={onToggleFullWidth} className="hidden" />
-                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${isFullWidth ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
-                                </div>
-                            </label>
-
-                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
-                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('auto_hide_menu', uiLanguage)}</span>
-                                <div className={`w-10 h-5 rounded-full relative transition-colors ${autoHideHeader ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                    <input type="checkbox" checked={autoHideHeader} onChange={() => setAutoHideHeader(!autoHideHeader)} className="hidden" />
-                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${autoHideHeader ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* 3. VISUAL FX SECTION */}
-                    <div>
-                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-terminal-border pb-1">{t('settings_visuals', uiLanguage)}</h3>
-                        <div className="space-y-3">
-                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
-                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('matrix_rain', uiLanguage)}</span>
-                                <div className={`w-10 h-5 rounded-full relative transition-colors ${enableBackgroundAnim ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                    <input type="checkbox" checked={enableBackgroundAnim} onChange={() => setEnableBackgroundAnim(!enableBackgroundAnim)} className="hidden" />
-                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${enableBackgroundAnim ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
-                                </div>
-                            </label>
-
-                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
-                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('terminal_cursor', uiLanguage)}</span>
-                                <div className={`w-10 h-5 rounded-full relative transition-colors ${useCustomCursor ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                    <input type="checkbox" checked={useCustomCursor} onChange={() => setUseCustomCursor(!useCustomCursor)} className="hidden" />
-                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${useCustomCursor ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* 4. SYSTEM SECTION */}
-                    <div>
-                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-terminal-border pb-1">{t('settings_system', uiLanguage)}</h3>
-                        <a 
-                            href="https://github.com/your-repo/terminal-exam-gen/issues" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 hover:bg-red-50 dark:hover:bg-red-900/10 hover:border-red-400 dark:hover:border-red-500 transition-colors group"
-                        >
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400">
-                                {t('report_issue', uiLanguage)}
-                            </span>
-                            <span className="text-gray-400 dark:text-gray-500 group-hover:text-red-500">↗</span>
-                        </a>
-                    </div>
-
-                </div>
-                <div className="p-4 border-t border-gray-300 dark:border-terminal-border bg-gray-50 dark:bg-[#111]">
-                    <button onClick={() => setShowSettings(false)} className="w-full py-3 bg-gray-800 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-btn-text font-bold uppercase transition-colors rounded shadow-lg">{t('save_close', uiLanguage)}</button>
-                </div>
-            </div>
-        </div>
-      )}
     </div>
   );
 };

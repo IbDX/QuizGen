@@ -22,6 +22,7 @@ export enum ExamMode {
 
 export type OutputLanguage = 'en' | 'ar' | 'auto';
 export type UILanguage = 'en' | 'ar';
+export type ThemeOption = 'light' | 'dark' | 'palestine';
 
 export interface GraphConfig {
   title?: string;

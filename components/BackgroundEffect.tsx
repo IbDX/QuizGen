@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { ThemeOption } from './Layout';
+import { ThemeOption } from '../types';
 
 interface BackgroundEffectProps {
   theme: ThemeOption;
