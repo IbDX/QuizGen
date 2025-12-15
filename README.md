@@ -18,8 +18,8 @@ An advanced, terminal-themed AI examination platform that parses documents to cr
     -   **Mixed:** AI selects the best format for the concept.
     -   **Forced Modes:** Convert content strictly to **MCQ**, **Coding Challenges**, **Tracing**, or **Short Answer**.
 -   **Exam Styles:**
-    -   **One-Way:** Standard testing environment.
-    -   **Two-Way:** Interactive mode with immediate feedback per question.
+    -   **One-Way:** Standard testing environment. Speed is prioritized; complex AI grading occurs *after* submission.
+    -   **Two-Way:** Interactive mode with immediate feedback. The UI intelligently locks during AI verification to prevent race conditions.
 
 ### 3. Rich Interactive Experience
 -   **Digital Graph Engine:** Renders mathematical functions ($y=x^2$) dynamically using `function-plot` rather than static images.
@@ -30,26 +30,23 @@ An advanced, terminal-themed AI examination platform that parses documents to cr
 -   **Multilingual Support:** Full support for **English** and **Arabic** (RTL), including interface translations and content generation.
 
 ### 4. Grading & Analytics
--   **AI Grading:** Automated analysis of custom code submissions with semantic feedback.
+-   **Post-Exam Neural Grading:** A dedicated processing phase runs immediately after exam submission to evaluate subjective answers (Coding/Short Answer) without slowing down the test experience.
+-   **AI Grading:** Automated analysis of custom code submissions with semantic feedback (Correctness + Syntax + Efficiency).
 -   **Smart Result Filtering:** By default, results focus on mistakes for efficient review. Toggle "View Full Exam" to see correct answers.
 -   **Weak Point Analysis:** Identifies struggle areas and provides curated video/reading resources.
 -   **Tactical Remediation:** One-click generation of specific makeup exams targeting your weak points.
--   **Leaderboard & Badges:** Track performance and earn the **Z+ Elite Badge** for perfect scores.
+-   **PDF Reports:** Generate professional, printable PDF reports of your exam performance directly from the Results screen.
 -   **Library System:**
     -   **Persistence:** Save individual questions or full exams.
     -   **History:** Automatically saves the last 3 sessions for quick retakes.
-    -   **Smart Import:** 
-        -   Detects duplicate exams and alerts with conflict details.
-        -   Scans imported files with VirusTotal for malware.
-        -   Validates JSON schema integrity.
+    -   **Smart Import:** Detects duplicate exams and validates JSON schema integrity.
 
 ### 5. Advanced UI/UX
 -   **Themes:** Choose between **Light**, **Terminal (Dark)**, and **Palestine** themes.
--   **Theme-Adaptive Controls:** UI elements like the Photo Fetcher and Mode Selection buttons adapt colors dynamically to the selected theme (Blue/Gray for Light, Neon Green for Terminal, Red/Green for Palestine).
+-   **Theme-Adaptive Controls:** UI elements like the Photo Fetcher and Mode Selection buttons adapt colors dynamically.
+-   **Smart Navigation:** "Scroll to Top" buttons and sticky headers improve usability on long exams.
 -   **AI System Agent:** A floating support bot (`AiHelper`) available to assist with platform navigation and troubleshooting.
 -   **Responsive Design:** Mobile-first architecture with touch-optimized controls and auto-hiding menus.
--   **PDF Reports:** Generate professional PDF reports of your exam performance.
--   **Issue Reporting:** Integrated link to GitHub Issues for bug tracking via Advanced Settings.
 
 ---
 
@@ -61,7 +58,7 @@ For a deep dive into how the system works internally, please refer to the techni
 2.  [**AI Generation Engine**](technical_readme/02_ai_generation_engine.md) - How Gemini 2.5 is prompted, schema validation, and context parsing.
 3.  [**Security & Validation**](technical_readme/03_security_validation.md) - VirusTotal integration, Magic Byte checking, library hashing, and input sanitization.
 4.  [**Rendering System**](technical_readme/04_rendering_visuals.md) - How Graphs, Diagrams (Mermaid), and Markdown/Math (LaTeX) are rendered.
-5.  [**Grading Logic**](technical_readme/05_grading_logic.md) - The hybrid grading system (Deterministic vs. LLM-based evaluation).
+5.  [**Grading Logic**](technical_readme/05_grading_logic.md) - The hybrid grading system (Deterministic vs. Asynchronous AI evaluation).
 
 ---
 

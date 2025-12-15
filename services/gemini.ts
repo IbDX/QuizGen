@@ -731,8 +731,9 @@ export const gradeShortAnswer = async (question: Question, answer: string, lang:
       
       INSTRUCTIONS:
       1. Determine if the user's answer conveys the correct meaning/concept compared to the expected answer.
-      2. Be lenient with spelling or grammar, focus on the core technical concept.
-      3. If the user's answer is empty or completely irrelevant, mark as incorrect.
+      2. For Math or Logic: Accept variations like "x=1, x=2", "{1, 2}", "1 and 2", or "x = 1; x = 2". Order does not matter unless specified.
+      3. Be lenient with spelling or grammar, focus on the core technical concept.
+      4. If the user's answer is empty or completely irrelevant, mark as incorrect.
       
       OUTPUT: Return a JSON object.
       {

@@ -39,19 +39,31 @@ export const Results: React.FC<ResultsProps> = ({
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
+  // Helper to determine if a question requires AI grading
+  const isSubjectiveQuestion = (q: Question) => {
+      // 1. Coding is always subjective
+      if (q.type === QuestionType.CODING) return true;
+      // 2. Explicit Short Answer
+      if (q.type === QuestionType.SHORT_ANSWER) return true;
+      // 3. "Fake MCQ" -> Type is MCQ but has no options (Text Input)
+      if (q.type === QuestionType.MCQ && (!q.options || q.options.length === 0)) return true;
+      
+      return false;
+  };
+
   // 1. Post-Processing Grading Loop
   useEffect(() => {
       const runGrading = async () => {
           // Identify questions needing AI grading that haven't been graded yet
-          // (e.g. from One-Way mode or skipped 'Check' in Two-Way)
           const pendingGrading = questions.filter(q => {
               const ua = answers.find(a => a.questionId === q.id);
               // Must have an answer provided to grade
               if (!ua) return false; 
               // Skip if already graded (e.g. Two-Way mode check)
               if (ua.isCorrect !== undefined) return false;
-              // Only grade subjective types
-              return q.type === QuestionType.CODING || q.type === QuestionType.SHORT_ANSWER;
+              
+              // Check if it's a type that needs AI
+              return isSubjectiveQuestion(q);
           });
 
           if (pendingGrading.length === 0) {
@@ -77,6 +89,7 @@ export const Results: React.FC<ResultsProps> = ({
                       if (q.type === QuestionType.CODING) {
                           result = await gradeCodingAnswer(q, String(ua.answer), lang);
                       } else {
+                          // Handles Short Answer AND Fake MCQs
                           result = await gradeShortAnswer(q, String(ua.answer), lang);
                       }
                       updatedAnswers[uaIndex] = { ...ua, isCorrect: result.isCorrect, feedback: result.feedback };
@@ -108,20 +121,20 @@ export const Results: React.FC<ResultsProps> = ({
         let isCorrect = false;
 
         if (ua) {
-            if (q.type === QuestionType.MCQ) {
-                // MCQ Deterministic Check
-                // Note: Standard MCQ check. If options exist, use index. Else (text input), treat as failure if no AI grading logic hit (fallback).
-                if (typeof ua.answer === 'number' && ua.answer === q.correctOptionIndex) {
-                    isCorrect = true;
-                }
-            } else if (q.type === QuestionType.TRACING) {
-                // Tracing Deterministic Check
-                const userTxt = String(ua.answer).trim().toLowerCase();
-                const correctTxt = String(q.tracingOutput || "").trim().toLowerCase();
-                if (userTxt === correctTxt) isCorrect = true;
+            // Priority: If AI graded it (has isCorrect boolean), trust it.
+            if (ua.isCorrect !== undefined) {
+                isCorrect = ua.isCorrect;
             } else {
-                // AI Graded Check (CODING / SHORT_ANSWER)
-                if (ua.isCorrect === true) isCorrect = true;
+                // Fallback for Deterministic types (Standard MCQ / Tracing)
+                if (q.type === QuestionType.MCQ) {
+                    if (typeof ua.answer === 'number' && ua.answer === q.correctOptionIndex) {
+                        isCorrect = true;
+                    }
+                } else if (q.type === QuestionType.TRACING) {
+                    const userTxt = String(ua.answer).trim().toLowerCase();
+                    const correctTxt = String(q.tracingOutput || "").trim().toLowerCase();
+                    if (userTxt === correctTxt) isCorrect = true;
+                }
             }
         }
         
@@ -416,18 +429,17 @@ export const Results: React.FC<ResultsProps> = ({
 
                 if (ua) {
                     userAnswerDisplay = String(ua.answer);
-                    if (q.type === QuestionType.MCQ && typeof ua.answer === 'number' && q.options) {
+                    if (q.type === QuestionType.MCQ && typeof ua.answer === 'number' && q.options && q.options.length > 0) {
                         userAnswerDisplay = q.options[ua.answer] || String(ua.answer);
                     }
 
-                    // Score Display Logic using finalAnswers which has isCorrect set
-                    if (q.type === QuestionType.MCQ && typeof ua.answer === 'number') {
+                    // Consolidated Score Logic
+                    if(ua.isCorrect !== undefined) {
+                        isCorrect = ua.isCorrect;
+                    } else if (q.type === QuestionType.MCQ && typeof ua.answer === 'number') {
                         if(ua.answer === q.correctOptionIndex) isCorrect = true;
                     } else if (q.type === QuestionType.TRACING) {
-                            if(String(ua.answer).trim().toLowerCase() === String(q.tracingOutput||"").trim().toLowerCase()) isCorrect = true;
-                    } else {
-                        // AI Graded
-                        if(ua.isCorrect) isCorrect = true;
+                        if(String(ua.answer).trim().toLowerCase() === String(q.tracingOutput||"").trim().toLowerCase()) isCorrect = true;
                     }
                     
                     statusClass = isCorrect 
@@ -470,7 +482,7 @@ export const Results: React.FC<ResultsProps> = ({
                                 <div>
                                     <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('analysis', lang)}:</h4>
                                     <div className="text-gray-600 dark:text-gray-300">
-                                        {q.type === QuestionType.MCQ && q.options && q.correctOptionIndex !== undefined && (
+                                        {q.type === QuestionType.MCQ && q.options && q.options.length > 0 && q.correctOptionIndex !== undefined && q.options[q.correctOptionIndex] && (
                                             <MarkdownRenderer 
                                                 content={`**Correct:** ${q.options[q.correctOptionIndex]}`} 
                                                 className="!text-green-700 dark:!text-green-500 mb-1"

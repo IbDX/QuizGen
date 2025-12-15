@@ -159,7 +159,12 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
     if (isStandardMCQ) {
         isCorrect = userAnswer.answer === currentQ.correctOptionIndex;
-        feedback = isCorrect ? "Correct!" : `Incorrect.\n${currentQ.explanation}`;
+        // Fix for undefined options: Check if option exists
+        const correctText = (currentQ.options && currentQ.correctOptionIndex !== undefined && currentQ.options[currentQ.correctOptionIndex]) 
+                            ? currentQ.options[currentQ.correctOptionIndex] 
+                            : "Option " + (currentQ.correctOptionIndex || 0 + 1);
+        
+        feedback = isCorrect ? "Correct!" : `Incorrect.\n\n**Correct Answer:** ${correctText}\n\n${currentQ.explanation}`;
     } else if (currentQ.type === QuestionType.TRACING) {
         const userTxt = String(userAnswer.answer).trim().toLowerCase();
         const correctTxt = (currentQ.tracingOutput || "").trim().toLowerCase();

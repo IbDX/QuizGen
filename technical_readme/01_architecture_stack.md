@@ -21,6 +21,7 @@ terminal-exam-gen/
 │   ├── CodeWindow.tsx   # PrismJS Wrapper
 │   ├── ExamBuilder.tsx  # Chat Interface
 │   ├── ExamRunner.tsx   # Core Testing Engine
+│   ├── Results.tsx      # Grading Engine & Dashboard
 │   └── ...
 ├── services/            # Business Logic & API Calls
 │   ├── gemini.ts        # Gemini API Integration (Prompts & Schema)
@@ -38,7 +39,7 @@ terminal-exam-gen/
 
 ## 🔄 State Management (Finite State Machine)
 
-The application flow is strictly controlled by the `appState` variable in `App.tsx`. This ensures the user cannot be in an undefined state (e.g., trying to grade an exam that hasn't started).
+The application flow is strictly controlled by the `appState` variable in `App.tsx`. This ensures the user cannot be in an undefined state.
 
 ```mermaid
 stateDiagram-v2
@@ -61,8 +62,8 @@ stateDiagram-v2
     BUILDER --> EXAM : JSON Generated
 
     CONFIG --> GENERATING : Settings Confirmed
-    GENERATING --> EXAM : Gemini returns Questions
-    GENERATING --> CONFIG : Error/Retry
+    GENERATING --> EXAM_READY : Gemini returns Questions
+    EXAM_READY --> EXAM : User Starts
 
     state "EXAM State" as EXAM {
         TakingTest --> TimerRunning
@@ -72,7 +73,8 @@ stateDiagram-v2
     EXAM --> RESULTS : Submit / Timeout
     
     state "RESULTS State" as RESULTS {
-        Grading --> Analysis
+        [*] --> GradingLoop : Calculating Scores
+        GradingLoop --> Analysis : AI Feedback Ready
         Analysis --> Remediation
     }
 
@@ -85,7 +87,7 @@ stateDiagram-v2
 *   **App.tsx (Root):** Holds the "Truth" (`questions`, `userAnswers`, `uploadedFiles`).
 *   **Props Drilling:** Data is passed down to:
     *   `ExamRunner`: Receives `questions`, manages local `currentIndex` and `timer`.
-    *   `Results`: Receives `userAnswers`, calculates scores, triggers `gemini.ts` for grading.
+    *   `Results`: Receives `userAnswers`, manages the **Post-Exam Grading Phase**, calculates final scores, and triggers `gemini.ts` for deep evaluation of coding questions.
 
 ---
 
@@ -111,7 +113,7 @@ stateDiagram-v2
     *   **PrismJS:** Syntax highlighting for code blocks.
 
 ### 4. Persistence & Output
-*   **jsPDF / pdfMake:** Generates client-side PDF reports.
+*   **jsPDF / pdfMake:** Generates client-side PDF reports with support for embedded fonts (Cairo/Amiri) for Arabic support.
 *   **LocalStorage:** Stores:
     *   `zplus_question_library`: JSON array of individual saved questions.
     *   `zplus_exam_library`: JSON array of full exam snapshots.
@@ -122,6 +124,7 @@ stateDiagram-v2
 
 ## ⚡ Performance Considerations
 
-1.  **Lazy Loading:** Heavy libraries (PDF.js worker) are loaded only when required via CDN injection or dynamic imports.
-2.  **Debouncing:** Input fields in `ExamBuilder` and `AiHelper` are sanitized and debounced to prevent render thrashing.
-3.  **Virtual DOM Optimization:** The `ExamRunner` only renders the *current* question to the DOM to keep the footprint light, even for 50+ question exams.
+1.  **Asynchronous Grading:** To prevent UI freezing during an exam, complex AI grading (for Coding questions) is deferred to the `RESULTS` phase (in One-Way mode).
+2.  **Lazy Loading:** Heavy libraries (PDF.js worker) are loaded only when required via CDN injection or dynamic imports.
+3.  **Debouncing:** Input fields in `ExamBuilder` and `AiHelper` are sanitized and debounced to prevent render thrashing.
+4.  **Virtual DOM Optimization:** The `ExamRunner` only renders the *current* question to the DOM to keep the footprint light, even for 50+ question exams.
