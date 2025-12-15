@@ -63,43 +63,37 @@ export const saveFullExam = (questions: Question[], title?: string) => {
     return newExam.id;
 };
 
-export const importSavedExam = async (content: string): Promise<{ success: boolean; message?: string }> => {
+export const importSavedExam = async (content: string): Promise<{ success: boolean; message?: string; duplicateOf?: SavedExam }> => {
     try {
         // 1. Calculate Hash of Uploaded Content
         const uploadedHash = await calculateStringHash(content);
 
-        // 2. Check for Duplicates in Existing Library
         const exams = getSavedExams();
-        for (const exam of exams) {
-            // We reconstruct the approximate source object to hash it, 
-            // OR ideally we should store hashes. 
-            // Since we don't store hashes, we will check if an exam with identical questions exists.
-            // A simplified approach is checking if we can decompress and find a match.
-            // However, to be strict as requested:
-            // We will compress the existing exams individually to check against the uploaded string if it was a direct export.
-            // BUT re-compression might yield different bytes due to timestamps or gzip metadata.
-            // Better approach: Decompress upload, then compare content signature.
-        }
 
         // Decompress Upload
         const examData = await decompressData(content);
         
         // 3. Security Schema Validation
         if (!validateExamSchema(examData)) {
-            return { success: false, message: "Invalid Schema" };
+            return { success: false, message: "Invalid File Structure: Schema validation failed." };
         }
 
         // 4. Content Logic Check for Duplicates
         // We create a signature based on the question IDs and Text length
+        // We map questions to ID to create a unique fingerprint of the exam content
         const uploadSignature = JSON.stringify(examData.questions.map((q: any) => q.id).sort());
         
-        const isDuplicate = exams.some(existing => {
+        const duplicate = exams.find(existing => {
             const existingSignature = JSON.stringify(existing.questions.map(q => q.id).sort());
             return existingSignature === uploadSignature;
         });
 
-        if (isDuplicate) {
-            return { success: false, message: "Duplicate: This exam already exists in your library." };
+        if (duplicate) {
+            return { 
+                success: false, 
+                message: "Duplicate Detected", 
+                duplicateOf: duplicate 
+            };
         }
         
         const newExam: SavedExam = {
@@ -114,7 +108,7 @@ export const importSavedExam = async (content: string): Promise<{ success: boole
         return { success: true };
     } catch (e) {
         console.error("Import failed", e);
-        return { success: false, message: "File Corrupted" };
+        return { success: false, message: "File Corrupted or Invalid Format" };
     }
 };
 

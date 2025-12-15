@@ -38,7 +38,10 @@ An advanced, terminal-themed AI examination platform that parses documents to cr
 -   **Library System:**
     -   **Persistence:** Save individual questions or full exams.
     -   **History:** Automatically saves the last 3 sessions for quick retakes.
-    -   **Security:** Prevents duplicate imports via content hashing and enforces 10MB limits.
+    -   **Smart Import:** 
+        -   Detects duplicate exams and alerts with conflict details.
+        -   Scans imported files with VirusTotal for malware.
+        -   Validates JSON schema integrity.
 
 ### 5. Advanced UI/UX
 -   **Themes:** Choose between **Light**, **Terminal (Dark)**, and **Palestine** themes.

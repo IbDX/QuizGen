@@ -1,454 +1,414 @@
 
-import React, { useState, useEffect } from 'react';
-import { Question, UserAnswer, QuestionType, LeaderboardEntry, UILanguage } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Question, UserAnswer, QuestionType, UILanguage, LeaderboardEntry } from '../types';
+import { t } from '../utils/translations';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
-import { GraphRenderer } from './GraphRenderer'; 
-import { DiagramRenderer } from './DiagramRenderer'; 
-import { generateExamPDF } from '../utils/pdfGenerator';
-import { saveQuestion, removeQuestion, isQuestionSaved, saveFullExam } from '../services/library';
-import { sanitizeInput } from '../utils/security';
-import { t } from '../utils/translations';
-import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini'; 
+import { GraphRenderer } from './GraphRenderer';
+import { DiagramRenderer } from './DiagramRenderer';
+import { saveFullExam, triggerExamDownload } from '../services/library';
 
 interface ResultsProps {
-  questions: Question[];
-  answers: UserAnswer[];
-  onRestart: () => void;
-  onRetake: () => void;
-  onGenerateRemediation: (wrongIds: string[]) => void;
-  isFullWidth: boolean;
-  autoHideFooter?: boolean;
-  lang: UILanguage;
+    questions: Question[];
+    answers: UserAnswer[];
+    onRestart: () => void;
+    onRetake: () => void;
+    onGenerateRemediation: (ids: string[]) => void;
+    isFullWidth: boolean;
+    autoHideFooter: boolean;
+    lang: UILanguage;
 }
 
-const getTopicResources = (topicRaw: string) => {
-  const topic = topicRaw.toLowerCase().trim();
-  const RESOURCES: Record<string, { video: string, read: string }> = {
-    'pointers': { video: 'https://www.youtube.com/results?search_query=pointers+in+c%2B%2B+explained', read: 'https://www.geeksforgeeks.org/pointers-in-c-cpp/' },
-    'recursion': { video: 'https://www.youtube.com/results?search_query=recursion+explained+computer+science', read: 'https://www.freecodecamp.org/news/recursion-in-programming-explained/' },
-    'loops': { video: 'https://www.youtube.com/results?search_query=loops+in+programming+tutorial', read: 'https://www.w3schools.com/cpp/cpp_for_loop.asp' },
-    'arrays': { video: 'https://www.youtube.com/results?search_query=arrays+data+structure', read: 'https://www.programiz.com/cpp-programming/arrays' },
-    'oop': { video: 'https://www.youtube.com/results?search_query=object+oriented+programming+concepts', read: 'https://www.educative.io/blog/object-oriented-programming' },
-  };
-
-  if (RESOURCES[topic]) return RESOURCES[topic];
-
-  let searchSuffix = " explanation";
-  let readSuffix = " guide concepts";
+export const Results: React.FC<ResultsProps> = ({ 
+    questions, answers, onRestart, onRetake, onGenerateRemediation, isFullWidth, autoHideFooter, lang 
+}) => {
+  const [score, setScore] = useState(0);
+  const [isElite, setIsElite] = useState(false);
+  const [viewMode, setViewMode] = useState<'ERRORS_ONLY' | 'ALL'>('ERRORS_ONLY'); // Default to errors only
+  const [agentName, setAgentName] = useState('');
+  const [savedToLeaderboard, setSavedToLeaderboard] = useState(false);
+  const [wrongQuestionIds, setWrongQuestionIds] = useState<string[]>([]);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
   
-  if (topic.match(/[\u0600-\u06FF]/)) {
-       searchSuffix = " شرح";
-       readSuffix = " مفاهيم";
-  }
-
-  return {
-    video: `https://www.youtube.com/results?search_query=${encodeURIComponent(topic + searchSuffix)}`,
-    read: `https://www.google.com/search?q=${encodeURIComponent(topic + readSuffix)}`
-  };
-};
-
-export const Results: React.FC<ResultsProps> = ({ questions, answers, onRestart, onRetake, onGenerateRemediation, isFullWidth, autoHideFooter = true, lang }) => {
-  const [userName, setUserName] = useState('');
-  const [isPublished, setIsPublished] = useState(false);
-  const [showWeakPoints, setShowWeakPoints] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [savedQuestions, setSavedQuestions] = useState<Record<string, boolean>>({});
-  const [examSaved, setExamSaved] = useState(false);
-  const [isFooterVisible, setIsFooterVisible] = useState(true);
-  
-  // New state to control visibility of filtered results
-  const [showAll, setShowAll] = useState(false);
-
-  const [finalResults, setFinalResults] = useState<any[]>([]);
-  const [gradingStatus, setGradingStatus] = useState<Record<string, boolean>>({});
-
   useEffect(() => {
-    const initialProcessed = questions.map(q => {
-      const ua = answers.find(a => a.questionId === q.id);
-      let isCorrect: boolean | undefined = undefined;
-      let feedback = q.explanation;
+    let correctCount = 0;
+    const wrongIds: string[] = [];
 
-      if (!ua) {
-        return { 
-          question: q, 
-          isCorrect: false, 
-          answer: null, 
-          feedback: `${t('no_answer_provided', lang)}\n\n**${t('analysis', lang)}:**\n${q.explanation}` 
-        };
-      }
+    questions.forEach(q => {
+        const ua = answers.find(a => a.questionId === q.id);
+        let isCorrect = false;
 
-      const isStandardMCQ = q.type === QuestionType.MCQ && q.options && q.options.length > 0;
-
-      if (isStandardMCQ) {
-          isCorrect = ua.answer === q.correctOptionIndex;
-      } else if (q.type === QuestionType.TRACING) {
-          isCorrect = String(ua.answer).trim().toLowerCase() === String(q.tracingOutput || "").trim().toLowerCase();
-      } else if (q.type === QuestionType.CODING || q.type === QuestionType.SHORT_ANSWER || !isStandardMCQ) {
-          if (ua.isCorrect !== undefined) {
-              isCorrect = ua.isCorrect;
-              feedback = ua.feedback || feedback;
-          }
-      }
-
-      return { question: q, isCorrect, answer: ua.answer, feedback };
-    });
-    setFinalResults(initialProcessed);
-
-    const toGrade = initialProcessed.filter(p => {
-        const isStandardMCQ = p.question.type === QuestionType.MCQ && p.question.options && p.question.options.length > 0;
-        const needsAiGrading = p.question.type === QuestionType.CODING || 
-                               p.question.type === QuestionType.SHORT_ANSWER || 
-                               !isStandardMCQ;
-        
-        return needsAiGrading && p.answer && p.isCorrect === undefined;
-    });
-
-    if (toGrade.length > 0) {
-      const newStatus: Record<string, boolean> = {};
-      toGrade.forEach(item => newStatus[item.question.id] = true);
-      setGradingStatus(newStatus);
-
-      const gradePromises = toGrade.map(async item => {
-        let result = { isCorrect: false, feedback: "Grading Error" };
-        
-        if (item.question.type === QuestionType.CODING) {
-             result = await gradeCodingAnswer(item.question, String(item.answer), lang);
-        } else {
-             result = await gradeShortAnswer(item.question, String(item.answer), lang);
-        }
-
-        return {
-          ...item,
-          isCorrect: result.isCorrect,
-          feedback: result.feedback,
-        };
-      });
-
-      Promise.all(gradePromises).then(gradedItems => {
-        setFinalResults(currentResults => {
-          const updatedResults = [...currentResults];
-          gradedItems.forEach(gradedItem => {
-            const index = updatedResults.findIndex(r => r.question.id === gradedItem.question.id);
-            if (index !== -1) {
-              updatedResults[index] = gradedItem;
+        if (ua) {
+            if (q.type === QuestionType.MCQ) {
+                if (typeof ua.answer === 'number' && ua.answer === q.correctOptionIndex) {
+                    isCorrect = true;
+                }
+            } else if (q.type === QuestionType.TRACING) {
+                const userTxt = String(ua.answer).trim().toLowerCase();
+                const correctTxt = String(q.tracingOutput || "").trim().toLowerCase();
+                if (userTxt === correctTxt) isCorrect = true;
+            } else {
+                if (ua.isCorrect === true) isCorrect = true;
             }
-          });
-          return updatedResults;
-        });
-        setGradingStatus({}); 
-      });
+        }
+        
+        if (isCorrect) correctCount++;
+        else wrongIds.push(q.id);
+    });
+
+    const calculatedScore = Math.round((correctCount / questions.length) * 100);
+    setScore(calculatedScore);
+    setIsElite(calculatedScore === 100);
+    setWrongQuestionIds(wrongIds);
+    
+    // Automatically switch to ALL view if score is 100% so user sees something
+    if (calculatedScore === 100) {
+        setViewMode('ALL');
     }
-  }, [questions, answers, lang]);
+  }, [questions, answers]);
 
-  useEffect(() => {
-    if (!autoHideFooter) { setIsFooterVisible(true); return; }
-    const timer = setTimeout(() => { setIsFooterVisible(false); }, 2000);
-    return () => clearTimeout(timer);
-  }, [autoHideFooter]);
-
-  const handleMouseEnterFooter = () => { if (autoHideFooter) setIsFooterVisible(true); };
-  const handleMouseLeaveFooter = () => { if (autoHideFooter) setIsFooterVisible(false); };
-  
-  const correctCount = finalResults.filter(r => r.isCorrect).length;
-  const wrongIds = finalResults.filter(r => !r.isCorrect).map(r => r.question.id);
-  const wrongTopics: Record<string, number> = finalResults
-    .filter(r => !r.isCorrect)
-    .reduce((acc, r) => {
-        const topic = r.question.topic || 'General';
-        acc[topic] = (acc[topic] || 0) + 1;
-        return acc;
-    }, {});
-
-  const score = finalResults.length > 0 ? Math.round((correctCount / finalResults.length) * 100) : 0;
-  const getLetterGrade = (s: number) => s >= 90 ? 'A' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 50 ? 'D' : 'F';
-  const grade = getLetterGrade(score);
-  const isFailure = grade === 'F';
-  const isPerfect = score === 100;
-
-  // Auto-show all if score is 100% or user toggles it
-  const effectiveShowAll = isPerfect || showAll;
-  
-  const visibleResults = effectiveShowAll 
-      ? finalResults 
-      : finalResults.filter(r => !r.isCorrect);
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const val = e.target.value;
-      const validation = sanitizeInput(val, 20);
-      if (!validation.isValid) { setNameError(validation.error || "Invalid characters"); return; }
-      setNameError(null); setUserName(validation.sanitizedValue);
+  // NEW GRADE LOGIC: Top grade is Z+
+  const getGrade = (s: number) => {
+      if (s >= 97) return 'Z+';
+      if (s >= 93) return 'A';
+      if (s >= 90) return 'A-';
+      if (s >= 87) return 'B+';
+      if (s >= 83) return 'B';
+      if (s >= 80) return 'B-';
+      if (s >= 77) return 'C+';
+      if (s >= 73) return 'C';
+      if (s >= 70) return 'C-';
+      if (s >= 67) return 'D+';
+      if (s >= 63) return 'D';
+      if (s >= 60) return 'D-';
+      return 'F';
   };
 
-  const handlePublish = () => {
-    if (!userName.trim() || nameError) return;
-    const entry: LeaderboardEntry = { name: userName.trim(), score, date: new Date().toISOString(), isElite: isPerfect };
-    const stored = localStorage.getItem('exam_leaderboard');
-    let scores: LeaderboardEntry[] = stored ? JSON.parse(stored) : [];
-    scores.push(entry);
-    localStorage.setItem('exam_leaderboard', JSON.stringify(scores));
-    setIsPublished(true);
+  const grade = getGrade(score);
+  const passed = score >= 60;
+  const canPublish = grade !== 'F';
+
+  const handleSaveScore = () => {
+      if (!agentName.trim() || !canPublish) return;
+      
+      const newEntry: LeaderboardEntry = {
+          name: agentName.slice(0, 10).toUpperCase(),
+          score: score,
+          date: new Date().toISOString(),
+          isElite: isElite
+      };
+
+      const stored = localStorage.getItem('exam_leaderboard');
+      const leaderboard = stored ? JSON.parse(stored) : [];
+      localStorage.setItem('exam_leaderboard', JSON.stringify([...leaderboard, newEntry]));
+      setSavedToLeaderboard(true);
   };
 
-  const handleDownloadPDF = () => { generateExamPDF(questions, score, grade, userName); };
-  
   const handleSaveExam = () => {
-      saveFullExam(questions);
-      setExamSaved(true);
-      setTimeout(() => setExamSaved(false), 3000);
+      saveFullExam(questions, `Exam Result: ${score}% (${new Date().toLocaleDateString()})`);
+      setSaveStatus(t('saved', lang));
+      setTimeout(() => setSaveStatus(null), 2000);
   };
 
-  const toggleSave = (q: Question) => {
-      const currentlySaved = isQuestionSaved(q.id);
-      if (currentlySaved) {
-          removeQuestion(q.id);
-      } else {
-          saveQuestion(q);
-      }
-      setSavedQuestions(prev => ({...prev, [q.id]: !currentlySaved}));
+  const handleDownloadExam = async () => {
+      await triggerExamDownload(questions, `Exam_Result_${score}_${Date.now()}`);
   };
+
+  // Weak Point aggregation
+  const weakTopics = useMemo(() => {
+      if (wrongQuestionIds.length === 0) return [];
+      const topics = new Set<string>();
+      questions.forEach(q => {
+          if (wrongQuestionIds.includes(q.id) && q.topic) {
+              topics.add(q.topic);
+          }
+      });
+      return Array.from(topics);
+  }, [wrongQuestionIds, questions]);
+
+  const displayedQuestions = viewMode === 'ALL' 
+      ? questions 
+      : questions.filter(q => wrongQuestionIds.includes(q.id));
 
   return (
-    <div className={`pb-32 transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl mx-auto'}`}>
-      
-      {isFailure && (
-          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-20 dark:opacity-10">
-              <div className="absolute top-0 left-0 w-full h-full bg-red-500/20 animate-pulse"></div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-600 font-black text-[6rem] md:text-[20rem] -rotate-12 select-none opacity-10 whitespace-nowrap">FAILED</div>
-          </div>
-      )}
-
-      <div className="text-center mb-8 md:mb-12 border-b border-gray-300 dark:border-terminal-border pb-8 relative z-10">
+    <div className={`mx-auto transition-all duration-300 animate-fade-in pb-24 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>
         
-        {isFailure ? (
-             <div className="bg-terminal-alert text-white py-2 font-bold tracking-[0.2em] md:tracking-[0.5em] uppercase mb-8 animate-pulse text-sm md:text-base">⚠ {t('critical_failure', lang)} ⚠</div>
-        ) : isPerfect ? (
-             <div className="bg-yellow-500 text-black py-2 font-bold tracking-[0.2em] md:tracking-[0.5em] uppercase mb-8 animate-pulse text-sm md:text-base">★ {t('perfection', lang)} ★</div>
-        ) : (
-            <h2 className="text-2xl md:text-4xl font-bold mb-6 text-gray-800 dark:text-terminal-light">{t('assessment_complete', lang)}</h2>
-        )}
-
-        <div className="flex items-center justify-center gap-6 mb-6 relative">
-            <div className="text-center">
-                <div className={`text-5xl md:text-6xl font-mono mb-1 ${isFailure ? 'animate-bounce text-terminal-alert' : "text-terminal-green"}`}>{score}%</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">{t('final_score', lang)}</div>
-            </div>
-            <div className="h-12 md:h-16 w-px bg-gray-300 dark:bg-gray-700"></div>
-            <div className="text-center relative">
-                <div className={`text-5xl md:text-6xl font-mono font-bold mb-1 ${isFailure ? 'text-terminal-alert' : 'text-blue-500 dark:text-terminal-light'}`}>{grade}</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">{t('grade', lang)}</div>
-            </div>
-        </div>
-
-        <div className="md:hidden mb-6 flex flex-col items-center gap-3 w-full px-4">
-             {!isPublished && !isFailure && (
-                 <div className="flex gap-2 w-full max-w-sm">
-                    <input type="text" placeholder={t('agent_name', lang)} value={userName} onChange={handleNameChange} maxLength={20} className="bg-gray-100 dark:bg-terminal-black border border-gray-400 dark:border-terminal-gray p-3 text-sm font-mono outline-none focus:border-terminal-green flex-grow rounded-sm dark:text-terminal-green"/>
-                    <button onClick={handlePublish} disabled={!userName || !!nameError} className="px-4 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen disabled:opacity-50 transition-colors text-xs rounded-sm">{t('publish', lang)}</button>
+        {/* HERO SECTION */}
+        <div className={`
+            relative overflow-hidden rounded-lg shadow-2xl p-8 md:p-12 mb-8 text-center border-b-8
+            ${passed 
+                ? 'bg-gradient-to-br from-white to-gray-100 dark:from-terminal-black dark:to-[#0a1a0a] border-green-500' 
+                : 'bg-gradient-to-br from-white to-gray-100 dark:from-terminal-black dark:to-[#1a0a0a] border-red-500'
+            }
+        `}>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gray-400 dark:via-white/20 to-transparent opacity-50"></div>
+            
+            {/* Elite Badge */}
+            {grade === 'Z+' && (
+                <div className="absolute top-4 right-4 animate-bounce">
+                    <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow-lg border border-yellow-200">
+                        🏆 Z+ ELITE AGENT
+                    </span>
                 </div>
-             )}
-             <button onClick={handleSaveExam} className="w-full max-w-sm px-4 py-3 border border-purple-500 text-purple-600 dark:text-purple-400 font-bold transition-colors text-xs uppercase tracking-wider">{examSaved ? `✓ ${t('saved', lang)}` : t('save_full_exam', lang)}</button>
-        </div>
-        
-        {wrongIds.length > 0 && (
-            <button onClick={() => setShowWeakPoints(!showWeakPoints)} className="text-xs font-bold uppercase tracking-widest underline text-blue-500 dark:text-terminal-green hover:text-blue-400 p-2">{showWeakPoints ? t('hide_analysis', lang) : t('view_weak_points', lang)}</button>
-        )}
-        
-        {showWeakPoints && wrongIds.length > 0 && (
-            <div className="mt-8 max-w-3xl mx-auto animate-fade-in">
-                <div className="flex items-center justify-center gap-2 mb-6">
-                    <span className="text-terminal-alert text-xl">⚠</span>
-                    <h4 className="font-bold text-gray-800 dark:text-terminal-light text-sm uppercase tracking-wider text-center">{t('areas_improvement', lang)}</h4>
-                    <span className="text-terminal-alert text-xl">⚠</span>
+            )}
+
+            <h2 className="text-sm font-bold font-mono text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-4">
+                {t('assessment_complete', lang)}
+            </h2>
+
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12 mb-8">
+                {/* Grade Circle */}
+                <div className="relative w-32 h-32 md:w-40 md:h-40 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90">
+                        <circle cx="50%" cy="50%" r="45%" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-200 dark:text-gray-800" />
+                        <circle 
+                            cx="50%" cy="50%" r="45%" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                            className={`${passed ? 'text-green-500' : 'text-red-500'} transition-all duration-1000 ease-out`}
+                            strokeDasharray="283"
+                            strokeDashoffset={283 - (283 * score) / 100}
+                        />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                         <span className={`text-4xl md:text-5xl font-black ${passed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                             {grade}
+                         </span>
+                         <span className="text-xs font-bold text-gray-400 dark:text-gray-500 mt-1">{score}%</span>
+                    </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.entries(wrongTopics).map(([topic, count]) => {
-                        const resources = getTopicResources(topic);
-                        return (
-                            <div key={topic} className="bg-white dark:bg-terminal-black p-4 rounded border border-l-4 border-gray-200 dark:border-terminal-gray border-l-terminal-alert shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    <svg className="w-16 h-16 text-terminal-alert" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" /></svg>
-                                </div>
-                                
-                                <div className="relative z-10">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <h5 className="font-bold text-lg dark:text-terminal-light capitalize">{topic}</h5>
-                                        <span className="bg-red-100 dark:bg-terminal-alert text-red-800 dark:text-white text-xs font-bold px-2 py-1 rounded">
-                                            {count} {t('failed', lang)}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="space-y-2 mt-4">
-                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Recommended Training:</p>
-                                        <div className="flex gap-2">
-                                            <a 
-                                                href={resources.video} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded transition-colors"
-                                            >
-                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
-                                                <span>{lang === 'ar' ? 'شاهد الشرح' : 'WATCH TUTORIAL'}</span>
-                                            </a>
-                                            <a 
-                                                href={resources.read} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-terminal-green dark:text-black dark:hover:bg-terminal-dimGreen text-white text-xs font-bold rounded transition-colors"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                                                <span>{lang === 'ar' ? 'اقرأ الدليل' : 'READ GUIDE'}</span>
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+
+                {/* Text Summary */}
+                <div className="text-left space-y-2">
+                    <div className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+                        {passed ? (grade === 'Z+' ? t('perfection', lang) : t('passed', lang)) : t('critical_failure', lang)}
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs leading-relaxed">
+                        {passed 
+                            ? "System criteria met. Knowledge verification successful. Neural link stable."
+                            : "Performance below threshold. Remedial training protocols recommended."
+                        }
+                    </p>
                 </div>
             </div>
-        )}
-      </div>
 
-      <div className="flex justify-between items-center mb-6 px-2">
-          <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              {effectiveShowAll ? 'Showing Full Exam' : `Showing ${finalResults.length - correctCount} Incorrect Answers`}
-          </div>
-          {!isPerfect && (
-              <button 
-                  onClick={() => setShowAll(!showAll)} 
-                  className="text-xs font-bold uppercase border border-gray-400 dark:border-terminal-gray px-3 py-1.5 rounded hover:bg-gray-200 dark:hover:bg-terminal-gray/50 transition-colors text-gray-700 dark:text-terminal-light"
-              >
-                  {showAll ? (lang === 'ar' ? 'عرض الأخطاء فقط' : 'Review Mistakes') : (lang === 'ar' ? 'عرض الاختبار كاملاً' : 'View Full Exam')}
-              </button>
-          )}
-      </div>
-
-      <div className="space-y-8 mb-12 relative z-10">
-        {visibleResults.map((item, idx) => {
-          // Adjust display index logic: if filtered, show original question number?
-          // For now, let's show the original index from the main list.
-          const originalIndex = questions.findIndex(q => q.id === item.question.id);
-          
-          const hasCodeBlockInText = item.question.text.includes('```');
-          let displayText = item.question.text;
-          if (item.question.codeSnippet && !hasCodeBlockInText && displayText.includes(item.question.codeSnippet)) {
-              displayText = displayText.replace(item.question.codeSnippet, '').trim();
-          }
-
-          const isStandardMCQ = item.question.type === QuestionType.MCQ && item.question.options && item.question.options.length > 0;
-
-          return (
-            <div key={item.question.id} className={`p-4 md:p-6 border-l-4 rtl:border-l-0 rtl:border-r-4 ${gradingStatus[item.question.id] ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/10' : item.isCorrect ? 'border-terminal-green bg-green-50 dark:bg-terminal-green/5' : 'border-terminal-alert bg-red-50 dark:bg-terminal-alert/10'} bg-white dark:bg-terminal-black shadow-md rounded-r-lg rtl:rounded-r-none rtl:rounded-l-lg relative`}>
-                <button onClick={() => toggleSave(item.question)} className={`absolute top-2 right-2 md:top-4 md:right-4 rtl:right-auto rtl:left-4 p-2 transition-colors hover:scale-110 ${isQuestionSaved(item.question.id) ? 'text-terminal-alert' : 'text-gray-300 dark:text-terminal-gray hover:text-terminal-alert'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-5 md:w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" /></svg>
-                </button>
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-terminal-gray pr-8 rtl:pr-0 rtl:pl-8">
-                    <h3 className="font-bold text-lg dark:text-terminal-light">{t('question', lang)} {originalIndex + 1}</h3>
-                    {gradingStatus[item.question.id] ? (
-                         <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-500 dark:text-black animate-pulse">GRADING...</span>
+            {/* Leaderboard Input - RESTRICTED IF F GRADE */}
+            {!savedToLeaderboard && (
+                <div className="max-w-sm mx-auto flex gap-2 animate-fade-in-up relative">
+                    {canPublish ? (
+                        <>
+                            <input 
+                                type="text" 
+                                value={agentName}
+                                onChange={(e) => setAgentName(e.target.value)}
+                                maxLength={10}
+                                placeholder={t('enter_agent_name', lang)}
+                                className="flex-grow bg-white dark:bg-black border border-gray-300 dark:border-terminal-green p-3 text-center font-mono uppercase rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-terminal-green text-gray-800 dark:text-terminal-light"
+                            />
+                            <button 
+                                onClick={handleSaveScore}
+                                disabled={!agentName.trim()}
+                                className="bg-blue-600 dark:bg-terminal-green text-white dark:text-black font-bold px-6 rounded hover:opacity-90 disabled:opacity-50 transition-all uppercase text-sm"
+                            >
+                                {t('publish', lang)}
+                            </button>
+                        </>
                     ) : (
-                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${item.isCorrect ? 'bg-green-100 text-green-800 dark:bg-terminal-green dark:text-black' : 'bg-red-100 text-red-800 dark:bg-terminal-alert dark:text-white'}`}>{item.isCorrect ? t('passed', lang) : t('failed', lang)}</span>
+                        <div className="w-full p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 font-bold text-xs uppercase tracking-wider rounded">
+                            🚫 {t('score_too_low', lang)}
+                        </div>
                     )}
                 </div>
-                <div className="mb-6 text-base md:text-lg font-medium text-gray-800 dark:text-terminal-light"><MarkdownRenderer content={displayText} /></div>
-                
-                {item.question.graphConfig && (
-                    <div className="mb-6">
-                         <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Graph Data:</div>
-                         <GraphRenderer config={item.question.graphConfig} />
-                    </div>
-                )}
-
-                {item.question.diagramConfig && (
-                    <div className="mb-6">
-                         <div className="text-xs font-bold text-gray-500 dark:text-terminal-green mb-2 uppercase tracking-wide">Diagram Structure:</div>
-                         <DiagramRenderer code={item.question.diagramConfig.code} />
-                    </div>
-                )}
-
-                {!item.question.graphConfig && !item.question.diagramConfig && item.question.visual && (
-                    <div className="mb-6">
-                        <img 
-                            src={`data:image/png;base64,${item.question.visual}`} 
-                            alt="Visual" 
-                            className="max-h-40 rounded border border-gray-300 dark:border-terminal-gray" 
-                        />
-                    </div>
-                )}
-
-                {item.question.codeSnippet && !hasCodeBlockInText && (
-                    <div dir="ltr" className="mb-6 text-left">
-                        <CodeWindow code={item.question.codeSnippet} />
-                    </div>
-                )}
-                
-                {(item.question.type === QuestionType.CODING || item.question.type === QuestionType.TRACING) && item.question.expectedOutput && (
-                    <div className="my-6" dir="ltr">
-                        <div className="bg-[#252526] px-4 py-2 border-b border-black flex items-center rounded-t-lg">
-                            <span className="text-xs text-gray-400 font-mono uppercase">Expected Output</span>
-                        </div>
-                        <pre className="!m-0 !p-4 !bg-[#1e1e1e] !text-sm overflow-x-auto custom-scrollbar border border-t-0 border-gray-700 rounded-b-lg">
-                            <code className="text-gray-200 font-mono leading-relaxed whitespace-pre-wrap">
-                                {item.question.expectedOutput}
-                            </code>
-                        </pre>
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                    <div className="bg-gray-100 dark:bg-[#0c0c0c] p-4 rounded border border-gray-200 dark:border-terminal-gray">
-                        <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider dark:text-terminal-green">{t('your_input', lang)}</span>
-                        <div className="font-mono break-words whitespace-pre-wrap text-gray-700 dark:text-terminal-light">
-                             {isStandardMCQ ? (item.question.options && item.question.options.length > 0 && item.answer !== null ? <MarkdownRenderer content={item.question.options[item.answer as number]} /> : String(item.answer || 'No Answer')) : String(item.answer || 'No Answer')}
-                        </div>
-                    </div>
-                    <div className="bg-blue-50 dark:bg-[#0c0c0c] p-4 rounded border border-blue-100 dark:border-terminal-gray">
-                        <span className="block text-xs opacity-50 font-bold mb-2 uppercase tracking-wider text-blue-800 dark:text-terminal-green">{t('analysis', lang)}</span>
-                        {gradingStatus[item.question.id] ? (
-                            <div className="animate-pulse text-gray-500">AI analysis in progress...</div>
-                        ) : (
-                            <MarkdownRenderer content={item.feedback} />
-                        )}
-                    </div>
+            )}
+            {savedToLeaderboard && (
+                <div className="text-green-500 font-mono font-bold text-sm tracking-widest animate-pulse">
+                     ✓ {t('published', lang)}
                 </div>
-            </div>
-          )
-        })}
-        {visibleResults.length === 0 && !isPerfect && (
-            <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-                <p>No incorrect answers found based on filtering.</p>
-                <button onClick={() => setShowAll(true)} className="text-blue-500 underline mt-2 text-sm">View all answers</button>
+            )}
+        </div>
+
+        {/* TOP ACTIONS GRID */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+            <button onClick={handleSaveExam} className="p-3 bg-gray-100 dark:bg-[#111] hover:bg-gray-200 dark:hover:bg-[#222] border border-gray-300 dark:border-gray-700 rounded text-gray-700 dark:text-terminal-green font-bold text-[10px] md:text-xs uppercase tracking-wider transition-colors">
+                {saveStatus || t('save', lang)}
+            </button>
+            <button onClick={handleDownloadExam} className="p-3 bg-gray-100 dark:bg-[#111] hover:bg-gray-200 dark:hover:bg-[#222] border border-gray-300 dark:border-gray-700 rounded text-gray-700 dark:text-terminal-green font-bold text-[10px] md:text-xs uppercase tracking-wider transition-colors">
+                {t('download_zplus', lang)}
+            </button>
+            <button onClick={onRestart} className="p-3 bg-gray-100 dark:bg-[#111] hover:bg-gray-200 dark:hover:bg-[#222] border border-gray-300 dark:border-gray-700 rounded text-gray-700 dark:text-terminal-green font-bold text-[10px] md:text-xs uppercase tracking-wider transition-colors">
+                {t('restart', lang)}
+            </button>
+            <button onClick={onRetake} className="p-3 bg-blue-50 dark:bg-[#111] hover:bg-blue-100 dark:hover:bg-[#222] border border-blue-200 dark:border-gray-700 rounded text-blue-700 dark:text-terminal-green font-bold text-[10px] md:text-xs uppercase tracking-wider transition-colors">
+                {t('retake', lang)}
+            </button>
+        </div>
+
+        {/* WEAK POINTS SECTION (Dynamic Links) */}
+        {weakTopics.length > 0 && (
+            <div className="mb-8 border-2 border-red-400 dark:border-red-900 bg-red-50 dark:bg-[#1a0505] p-6 rounded-lg shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                <h3 className="text-red-700 dark:text-red-500 font-bold text-lg uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span>⚠️</span> {t('weak_point_diagnostics', lang)}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {weakTopics.map((topic, i) => (
+                        <div key={i} className="bg-white dark:bg-black border border-red-200 dark:border-red-900/50 p-4 rounded flex flex-col gap-3 shadow-sm">
+                            <span className="font-bold text-gray-800 dark:text-white uppercase text-sm border-b border-gray-100 dark:border-gray-800 pb-2">
+                                {topic}
+                            </span>
+                            <div className="flex gap-2">
+                                <a 
+                                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(topic + ' tutorial')}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase text-center rounded transition-colors flex items-center justify-center gap-1"
+                                >
+                                    <span>📺</span> {t('watch_tutorial', lang)}
+                                </a>
+                                <a 
+                                    href={`https://www.google.com/search?q=${encodeURIComponent(topic + ' documentation')}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-300 text-[10px] font-bold uppercase text-center rounded transition-colors flex items-center justify-center gap-1"
+                                >
+                                    <span>📖</span> {t('read_docs', lang)}
+                                </a>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {wrongQuestionIds.length > 0 && (
+                    <button 
+                        onClick={() => onGenerateRemediation(wrongQuestionIds)}
+                        className="mt-6 w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest rounded shadow-md transition-all active:scale-95 text-xs"
+                    >
+                        {t('remediate', lang)} ({wrongQuestionIds.length})
+                    </button>
+                )}
             </div>
         )}
-      </div>
 
-      {autoHideFooter && <div className="hidden md:block fixed bottom-0 left-0 w-full h-6 z-40 bg-transparent cursor-crosshair" onMouseEnter={handleMouseEnterFooter} />}
-      
-      <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-terminal-black/95 backdrop-blur-md border-t-2 border-gray-300 dark:border-terminal-green flex flex-col md:flex-row gap-4 justify-between items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-50 transition-transform duration-500 ease-in-out md:px-8 ${autoHideFooter ? (isFooterVisible ? 'translate-y-0' : 'translate-y-full') : ''}`} onMouseLeave={handleMouseLeaveFooter} onMouseEnter={handleMouseEnterFooter}>
-        <div className="flex-1 w-full md:w-auto">
-            {!isPublished ? (
-                isFailure ? <div className="text-terminal-alert font-bold border border-terminal-alert p-3 bg-red-50 dark:bg-terminal-alert/20 text-center w-full text-xs tracking-widest uppercase">✖ {t('system_locked', lang)}</div> :
-                <div className="flex gap-2 w-full">
-                    <input type="text" placeholder={t('enter_agent_name', lang)} value={userName} onChange={handleNameChange} maxLength={20} className="bg-gray-100 dark:bg-terminal-gray/30 border border-gray-400 dark:border-terminal-border p-2.5 text-sm font-mono outline-none focus:border-terminal-green flex-grow dark:text-terminal-green rounded-md"/>
-                    <button onClick={handlePublish} disabled={!userName || !!nameError} className="px-6 py-2 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen hover:text-white disabled:opacity-50 transition-colors uppercase tracking-wider text-xs rounded-md shadow-md">{t('publish', lang)}</button>
-                </div>
-            ) : <div className="text-terminal-green font-bold px-4 py-2 border border-terminal-green bg-green-50 dark:bg-terminal-green/10 rounded w-full text-center tracking-widest text-xs uppercase">✓ {t('published', lang)}: {userName}</div>}
+        {/* TOGGLE VIEW & LIST */}
+        <div className="flex justify-between items-center mb-6 sticky top-20 z-20 bg-gray-200/95 dark:bg-[#151515]/95 backdrop-blur-md p-2 rounded border border-gray-300 dark:border-terminal-gray shadow-md">
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 pl-2">
+                {viewMode === 'ERRORS_ONLY' ? `${displayedQuestions.length} ISSUES FOUND` : `FULL REPORT (${questions.length} Q)`}
+            </span>
+            <button 
+                onClick={() => setViewMode(prev => prev === 'ALL' ? 'ERRORS_ONLY' : 'ALL')}
+                className={`px-4 py-2 rounded text-[10px] font-bold uppercase border transition-colors ${viewMode === 'ALL' ? 'bg-blue-600 text-white border-blue-600' : 'bg-transparent border-gray-400 text-gray-600 dark:text-gray-400 hover:border-gray-600'}`}
+            >
+                {viewMode === 'ALL' ? t('show_errors_only', lang) : t('show_full_exam', lang)}
+            </button>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-3 w-full md:w-auto">
-            <button onClick={handleSaveExam} className="px-4 py-2.5 border border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-bold transition-all text-xs uppercase tracking-wider rounded-md">{examSaved ? `✓ ${t('saved', lang)}` : `💾 ${t('save', lang)}`}</button>
-            <button onClick={handleDownloadPDF} className="px-4 py-2.5 border border-orange-500 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 font-bold transition-all text-xs uppercase tracking-wider rounded-md">{t('pdf_report', lang)}</button>
-            
-            <div className="h-8 w-px bg-gray-300 dark:bg-terminal-border hidden md:block"></div>
-            
-            <button onClick={onRetake} className="px-6 py-2.5 bg-blue-600 dark:bg-terminal-green text-white dark:text-black font-bold hover:brightness-110 shadow-md transition-all text-xs uppercase tracking-wider rounded-md">{t('retake', lang)}</button>
-            <button onClick={onRestart} className="px-6 py-2.5 border border-gray-400 dark:border-terminal-border text-gray-600 dark:text-terminal-light hover:bg-gray-200 dark:hover:bg-terminal-gray/50 font-bold transition-all text-xs uppercase tracking-wider rounded-md">{t('restart', lang)}</button>
-            
-            {wrongIds.length > 0 && <button onClick={() => onGenerateRemediation(wrongIds)} className="px-6 py-2.5 bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-lg transition-all text-xs uppercase tracking-wider rounded-md">{t('remediate', lang)} ({wrongIds.length})</button>}
+        <div className="space-y-6">
+            {displayedQuestions.map((q, idx) => {
+                // Find actual index in original array
+                const realIndex = questions.findIndex(orig => orig.id === q.id);
+                const ua = answers.find(a => a.questionId === q.id);
+                
+                let isCorrect = false;
+                let userAnswerDisplay = t('no_answer_provided', lang);
+                let statusClass = 'border-gray-300 dark:border-gray-700 opacity-50'; // Default skipped/neutral
+
+                if (ua) {
+                    userAnswerDisplay = String(ua.answer);
+                    if (q.type === QuestionType.MCQ && typeof ua.answer === 'number' && q.options) {
+                        userAnswerDisplay = q.options[ua.answer] || String(ua.answer);
+                    }
+
+                    // Check logic repeated for display
+                    if (q.type === QuestionType.MCQ && typeof ua.answer === 'number') {
+                        if(ua.answer === q.correctOptionIndex) isCorrect = true;
+                    } else if (q.type === QuestionType.TRACING) {
+                            if(String(ua.answer).trim().toLowerCase() === String(q.tracingOutput||"").trim().toLowerCase()) isCorrect = true;
+                    } else {
+                        if(ua.isCorrect) isCorrect = true;
+                    }
+                    
+                    statusClass = isCorrect 
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/10' 
+                        : 'border-red-500 bg-red-50 dark:bg-red-900/10';
+                } else {
+                    // No answer provided -> Wrong
+                    statusClass = 'border-red-500 bg-red-50 dark:bg-red-900/10';
+                }
+
+                return (
+                    <div key={q.id} className={`border-l-4 p-6 bg-white dark:bg-terminal-black shadow-md ${statusClass} transition-all`}>
+                        <div className="flex justify-between items-start mb-4">
+                            <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${isCorrect ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}`}>
+                                {isCorrect ? t('passed', lang) : t('failed', lang)}
+                            </span>
+                            <span className="text-xs font-mono text-gray-500">#{realIndex + 1} [{q.type}] {q.topic && `• ${q.topic}`}</span>
+                        </div>
+
+                        <div className="mb-4 text-gray-800 dark:text-gray-200">
+                            <MarkdownRenderer content={q.text} />
+                        </div>
+
+                        {/* Visuals in Review */}
+                        {q.graphConfig && <div className="mb-4 opacity-80 pointer-events-none scale-90 origin-left"><GraphRenderer config={q.graphConfig} /></div>}
+                        {q.diagramConfig && <div className="mb-4 opacity-80 pointer-events-none scale-90 origin-left"><DiagramRenderer code={q.diagramConfig.code} /></div>}
+                        {q.visual && <img src={`data:image/png;base64,${q.visual}`} className="max-h-32 border rounded mb-4" alt="Visual" />}
+                        {q.codeSnippet && <div className="mb-4 opacity-80 text-xs"><CodeWindow code={q.codeSnippet} /></div>}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                            <div>
+                                <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('your_input', lang)}:</h4>
+                                <div className={`font-mono p-2 rounded border bg-white dark:bg-black ${isCorrect ? 'border-green-200' : 'border-red-200'}`}>
+                                    <MarkdownRenderer content={userAnswerDisplay} />
+                                </div>
+                            </div>
+                            
+                            {/* Always show analysis for wrong answers in this view, regardless of viewMode */}
+                            {(!isCorrect) && (
+                                <div>
+                                    <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('analysis', lang)}:</h4>
+                                    <div className="text-gray-600 dark:text-gray-300">
+                                        {q.type === QuestionType.MCQ && q.options && q.correctOptionIndex !== undefined && (
+                                            <MarkdownRenderer 
+                                                content={`**Correct:** ${q.options[q.correctOptionIndex]}`} 
+                                                className="!text-green-700 dark:!text-green-500 mb-1"
+                                            />
+                                        )}
+                                        {q.type === QuestionType.TRACING && (
+                                            <MarkdownRenderer 
+                                                content={`**Expected:** ${q.tracingOutput}`} 
+                                                className="!text-green-700 dark:!text-green-500 mb-1"
+                                            />
+                                        )}
+                                        <MarkdownRenderer content={q.explanation} />
+                                        {/* Show Feedback from AI Grading if available */}
+                                        {ua?.feedback && (
+                                            <div className="mt-2 pt-2 border-t border-dashed border-gray-300 text-xs italic opacity-80">
+                                                AI Feedback: {ua.feedback}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })}
         </div>
-      </div>
+
+        {/* FIXED FOOTER BAR */}
+        {!autoHideFooter && (
+             <div className="fixed bottom-0 left-0 w-full bg-gray-200/95 dark:bg-[#151515]/95 backdrop-blur-md border-t border-gray-300 dark:border-terminal-gray p-4 z-40 flex justify-between items-center shadow-[0_-5px_15px_rgba(0,0,0,0.1)]">
+                 <div className="text-xs font-mono text-gray-500 hidden md:block">
+                     SESSION ID: {Date.now().toString(36).toUpperCase()}
+                 </div>
+                 <div className="flex gap-2 w-full md:w-auto justify-end">
+                     {/* Footer actions mirroring top for convenience */}
+                     <button onClick={handleSaveExam} className="px-4 py-2 bg-white hover:bg-gray-100 dark:bg-[#222] dark:hover:bg-[#333] border border-gray-300 dark:border-gray-600 rounded text-gray-800 dark:text-terminal-green font-bold text-xs shadow-sm">
+                         {t('save', lang)}
+                     </button>
+                     <button onClick={onRestart} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-bold text-xs shadow-sm">
+                         {t('restart', lang)}
+                     </button>
+                 </div>
+             </div>
+        )}
     </div>
   );
 };

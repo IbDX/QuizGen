@@ -120,6 +120,8 @@ export const translations = {
         "remediate": "REMEDIATE",
         "view_weak_points": "VIEW WEAK POINTS",
         "hide_analysis": "HIDE ANALYSIS",
+        "show_full_exam": "SHOW FULL EXAM",
+        "show_errors_only": "SHOW ERRORS ONLY",
         "areas_improvement": "AREAS FOR IMPROVEMENT",
         "passed": "PASSED",
         "failed": "FAILED",
@@ -127,6 +129,10 @@ export const translations = {
         "analysis": "ANALYSIS",
         "system_locked": "SYSTEM LOCKED: PUBLISHING DISABLED",
         "published": "PUBLISHED",
+        "watch_tutorial": "WATCH TUTORIAL",
+        "read_docs": "READ DOCS",
+        "weak_point_diagnostics": "WEAK POINT DIAGNOSTICS",
+        "score_too_low": "SCORE TOO LOW TO PUBLISH",
 
         // Library
         "saved_questions": "SAVED QUESTIONS",
@@ -264,6 +270,8 @@ export const translations = {
         "remediate": "معالجة الضعف",
         "view_weak_points": "عرض نقاط الضعف",
         "hide_analysis": "إخفاء التحليل",
+        "show_full_exam": "عرض الاختبار بالكامل",
+        "show_errors_only": "عرض الأخطاء فقط",
         "areas_improvement": "مجالات للتحسين",
         "passed": "ناجح",
         "failed": "راسب",
@@ -271,6 +279,10 @@ export const translations = {
         "analysis": "التحليل",
         "system_locked": "النظام مقفل: النشر معطل",
         "published": "تم النشر",
+        "watch_tutorial": "مشاهدة الشرح",
+        "read_docs": "قراءة الوثائق",
+        "weak_point_diagnostics": "تشخيص نقاط الضعف",
+        "score_too_low": "الدرجة منخفضة جداً للنشر",
 
         // Library
         "saved_questions": "الأسئلة المحفوظة",

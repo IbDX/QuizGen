@@ -81,12 +81,18 @@ Users often try to "jailbreak" AI exam tools (e.g., "Ignore previous instruction
 
 To keep the local library clean and performant, we enforce specific constraints during the import of `.zplus` files.
 
+### Security Scan (Import Time)
+Just like source PDFs, `.zplus` files are scanned via the VirusTotal API before being processed.
+1.  **Hash Check:** Quick lookup.
+2.  **Upload Scan:** If new, it is uploaded to VT to check for embedded malicious scripts or payloads within the text file.
+
 ### Duplicate Prevention
 When importing a saved exam:
 1.  **Content Hashing:** We calculate the **SHA-256** hash of the imported content string.
 2.  **Signature Matching:** We generate a unique signature for the imported exam based on a sorted list of its question IDs (`JSON.stringify(ids.sort())`).
-3.  **Comparison:** We compare this signature against all existing exams in the library. If a match is found, the import is rejected with a "Duplicate" alert.
+3.  **Conflict UI:** If a match is found, the system blocks the import and displays a **Conflict Modal** showing the details (Title, Date, ID) of the existing exam that matches.
 
 ### Resource Limits
 *   **File Size:** Imports are strictly limited to **10MB** to prevent `localStorage` quotas from being exceeded or crashing the browser.
 *   **History Rotation:** The `zplus_exam_history` is capped at 3 entries. New entries push out the oldest ones automatically (FIFO).
+*   **Schema Validation:** `validateExamSchema` ensures the JSON structure is valid (has correct `id`, `questions` array) to prevent application crashes.

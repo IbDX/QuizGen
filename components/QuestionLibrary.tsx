@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Question, QuestionType, SavedExam, UILanguage } from '../types';
 import { getLibrary, removeQuestion, getSavedExams, removeExam, importSavedExam, triggerExamDownload, getHistory } from '../services/library';
+import { scanFileWithVirusTotal } from '../utils/virusTotal';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
 import { GraphRenderer } from './GraphRenderer'; 
@@ -21,6 +22,10 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
     const [filter, setFilter] = useState<string>('ALL');
     const [activeTab, setActiveTab] = useState<'QUESTIONS' | 'EXAMS' | 'HISTORY'>('QUESTIONS');
     const [isImporting, setIsImporting] = useState(false);
+    
+    // New states for error handling and conflicts
+    const [conflictExam, setConflictExam] = useState<SavedExam | null>(null);
+    const [importError, setImportError] = useState<string | null>(null);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,23 +57,40 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
 
         // Limit file size to 10MB
         if (file.size > 10 * 1024 * 1024) {
-            alert(lang === 'ar' ? 'حجم الملف كبير جداً. الحد الأقصى 10 ميجابايت.' : 'File too large. Maximum size is 10MB.');
+            setImportError(lang === 'ar' ? 'حجم الملف كبير جداً. الحد الأقصى 10 ميجابايت.' : 'File too large. Maximum size is 10MB.');
             return;
         }
 
         setIsImporting(true);
+        setConflictExam(null);
+        setImportError(null);
+
         try {
+            // 1. VirusTotal Security Scan
+            const scanResult = await scanFileWithVirusTotal(file);
+            if (!scanResult.safe) {
+                throw new Error(`Security Block: ${scanResult.message}`);
+            }
+
+            // 2. Read Content
             const content = await file.text();
+            
+            // 3. Import with Logic Checks
             const result = await importSavedExam(content);
+            
             if (result.success) {
                 setExams(getSavedExams());
                 alert(t('import_success', lang));
                 setActiveTab('EXAMS'); 
             } else {
-                alert(`${t('import_failed', lang)}: ${result.message || "Unknown error"}`);
+                if (result.duplicateOf) {
+                    setConflictExam(result.duplicateOf);
+                } else {
+                    throw new Error(`${t('import_failed', lang)}: ${result.message || "Unknown error"}`);
+                }
             }
-        } catch (err) {
-            alert(t('import_failed', lang));
+        } catch (err: any) {
+            setImportError(err.message || t('import_failed', lang));
         } finally {
             setIsImporting(false);
             if(fileInputRef.current) fileInputRef.current.value = '';
@@ -90,6 +112,66 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
     return (
         <div className={`mx-auto transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>
             <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".zplus,.json" className="hidden" />
+
+            {/* ERROR MODAL */}
+            {importError && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white dark:bg-gray-900 border-2 border-red-500 p-6 max-w-md w-full shadow-[0_0_30px_rgba(239,68,68,0.4)] relative rounded-lg">
+                        <div className="flex items-center gap-3 mb-4 text-red-600 dark:text-red-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            <h3 className="font-bold text-xl uppercase tracking-wider">Import Error</h3>
+                        </div>
+                        <p className="text-gray-700 dark:text-gray-300 mb-6 font-mono text-sm leading-relaxed">
+                            {importError}
+                        </p>
+                        <button onClick={() => setImportError(null)} className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest transition-colors rounded">
+                            DISMISS
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* DUPLICATE CONFLICT MODAL */}
+            {conflictExam && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white dark:bg-terminal-black border-2 border-yellow-500 p-6 max-w-md w-full shadow-[0_0_30px_rgba(234,179,8,0.3)] relative rounded-lg">
+                        <div className="flex items-center gap-3 mb-4 text-yellow-600 dark:text-yellow-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            <h3 className="font-bold text-xl uppercase tracking-wider">Duplicate Exam Detected</h3>
+                        </div>
+                        <p className="text-gray-700 dark:text-gray-300 mb-4 text-sm">
+                            This exam file is identical to an exam already in your library. The import has been blocked to prevent redundancy.
+                        </p>
+                        
+                        <div className="bg-gray-100 dark:bg-terminal-gray border border-gray-200 dark:border-terminal-border p-4 rounded mb-6 text-sm font-mono space-y-2">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500 uppercase text-xs">Existing Title:</span>
+                                <span className="font-bold dark:text-terminal-light">{conflictExam.title}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500 uppercase text-xs">Date Saved:</span>
+                                <span className="font-bold dark:text-terminal-light">{new Date(conflictExam.date).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500 uppercase text-xs">Questions:</span>
+                                <span className="font-bold dark:text-terminal-light">{conflictExam.questions.length}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500 uppercase text-xs">Exam ID:</span>
+                                <span className="font-bold text-[10px] dark:text-terminal-light opacity-70">{conflictExam.id}</span>
+                            </div>
+                        </div>
+
+                        <button onClick={() => setConflictExam(null)} className="w-full py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-bold uppercase tracking-widest transition-colors rounded">
+                            OK, I UNDERSTAND
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="flex flex-col md:flex-row items-center justify-between mb-8 border-b border-gray-300 dark:border-terminal-border pb-4 gap-4">
                 <div className="flex items-center gap-4">
@@ -202,7 +284,10 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
                                             <h4 className="text-xs font-bold uppercase text-blue-600 dark:text-terminal-green mb-2">{t('analysis', lang)}</h4>
                                             <div className="text-sm dark:text-terminal-light">
                                                 {q.type === QuestionType.MCQ && q.options && q.correctOptionIndex !== undefined && (
-                                                    <div className="mb-2 font-bold">Correct Answer: {q.options[q.correctOptionIndex].replace(/\*\*/g, '')}</div>
+                                                    <MarkdownRenderer 
+                                                        content={`**Correct Answer:** ${q.options[q.correctOptionIndex]}`} 
+                                                        className="mb-2 !text-inherit" 
+                                                    />
                                                 )}
                                                 <MarkdownRenderer content={q.explanation} />
                                             </div>
