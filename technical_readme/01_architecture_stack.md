@@ -117,13 +117,6 @@ stateDiagram-v2
     *   `zplus_exam_library`: JSON array of full exam snapshots.
     *   `exam_leaderboard`: High scores.
 
-### 5. UI/UX Architecture
-*   **Soft Theme Strategy:** 
-    *   **Dark Mode:** Utilizes a **Dark Gray (Zinc)** palette (`#18181b`) instead of pure black for reduced eye strain, coupled with a **Dominant Green** accent color for a modern terminal aesthetic.
-    *   **Light Mode:** Uses off-white/gray-50 (`#F9FAFB`) for backgrounds.
-    *   **Glassmorphism:** Headers and overlays use `backdrop-blur` with semi-transparent colors defined in CSS variables (`--color-term-glass`).
-*   **Adaptive Controls:** Colors for interactive elements like the Photo Fetcher are derived from CSS variables, allowing seamless switching between themes (Standard, Terminal, Palestine).
-
 ---
 
 ## ⚡ Performance Considerations

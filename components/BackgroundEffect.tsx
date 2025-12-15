@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { ThemeOption } from './Layout';
 
@@ -41,8 +42,8 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
       if (isLight) {
           ctx.fillStyle = 'rgba(243, 244, 246, 0.1)';
       } else if (isPalestine) {
-          // Slightly softer trail for Palestine theme
-          ctx.fillStyle = 'rgba(20, 20, 20, 0.1)'; 
+          // Professional deep background trail (Deep Charcoal)
+          ctx.fillStyle = 'rgba(11, 15, 12, 0.1)'; 
       } else {
           ctx.fillStyle = 'rgba(5, 5, 5, 0.05)';
       }
@@ -57,13 +58,12 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
         if (isLight) {
             ctx.fillStyle = '#888';
         } else if (isPalestine) {
+            // Professional: Green and Off-White only. No Red.
             const rand = Math.random();
-            if (rand > 0.66) {
-                ctx.fillStyle = 'rgba(0, 122, 61, 0.8)'; // Green
-            } else if (rand > 0.33) {
-                ctx.fillStyle = 'rgba(206, 17, 38, 0.8)'; // Red
+            if (rand > 0.7) {
+                ctx.fillStyle = 'rgba(0, 122, 61, 0.6)'; // Palestine Green (Subtle)
             } else {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // White
+                ctx.fillStyle = 'rgba(229, 231, 235, 0.4)'; // Off White (Very Subtle)
             }
         } else {
            if (Math.random() > 0.98) {

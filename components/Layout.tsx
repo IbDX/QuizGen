@@ -24,40 +24,81 @@ interface LayoutProps {
   mobileActions?: MobileAction[];
   uiLanguage: UILanguage;
   onSetUiLanguage: (lang: UILanguage) => void;
-  forceStaticHeader?: boolean;
+  forceStaticHeader?: boolean; // New prop to control header behavior
 }
 
 export type ThemeOption = 'light' | 'dark' | 'palestine';
 
-// Cursor SVGs updated to use variable-like colors or generic
+// ... (CURSORS SVGs remain the same)
 const CURSOR_DEFAULT_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M2 2L9 21L12.5 12.5L21 9L2 2Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+<path d="M2 2L9 21L12.5 12.5L21 9L2 2Z" fill="#000000" stroke="#00ff41" stroke-width="1.5" stroke-linejoin="round"/>
 </svg>
 `;
-// Note: Actual SVGs in data URIs usually need hardcoded colors unless using mask. 
-// We keep the green/black aesthetic for the cursor as a stylistic choice for the "Terminal" feel.
+
 const CURSOR_POINTER_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M2 2L9 21L12.5 12.5L21 9L2 2Z" fill="#10B981" stroke="#064E3B" stroke-width="1" stroke-linejoin="round"/>
+<path d="M2 2L9 21L12.5 12.5L21 9L2 2Z" fill="#00ff41" stroke="#003300" stroke-width="1" stroke-linejoin="round"/>
 </svg>
 `;
 
 const CURSOR_TEXT_SVG = `
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M5 4V2H11V4" stroke="#10B981" stroke-width="2"/>
-<path d="M8 4V20" stroke="#10B981" stroke-width="2"/>
-<path d="M5 20V22H11V20" stroke="#10B981" stroke-width="2"/>
+<path d="M5 4V2H11V4" stroke="#00ff41" stroke-width="2"/>
+<path d="M8 4V20" stroke="#00ff41" stroke-width="2"/>
+<path d="M5 20V22H11V20" stroke="#00ff41" stroke-width="2"/>
+</svg>
+`;
+
+const CURSOR_WAIT_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M6 2H18V6L12 12L6 6V2Z" fill="#00ff41"/>
+<path d="M6 22H18V18L12 12L6 18V22Z" fill="#00ff41" fill-opacity="0.5"/>
+<path d="M6 2H18V6L14 10V14L18 18V22H6V18L10 14V10L6 6V2Z" stroke="#00ff41" stroke-width="2"/>
+</svg>
+`;
+
+const CURSOR_NOT_ALLOWED_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="12" cy="12" r="8" stroke="#ff3333" stroke-width="2"/>
+<path d="M6 6L18 18" stroke="#ff3333" stroke-width="2"/>
+</svg>
+`;
+
+const CURSOR_GRAB_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2C12 2 11 5 11 8V13H8V8C8 5 7 2 7 2" stroke="#00ff41" stroke-width="2"/>
+<path d="M17 4C17 4 16 6 16 9V13H14" stroke="#00ff41" stroke-width="2"/>
+<path d="M19 12V17C19 20 16 22 12 22C8 22 5 20 5 17V12" stroke="#00ff41" stroke-width="2"/>
+</svg>
+`;
+
+const CURSOR_GRABBING_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="7" y="7" width="10" height="10" rx="2" fill="#00ff41"/>
+<path d="M6 10H18M6 14H18" stroke="black" stroke-width="1"/>
+<rect x="5" y="5" width="14" height="14" rx="3" stroke="#00ff41" stroke-width="2"/>
+</svg>
+`;
+
+const CURSOR_CROSSHAIR_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2V22M2 12H22" stroke="#00ff41" stroke-width="1"/>
+<rect x="10" y="10" width="4" height="4" stroke="#00ff41" stroke-width="1" fill="none"/>
 </svg>
 `;
 
 const b64 = (svg: string) => `data:image/svg+xml;base64,${btoa(svg)}`;
 
 const CURSORS = {
-    default: "auto", // Fallback
+    default: b64(CURSOR_DEFAULT_SVG),
     pointer: b64(CURSOR_POINTER_SVG),
     text: b64(CURSOR_TEXT_SVG),
-    // ... others simplified for brevity or keeping defaults
+    wait: b64(CURSOR_WAIT_SVG),
+    notAllowed: b64(CURSOR_NOT_ALLOWED_SVG),
+    grab: b64(CURSOR_GRAB_SVG),
+    grabbing: b64(CURSOR_GRABBING_SVG),
+    crosshair: b64(CURSOR_CROSSHAIR_SVG)
 };
 
 const FONT_OPTIONS = [
@@ -65,8 +106,10 @@ const FONT_OPTIONS = [
     { name: 'JetBrains Mono', value: "'JetBrains Mono', monospace" },
     { name: 'Roboto Mono', value: "'Roboto Mono', monospace" },
     { name: 'Cairo (Arabic)', value: "'Cairo', sans-serif" },
+    { name: 'Courier New', value: "'Courier New', Courier, monospace" },
 ];
 
+// Enhanced 3D Z+ Logo
 const ZPlusLogo: React.FC<{ theme: ThemeOption }> = ({ theme }) => {
     const isPalestine = theme === 'palestine';
     const isLight = theme === 'light';
@@ -74,33 +117,49 @@ const ZPlusLogo: React.FC<{ theme: ThemeOption }> = ({ theme }) => {
     return (
         <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
             <defs>
+                {/* Metallic Gradient for Terminal Mode */}
                 <linearGradient id="termMetal" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor={isLight ? "#3b82f6" : "#22c55e"} />
-                    <stop offset="100%" stopColor={isLight ? "#1d4ed8" : "#15803d"} />
+                    <stop offset="0%" stopColor={isLight ? "#1e3a8a" : "#0f3923"} />
+                    <stop offset="50%" stopColor={isLight ? "#3b82f6" : "#00ff41"} />
+                    <stop offset="100%" stopColor={isLight ? "#172554" : "#002200"} />
                 </linearGradient>
-                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-                    <feMerge>
-                        <feMergeNode in="coloredBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
+
+                {/* Palestine Gradient - Professional/Subdued (Black -> Green -> White) */}
+                <linearGradient id="palMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#0b0f0c" />
+                    <stop offset="50%" stopColor="#14532d" />
+                    <stop offset="100%" stopColor="#e5e7eb" />
+                </linearGradient>
+
+                {/* 3D Bevel Filter */}
+                <filter id="bevel3d" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="blur"/>
+                    <feSpecularLighting in="blur" surfaceScale="4" specularConstant="1.2" specularExponent="15" lightingColor="white" result="specOut">
+                        <fePointLight x="-5000" y="-10000" z="20000"/>
+                    </feSpecularLighting>
+                    <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/>
+                    <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litPaint"/>
+                    <feDropShadow dx="2" dy="3" stdDeviation="2" floodOpacity="0.5"/>
                 </filter>
             </defs>
 
-            <g filter="url(#glow)">
+            <g filter="url(#bevel3d)">
+                {/* Z Shape - Left Side */}
                 <path 
-                    d="M20 30 H70 L30 70 H80" 
+                    d="M15 25 H65 L25 75 H75" 
                     fill="none" 
-                    stroke={isPalestine ? "#15803d" : "url(#termMetal)"} 
-                    strokeWidth="12" 
+                    stroke={isPalestine ? "url(#palMetal)" : "url(#termMetal)"} 
+                    strokeWidth="14" 
                     strokeLinecap="round" 
                     strokeLinejoin="round"
                 />
+                
+                {/* Plus Shape - Right Side */}
                 <path 
-                    d="M85 30 V60 M70 45 H100" 
+                    d="M85 35 V65 M70 50 H100" 
                     fill="none" 
-                    stroke={isPalestine ? "#dc2626" : "url(#termMetal)"} 
-                    strokeWidth="10" 
+                    stroke={isPalestine ? "url(#palMetal)" : "url(#termMetal)"} 
+                    strokeWidth="12" 
                     strokeLinecap="round"
                 />
             </g>
@@ -126,6 +185,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Derive effective auto-hide behavior
   const shouldAutoHideHeader = autoHideHeader && !forceStaticHeader;
 
   useEffect(() => {
@@ -156,151 +216,353 @@ export const Layout: React.FC<LayoutProps> = ({
       return () => clearTimeout(timer);
   }, [shouldAutoHideHeader, isMobileMenuOpen]);
 
-  const handleMouseEnterHeader = () => { if (shouldAutoHideHeader) setIsHeaderVisible(true); };
-  const handleMouseLeaveHeader = () => { if (shouldAutoHideHeader && !isMobileMenuOpen && !showSettings) setIsHeaderVisible(false); };
+  const handleMouseEnterHeader = () => {
+      if (shouldAutoHideHeader) setIsHeaderVisible(true);
+  };
+
+  const handleMouseLeaveHeader = () => {
+      if (shouldAutoHideHeader && !isMobileMenuOpen && !showSettings) {
+          setIsHeaderVisible(false);
+      }
+  };
+
+  const getActionColor = (variant?: string) => {
+      switch(variant) {
+          case 'primary': return 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700';
+          case 'success': return 'bg-green-600 text-white border-green-600 hover:bg-green-700';
+          case 'warning': return 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600';
+          case 'purple': return 'bg-purple-600 text-white border-purple-600 hover:bg-purple-700';
+          default: return 'border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-black text-gray-700 dark:text-terminal-green';
+      }
+  };
+
+  const isPalestine = theme === 'palestine';
+  
+  // Professional borders for Palestine theme (Soft Army Green)
+  const headerBorderStyle = isPalestine 
+    ? { borderBottomWidth: '1px', borderColor: '#2f3b34' } 
+    : {};
+    
+  const footerBorderStyle = isPalestine
+    ? { borderTopWidth: '1px', borderColor: '#2f3b34' }
+    : {};
+  
+  // Professional Background (Deep Charcoal Green)
+  const palestineBgStyle = isPalestine ? {
+      backgroundColor: '#0b0f0c',
+      backgroundImage: 'radial-gradient(circle at 50% 0%, #1b231d 0%, #0b0f0c 70%)'
+  } : {};
 
   return (
     <div 
-        className={`min-h-screen flex flex-col font-mono selection:bg-terminal-green/30 selection:text-white ${useCustomCursor ? 'custom-cursor' : ''} relative overflow-x-hidden`} 
+        className={`min-h-screen flex flex-col font-mono selection:bg-terminal-green selection:text-terminal-black ${useCustomCursor ? 'custom-cursor' : ''} relative overflow-x-hidden transition-colors duration-500`} 
         dir={uiLanguage === 'ar' ? 'rtl' : 'ltr'}
+        style={palestineBgStyle}
     >
+      
       {enableBackgroundAnim && <BackgroundEffect theme={theme} />}
+      
       <AiHelper lang={uiLanguage} onSetUiLanguage={onSetUiLanguage} />
 
       {useCustomCursor && (
         <style>{`
-          .custom-cursor a, .custom-cursor button:not(:disabled) { cursor: url('${CURSORS.pointer}') 10 10, pointer !important; }
+          .custom-cursor { cursor: url('${CURSORS.default}') 2 2, auto !important; }
+          .custom-cursor a, .custom-cursor button:not(:disabled) { cursor: url('${CURSORS.pointer}') 2 2, pointer !important; }
           .custom-cursor input[type="text"], .custom-cursor textarea { cursor: url('${CURSORS.text}') 12 12, text !important; }
+          .custom-cursor .cursor-wait { cursor: url('${CURSORS.wait}') 12 12, wait !important; }
         `}</style>
       )}
 
       {shouldAutoHideHeader && (
-          <div className="hidden md:block fixed top-0 left-0 w-full h-4 z-50 bg-transparent" onMouseEnter={handleMouseEnterHeader} />
+          <div 
+            className="hidden md:block fixed top-0 left-0 w-full h-6 z-50 bg-transparent cursor-crosshair"
+            onMouseEnter={handleMouseEnterHeader}
+          />
+      )}
+
+      {shouldAutoHideHeader && (
+        <div 
+            className={`hidden md:flex fixed top-0 left-1/2 -translate-x-1/2 z-40 transition-all duration-700 ease-in-out pointer-events-none flex-col items-center ${isHeaderVisible ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+        >
+            <div className="w-32 h-1.5 bg-gray-400/50 dark:bg-terminal-green/30 rounded-b-full shadow-[0_0_10px_rgba(0,255,65,0.2)] backdrop-blur-sm animate-pulse"></div>
+        </div>
       )}
 
       <header 
         className={`
             fixed top-0 left-0 right-0 z-40 
-            bg-terminal-glass backdrop-blur-xl
-            border-b border-terminal-gray/20
-            shadow-sm dark:shadow-[0_4px_30px_rgba(0,0,0,0.1)]
-            transition-transform duration-500 ease-in-out
+            bg-gray-200/95 dark:bg-gray-900/95 backdrop-blur-md 
+            border-b-2 border-gray-300 dark:border-terminal-green 
+            shadow-lg transition-transform duration-700 ease-in-out
             h-16 md:h-20
-            ${isMobileMenuOpen ? '' : (isHeaderVisible ? 'translate-y-0' : '-translate-y-full')}
+            translate-y-0
+            ${isMobileMenuOpen ? '' : (isHeaderVisible ? 'md:translate-y-0' : 'md:-translate-y-full')}
         `}
+        style={headerBorderStyle}
         onMouseLeave={handleMouseLeaveHeader}
         onMouseEnter={handleMouseEnterHeader}
       >
-        <div className="px-4 md:px-8 flex justify-between items-center h-full max-w-7xl mx-auto">
-            {/* LOGO */}
+        <div className="p-4 flex justify-between items-center h-full max-w-7xl mx-auto">
             <div className="flex items-center gap-4">
-                <button onClick={onHome} className="group outline-none" title={t('home', uiLanguage)}>
-                    <div className="w-10 h-10 md:w-12 md:h-12 transition-transform group-hover:scale-110 duration-300">
-                        <ZPlusLogo theme={theme} />
+                <button 
+                    onClick={onHome}
+                    className="relative group outline-none focus:outline-none"
+                    title={t('home', uiLanguage)}
+                >
+                    <div className="relative w-12 h-12 md:w-14 md:h-14 flex items-center justify-center">
+                        <div className={`absolute -inset-2 blur opacity-20 group-hover:opacity-50 transition duration-500 ${isPalestine ? 'bg-terminal-green' : 'bg-terminal-green'}`}></div>
+                        <div className={`relative z-10 w-full h-full flex items-center justify-center`}>
+                            <ZPlusLogo theme={theme} />
+                        </div>
                     </div>
                 </button>
-                <div className="hidden md:flex flex-col justify-center">
-                    <span className="font-bold text-lg leading-tight tracking-tight text-terminal-light">
-                        Z+ <span className="text-terminal-green">EXAM</span>
-                    </span>
-                    <span className="text-[9px] tracking-[0.3em] text-gray-500 dark:text-gray-400 font-sans font-bold">GENERATION SYSTEM</span>
-                </div>
             </div>
             
-            {/* DESKTOP NAV */}
-            <div className="hidden md:flex gap-3 items-center">
-                <NavButton onClick={onToggleLibrary} active={isLibraryOpen} icon="📚" label={t('library', uiLanguage)} />
-                <NavButton onClick={() => setShowSettings(true)} active={showSettings} icon="⚙️" label={t('settings', uiLanguage)} />
+            <div className="hidden md:flex gap-4 items-center">
+                <button
+                    onClick={onToggleLibrary}
+                    className={`p-2 border transition-colors group ${isLibraryOpen ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-400 dark:border-terminal-green hover:bg-gray-300 dark:hover:bg-terminal-green dark:hover:text-black text-gray-700 dark:text-terminal-green'}`}
+                    title={t('library', uiLanguage)}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                </button>
+
+                <button
+                    onClick={() => setShowSettings(true)}
+                    className="p-2 border border-gray-400 dark:border-terminal-green hover:bg-gray-300 dark:hover:bg-terminal-green dark:hover:text-black transition-colors text-gray-700 dark:text-terminal-green"
+                    title={t('settings', uiLanguage)}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
             </div>
 
-            {/* MOBILE HAMBURGER */}
             <div className="md:hidden">
                 <button 
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="p-2 text-terminal-light hover:bg-terminal-gray/20 rounded-lg transition-all"
+                    className="p-2 text-gray-800 dark:text-terminal-green hover:bg-gray-200 dark:hover:bg-gray-800 rounded border border-transparent hover:border-gray-400 dark:hover:border-terminal-green transition-all"
                 >
                     <div className="space-y-1.5">
-                        <span className={`block w-6 h-0.5 bg-current transition-transform ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
-                        <span className={`block w-6 h-0.5 bg-current transition-opacity ${isMobileMenuOpen ? 'opacity-0' : ''}`}></span>
-                        <span className={`block w-6 h-0.5 bg-current transition-transform ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
+                        <div className={`w-6 h-0.5 bg-current transition-transform duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></div>
+                        <div className={`w-6 h-0.5 bg-current transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></div>
+                        <div className={`w-6 h-0.5 bg-current transition-transform duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></div>
                     </div>
                 </button>
             </div>
         </div>
 
         {/* MOBILE MENU */}
-        <div className={`md:hidden absolute top-full left-0 w-full bg-terminal-glass backdrop-blur-xl border-b border-terminal-gray/20 transition-all duration-300 overflow-hidden ${isMobileMenuOpen ? 'max-h-[80vh] opacity-100 shadow-xl' : 'max-h-0 opacity-0'}`}>
-            <div className="p-4 space-y-4">
-                 <div className="grid grid-cols-2 gap-3">
-                     <MobileNavButton onClick={() => { onHome(); setIsMobileMenuOpen(false); }} icon="🏠" label={t('home', uiLanguage)} />
-                     <MobileNavButton onClick={() => { onToggleLibrary(); setIsMobileMenuOpen(false); }} icon="📚" label={t('library', uiLanguage)} active={isLibraryOpen} />
-                     <MobileNavButton onClick={() => { setShowSettings(true); setIsMobileMenuOpen(false); }} icon="⚙️" label={t('settings', uiLanguage)} />
+        <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out bg-gray-100 dark:bg-black border-b border-gray-300 dark:border-terminal-green ${isMobileMenuOpen ? 'max-h-[85vh] opacity-100 shadow-2xl overflow-y-auto' : 'max-h-0 opacity-0'}`}>
+            <div className="flex flex-col p-4 gap-4">
+                 <div className="grid grid-cols-3 gap-3">
+                     <button 
+                        onClick={() => { onHome(); setIsMobileMenuOpen(false); }}
+                        className="p-3 flex justify-center items-center rounded border border-gray-300 dark:border-gray-800 hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-black text-gray-700 dark:text-terminal-green transition-colors"
+                     >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                     </button>
+
+                     <button 
+                        onClick={() => { onToggleLibrary(); setIsMobileMenuOpen(false); }}
+                        className={`p-3 flex justify-center items-center rounded border transition-colors ${isLibraryOpen ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-gray-800 hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-black text-gray-700 dark:text-terminal-green'}`}
+                     >
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                         </svg>
+                     </button>
+
+                     <button 
+                        onClick={() => { setShowSettings(true); setIsMobileMenuOpen(false); }}
+                        className="p-3 flex justify-center items-center rounded border border-gray-300 dark:border-gray-800 hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-black text-gray-700 dark:text-terminal-green transition-colors"
+                     >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                     </button>
                  </div>
+
                  {mobileActions && mobileActions.length > 0 && (
-                     <div className="pt-2 border-t border-terminal-gray/20 space-y-2">
+                     <>
+                        <div className="border-t border-gray-300 dark:border-gray-800 my-2"></div>
+                        <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 px-1 uppercase tracking-wider">
+                            Actions
+                        </div>
                         {mobileActions.map((action, i) => (
                              <button
                                 key={i}
                                 onClick={() => { if(!action.disabled) { action.onClick(); setIsMobileMenuOpen(false); } }}
                                 disabled={action.disabled}
-                                className={`w-full p-3 rounded-lg text-sm font-bold text-left transition-colors ${action.variant === 'primary' ? 'bg-terminal-green text-black shadow-lg shadow-terminal-green/20' : 'bg-terminal-surface text-terminal-light border border-terminal-gray/20'}`}
+                                className={`p-4 text-left font-bold text-sm border transition-colors ${getActionColor(action.variant)} ${action.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                              >
                                 {action.label}
                              </button>
                         ))}
-                     </div>
+                     </>
                  )}
             </div>
         </div>
       </header>
 
       <main className={`flex-grow p-4 md:p-8 w-full transition-all duration-300 pt-20 md:pt-28 z-10 ${isFullWidth ? 'px-4' : 'max-w-5xl mx-auto'}`}>
-         {children}
+        <div className="relative">
+          <div className="relative z-10">
+             {children}
+          </div>
+        </div>
       </main>
 
-      <footer className={`p-4 text-center text-[10px] text-gray-500 z-10 border-t border-terminal-gray/10 bg-terminal-black/50 backdrop-blur-sm transition-transform duration-300 ${autoHideFooter && !isMobileMenuOpen ? 'translate-y-full hover:translate-y-0 opacity-0 hover:opacity-100' : ''}`}>
-        Z+ SYSTEM V1.6 | {t('status_online', uiLanguage)}
+      <footer 
+        className="p-4 text-center text-xs text-gray-500 dark:text-gray-600 border-t border-gray-300 dark:border-gray-800 z-10 relative bg-gray-100/50 dark:bg-black/50 backdrop-blur-sm"
+        style={footerBorderStyle}
+      >
+        {t('status_online', uiLanguage)} | V1.5.0
       </footer>
 
       {showSettings && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-            <div className="bg-terminal-surface border border-terminal-gray/20 w-full max-w-xl shadow-2xl rounded-2xl overflow-hidden animate-fade-in flex flex-col max-h-[85vh]">
-                <div className="p-4 border-b border-terminal-gray/20 flex justify-between items-center bg-terminal-black/20">
-                    <h2 className="font-bold text-terminal-light flex items-center gap-2">⚙️ {t('system_preferences', uiLanguage)}</h2>
-                    <button onClick={() => setShowSettings(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-terminal-gray/20 text-terminal-light transition-colors">✕</button>
-                </div>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 cursor-default">
+            <div className="bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-terminal-green w-full max-w-2xl shadow-2xl p-0 animate-fade-in relative max-h-[90vh] overflow-hidden flex flex-col rounded-lg">
                 
-                <div className="p-6 overflow-y-auto flex-grow space-y-6">
-                    {/* Theme Section */}
-                    <div className="space-y-3">
-                        <label className="text-xs font-bold text-gray-500 uppercase">{t('ui_theme', uiLanguage)}</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            <ThemeButton active={theme === 'light'} onClick={() => setTheme('light')} label="LIGHT" color="bg-gray-100 text-gray-800" />
-                            <ThemeButton active={theme === 'dark'} onClick={() => setTheme('dark')} label="TERMINAL" color="bg-zinc-800 text-green-400 border border-green-500/30" />
-                            <ThemeButton active={theme === 'palestine'} onClick={() => setTheme('palestine')} label="PALESTINE" color="bg-neutral-800 text-white border-l-4 border-red-600" />
-                        </div>
-                    </div>
-
-                    {/* Lang Section */}
-                    <div className="space-y-3">
-                        <label className="text-xs font-bold text-gray-500 uppercase">{t('system_language', uiLanguage)}</label>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => onSetUiLanguage('en')} className={`p-2 text-xs font-bold rounded-lg border transition-all ${uiLanguage === 'en' ? 'border-terminal-green bg-terminal-green/10 text-terminal-green' : 'border-terminal-gray/20 text-gray-500'}`}>ENGLISH</button>
-                            <button onClick={() => onSetUiLanguage('ar')} className={`p-2 text-xs font-bold rounded-lg border transition-all ${uiLanguage === 'ar' ? 'border-terminal-green bg-terminal-green/10 text-terminal-green' : 'border-terminal-gray/20 text-gray-500'}`}>العربية</button>
-                        </div>
-                    </div>
-
-                    {/* Toggles */}
-                    <div className="space-y-2">
-                        <ToggleRow label={t('full_width', uiLanguage)} checked={isFullWidth} onChange={onToggleFullWidth} />
-                        <ToggleRow label={t('auto_hide_menu', uiLanguage)} checked={autoHideHeader} onChange={() => setAutoHideHeader(!autoHideHeader)} />
-                        <ToggleRow label={t('digital_background', uiLanguage)} checked={enableBackgroundAnim} onChange={() => setEnableBackgroundAnim(!enableBackgroundAnim)} />
-                        <ToggleRow label={t('terminal_cursor', uiLanguage)} checked={useCustomCursor} onChange={() => setUseCustomCursor(!useCustomCursor)} />
-                    </div>
+                {/* SETTINGS HEADER */}
+                <div className="p-4 border-b border-gray-300 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-black/20">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-terminal-green">
+                        <span className="text-2xl">⚙️</span> {t('system_preferences', uiLanguage)}
+                    </h2>
+                    <button 
+                        onClick={() => setShowSettings(false)}
+                        className="text-gray-500 hover:text-red-500 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                    >
+                        ✕
+                    </button>
                 </div>
 
-                <div className="p-4 border-t border-terminal-gray/20 bg-terminal-black/20">
-                    <button onClick={() => setShowSettings(false)} className="w-full py-3 bg-terminal-green hover:bg-terminal-green/90 text-black font-bold rounded-xl shadow-lg shadow-terminal-green/20 transition-all text-sm">
+                {/* SCROLLABLE CONTENT */}
+                <div className="overflow-y-auto custom-scrollbar flex-grow p-6 space-y-8">
+                    
+                    {/* SECTION 1: INTERFACE */}
+                    <div>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-gray-800 pb-1">
+                            {t('settings_interface', uiLanguage)}
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('system_language', uiLanguage)}</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                     <button onClick={() => onSetUiLanguage('en')} className={`p-2 border rounded text-xs font-bold transition-all ${uiLanguage === 'en' ? 'border-terminal-green bg-terminal-green text-black' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-500'}`}>ENGLISH</button>
+                                     <button onClick={() => onSetUiLanguage('ar')} className={`p-2 border rounded text-xs font-bold transition-all font-sans ${uiLanguage === 'ar' ? 'border-terminal-green bg-terminal-green text-black' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-500'}`}>العربية (ARABIC)</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('ui_theme', uiLanguage)}</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                     <button onClick={() => setTheme('light')} className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'light' ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-500'}`}>LIGHT</button>
+                                     <button onClick={() => setTheme('dark')} className={`p-2 border rounded text-xs font-bold transition-all ${theme === 'dark' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-500'}`}>TERMINAL</button>
+                                     <button onClick={() => setTheme('palestine')} className={`p-2 border rounded text-xs font-bold transition-all relative overflow-hidden ${theme === 'palestine' ? 'border-terminal-green bg-terminal-gray text-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-500'}`}>
+                                        PALESTINE
+                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SECTION 2: DISPLAY */}
+                    <div>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-gray-800 pb-1">
+                            {t('settings_display', uiLanguage)}
+                        </h3>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('font_family', uiLanguage)}</label>
+                                    <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} className="w-full p-2 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-700 rounded text-sm font-mono focus:border-terminal-green outline-none dark:text-white">
+                                        {FONT_OPTIONS.map(font => (<option key={font.name} value={font.value}>{font.name}</option>))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t('global_font_scale', uiLanguage)}</label>
+                                    <div className="flex items-center gap-4 bg-gray-100 dark:bg-black p-2 rounded border border-gray-300 dark:border-gray-700">
+                                        <span className="text-xs font-bold dark:text-gray-400">A</span>
+                                        <input type="range" min="12" max="24" step="1" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600 dark:accent-terminal-green"/>
+                                        <span className="text-xl font-bold dark:text-white">A</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <div className="flex-1 flex items-center justify-between p-3 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 rounded">
+                                     <span className="font-bold text-sm text-gray-700 dark:text-gray-300">{t('full_width', uiLanguage)}</span>
+                                     <button onClick={onToggleFullWidth} className={`w-12 h-6 rounded-full p-1 transition-colors ${isFullWidth ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                         <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isFullWidth ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                     </button>
+                                </div>
+                                <div className="flex-1 flex items-center justify-between p-3 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 rounded">
+                                     <span className="font-bold text-sm text-gray-700 dark:text-gray-300">{t('auto_hide_menu', uiLanguage)}</span>
+                                     <button onClick={() => setAutoHideHeader(!autoHideHeader)} className={`w-12 h-6 rounded-full p-1 transition-colors ${autoHideHeader ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                         <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoHideHeader ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SECTION 3: VISUAL FX */}
+                    <div>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-gray-800 pb-1">
+                            {t('settings_visuals', uiLanguage)}
+                        </h3>
+                        <div className="flex flex-col md:flex-row gap-4">
+                             <div className="flex-1 flex items-center justify-between p-3 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 rounded">
+                                 <span className="font-bold text-sm text-gray-700 dark:text-gray-300">{t('digital_background', uiLanguage)}</span>
+                                 <button onClick={() => setEnableBackgroundAnim(!enableBackgroundAnim)} className={`w-12 h-6 rounded-full p-1 transition-colors ${enableBackgroundAnim ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                     <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${enableBackgroundAnim ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                 </button>
+                             </div>
+                             <div className="flex-1 flex items-center justify-between p-3 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 rounded">
+                                 <span className="font-bold text-sm text-gray-700 dark:text-gray-300">{t('terminal_cursor', uiLanguage)}</span>
+                                 <button onClick={() => setUseCustomCursor(!useCustomCursor)} className={`w-12 h-6 rounded-full p-1 transition-colors ${useCustomCursor ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                     <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${useCustomCursor ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                 </button>
+                             </div>
+                        </div>
+                    </div>
+
+                    {/* SECTION 4: SYSTEM */}
+                    <div>
+                        <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-gray-800 pb-1">
+                            {t('settings_system', uiLanguage)}
+                        </h3>
+                        <a 
+                            href="https://github.com/your-repo/issues" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-4 border border-gray-300 dark:border-gray-800 bg-white dark:bg-black/40 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group rounded cursor-pointer"
+                        >
+                            <div className="flex flex-col">
+                                <span className="font-bold text-sm text-gray-800 dark:text-gray-200 group-hover:text-red-600 dark:group-hover:text-red-400 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    {t('report_issue', uiLanguage)}
+                                </span>
+                                <span className="text-[10px] text-gray-500 mt-1">Submit bug reports or feature requests via GitHub.</span>
+                            </div>
+                            <span className="text-gray-400 group-hover:text-red-500 transform group-hover:translate-x-1 transition-transform">➤</span>
+                        </a>
+                    </div>
+
+                </div>
+
+                {/* FOOTER ACTION */}
+                <div className="p-4 border-t border-gray-300 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
+                    <button 
+                        onClick={() => setShowSettings(false)}
+                        className="w-full py-3 bg-gray-800 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold uppercase transition-colors rounded shadow-lg"
+                    >
                         {t('save_close', uiLanguage)}
                     </button>
                 </div>
@@ -310,32 +572,3 @@ export const Layout: React.FC<LayoutProps> = ({
     </div>
   );
 };
-
-const NavButton = ({ onClick, active, icon, label }: any) => (
-    <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${active ? 'bg-terminal-green text-black shadow-lg shadow-terminal-green/30' : 'text-gray-500 dark:text-gray-400 hover:bg-terminal-gray/10 hover:text-terminal-light'}`}>
-        <span>{icon}</span>
-        <span>{label}</span>
-    </button>
-);
-
-const MobileNavButton = ({ onClick, active, icon, label }: any) => (
-    <button onClick={onClick} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${active ? 'border-terminal-green bg-terminal-green/10 text-terminal-green' : 'border-terminal-gray/20 bg-terminal-surface text-gray-500'}`}>
-        <span className="text-xl mb-1">{icon}</span>
-        <span className="text-[10px] font-bold">{label}</span>
-    </button>
-);
-
-const ThemeButton = ({ active, onClick, label, color }: any) => (
-    <button onClick={onClick} className={`p-3 rounded-xl text-xs font-bold transition-all border-2 ${active ? 'border-terminal-green scale-105 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'} ${color}`}>
-        {label}
-    </button>
-);
-
-const ToggleRow = ({ label, checked, onChange }: any) => (
-    <div className="flex items-center justify-between p-3 bg-terminal-black/20 rounded-lg border border-terminal-gray/10">
-        <span className="text-sm font-medium text-terminal-light">{label}</span>
-        <button onClick={onChange} className={`w-10 h-5 rounded-full p-1 transition-colors ${checked ? 'bg-terminal-green' : 'bg-gray-400/30'}`}>
-            <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
-        </button>
-    </div>
-);

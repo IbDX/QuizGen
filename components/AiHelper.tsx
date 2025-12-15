@@ -79,10 +79,10 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
             
             {/* CHAT WINDOW */}
             {isOpen && (
-                <div className="mb-4 w-80 md:w-96 h-[500px] bg-white dark:bg-[#0c0c0c] border border-gray-300 dark:border-terminal-green/50 shadow-2xl flex flex-col animate-fade-in rounded-lg overflow-hidden relative backdrop-blur-sm">
+                <div className="mb-4 w-80 md:w-96 h-[500px] bg-white dark:bg-terminal-gray border border-gray-300 dark:border-terminal-border shadow-2xl flex flex-col animate-fade-in rounded-lg overflow-hidden relative backdrop-blur-sm">
                     
                     {/* Header */}
-                    <div className="bg-gray-100 dark:bg-black border-b border-gray-300 dark:border-terminal-green/50 p-3 flex justify-between items-center">
+                    <div className="bg-gray-100 dark:bg-terminal-gray border-b border-gray-300 dark:border-terminal-border p-3 flex justify-between items-center">
                         <div className="flex items-center gap-3">
                              <div className="relative">
                                 <div className="w-2.5 h-2.5 bg-terminal-green rounded-full animate-pulse shadow-[0_0_8px_var(--color-term-green)]"></div>
@@ -106,14 +106,14 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
                     </div>
 
                     {/* Messages Area */}
-                    <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-black/80">
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-terminal-black/80">
                         {messages.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`
                                     max-w-[85%] p-3 text-xs md:text-sm leading-relaxed shadow-sm break-words
                                     ${m.role === 'user' 
-                                        ? 'bg-blue-600 text-white rounded-2xl rounded-br-none' 
-                                        : 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-300 rounded-2xl rounded-bl-none'
+                                        ? 'bg-terminal-green text-terminal-btn-text rounded-2xl rounded-br-none' 
+                                        : 'bg-white dark:bg-terminal-gray border border-gray-200 dark:border-terminal-border text-gray-800 dark:text-terminal-light rounded-2xl rounded-bl-none'
                                     }
                                 `}>
                                     {m.role === 'ai' ? (
@@ -126,7 +126,7 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
                         ))}
                         {isLoading && (
                             <div className="flex justify-start">
-                                <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 p-3 rounded-2xl rounded-bl-none flex gap-1 items-center h-10">
+                                <div className="bg-white dark:bg-terminal-gray border border-gray-200 dark:border-terminal-border p-3 rounded-2xl rounded-bl-none flex gap-1 items-center h-10">
                                     <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce"></div>
                                     <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce delay-100"></div>
                                     <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce delay-200"></div>
@@ -136,7 +136,7 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
                     </div>
 
                     {/* Input Area */}
-                    <form onSubmit={handleSubmit} className="p-3 border-t border-gray-300 dark:border-terminal-green/30 bg-white dark:bg-black">
+                    <form onSubmit={handleSubmit} className="p-3 border-t border-gray-300 dark:border-terminal-border bg-white dark:bg-terminal-gray">
                         <div className="relative flex gap-2 items-center">
                             <div className="flex-grow relative group">
                                 <input 
@@ -145,7 +145,7 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
                                     onChange={(e) => setInput(e.target.value)}
                                     maxLength={MAX_CHARS}
                                     placeholder={t('ai_helper_placeholder', lang)}
-                                    className="w-full bg-gray-100 dark:bg-[#111] border border-gray-300 dark:border-gray-700 rounded p-2.5 pr-12 text-sm outline-none focus:border-blue-500 dark:focus:border-terminal-green dark:text-white transition-colors"
+                                    className="w-full bg-gray-100 dark:bg-terminal-black border border-gray-300 dark:border-gray-700 rounded p-2.5 pr-12 text-sm outline-none focus:border-terminal-green dark:text-terminal-light transition-colors"
                                 />
                                 <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-mono pointer-events-none ${input.length >= MAX_CHARS ? 'text-red-500' : 'text-gray-400'}`}>
                                     {input.length}/{MAX_CHARS}
@@ -154,7 +154,7 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
                             <button 
                                 type="submit" 
                                 disabled={isLoading || !input.trim()}
-                                className="p-2.5 bg-blue-600 dark:bg-terminal-green text-white dark:text-black rounded hover:opacity-90 disabled:opacity-50 transition-opacity flex-shrink-0"
+                                className="p-2.5 bg-terminal-green text-terminal-btn-text rounded hover:opacity-90 disabled:opacity-50 transition-opacity flex-shrink-0"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 rtl:rotate-180" viewBox="0 0 20 20" fill="currentColor">
                                     <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
@@ -172,7 +172,7 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
                     w-12 h-12 md:w-14 md:h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 border-2 border-transparent
                     ${isOpen 
                         ? 'bg-gray-700 text-white' 
-                        : 'bg-terminal-green text-black animate-pulse shadow-[0_0_15px_rgba(0,255,65,0.4)] border-terminal-green'
+                        : 'bg-terminal-green text-terminal-btn-text animate-pulse shadow-[0_0_15px_var(--color-term-green)] border-terminal-green'
                     }
                 `}
                 title="System Support"
