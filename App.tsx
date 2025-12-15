@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
@@ -160,15 +161,16 @@ using namespace std;
       setAppState('BUILDER');
   };
   
-  const handleBuilderExamGenerated = (generatedQuestions: Question[]) => {
+  const handleBuilderExamGenerated = (generatedQuestions: Question[], builderSettings: Partial<ExamSettings>, title?: string) => {
       setQuestions(generatedQuestions);
-      // Default settings for builder-generated exam
+      // Use settings from builder if provided, otherwise defaults
       setSettings({
-          timeLimitMinutes: 0,
-          mode: ExamMode.ONE_WAY, // Chat usually implies checking knowledge, so One Way is standard
+          timeLimitMinutes: builderSettings.timeLimitMinutes || 0,
+          mode: builderSettings.mode || ExamMode.ONE_WAY,
           formatPreference: QuestionFormatPreference.MIXED,
           outputLanguage: 'en', // Builder handles language in chat
       });
+      if (title) setPreloadedExamTitle(title);
       setAppState('EXAM');
   };
 
@@ -196,7 +198,7 @@ using namespace std;
       const generationPromise = generateExam(
           filePayloads, 
           examSettings.formatPreference, 
-          examSettings.outputLanguage,
+          examSettings.outputLanguage, 
           examSettings.instructions
       );
 

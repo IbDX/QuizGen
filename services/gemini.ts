@@ -1,7 +1,8 @@
 
 
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage } from "../types";
+import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage, ExamMode, ExamSettings } from "../types";
 
 // Helper for delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -447,6 +448,8 @@ Goal (school, university, certification, training, interview, practice, etc.)
 Preferred difficulty (easy / medium / hard / mixed)
 User level (beginner, intermediate, advanced)
 Question formats they want (MCQ, Coding, Tracing, **Short Answer**, **Diagrams**)
+**Time Limit**: Ask if they want a specific time limit (e.g., 30 mins) or untimed.
+**Exam Mode**: Ask if they want "Standard Mode" (One-Way, results at end) or "Interactive Mode" (Two-Way, immediate feedback per question).
 Number of questions
 Topics to focus on or avoid
 
@@ -892,10 +895,23 @@ export const sendExamBuilderMessage = async (history: ChatMessage[], newMessage:
     }
 }
 
-export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promise<Question[]> => {
+export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promise<{ questions: Question[], settings: Partial<ExamSettings>, title: string }> => {
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        const schema = getExamSchema(QuestionFormatPreference.MIXED);
+        
+        // Use Mixed schema item structure to build the full object schema
+        const mixedSchema = getExamSchema(QuestionFormatPreference.MIXED);
+        
+        const builderSchema = {
+            type: Type.OBJECT,
+            properties: {
+                suggestedTitle: { type: Type.STRING, description: "A creative title for this exam based on the topic." },
+                timeLimitMinutes: { type: Type.INTEGER, description: "Time limit in minutes. 0 if untimed." },
+                mode: { type: Type.STRING, enum: ["ONE_WAY", "TWO_WAY"], description: "ONE_WAY for standard, TWO_WAY for interactive/feedback." },
+                questions: mixedSchema // Reuses the array schema for questions
+            },
+            required: ["suggestedTitle", "timeLimitMinutes", "mode", "questions"]
+        };
         
         // Correctly structure the conversation history as an array of Content objects
         // Filter out SUGGESTION blocks from history before sending to final generation to keep it clean
@@ -913,7 +929,12 @@ export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promi
             parts: [{ text: `
                 SYSTEM OVERRIDE: 
                 Based on the exam we have designed in this conversation, GENERATE THE FINAL EXAM NOW.
-                Output strictly as a JSON Array of Question objects.
+                Output strictly as a JSON Object with:
+                - suggestedTitle
+                - timeLimitMinutes
+                - mode
+                - questions (Array)
+                
                 Do not output any conversational text.
             `}]
         });
@@ -924,14 +945,26 @@ export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promi
             config: {
                 systemInstruction: EXAM_BUILDER_SYSTEM_PROMPT, // Keep persona
                 responseMimeType: "application/json",
-                responseSchema: schema
+                responseSchema: builderSchema
             }
         });
 
         if (response.text) {
              const cleanJson = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-             const questions = JSON.parse(cleanJson) as Question[];
-             return deduplicateQuestions(questions);
+             const data = JSON.parse(cleanJson);
+             
+             // Map response to our internal structure
+             const questions = deduplicateQuestions(data.questions as Question[]);
+             const settings: Partial<ExamSettings> = {
+                 timeLimitMinutes: data.timeLimitMinutes || 0,
+                 mode: data.mode === 'TWO_WAY' ? ExamMode.TWO_WAY : ExamMode.ONE_WAY,
+             };
+             
+             return {
+                 questions,
+                 settings,
+                 title: data.suggestedTitle || "AI Generated Exam"
+             };
         }
         throw new Error("No exam JSON generated");
 

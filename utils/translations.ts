@@ -59,6 +59,16 @@ export const translations = {
         "connection_error": "Connection interrupted. Please try again.",
         "builder_generate": "GENERATE FINAL EXAM",
         "builder_negotiate_hint": "Negotiate exam content above. Click 'GENERATE EXAM' when ready.",
+        "exam_ready": "EXAM GENERATED SUCCESSFULLY",
+        "exam_ready_desc": "Your custom exam is ready. You can start it immediately, save it to your library, or download it.",
+        "download_zplus": "DOWNLOAD .ZPLUS",
+        "save_library": "SAVE TO LIBRARY",
+        "start_now": "START NOW",
+        "suggested_title": "TITLE",
+        "questions_count": "QUESTIONS",
+        "time_limit": "TIME LIMIT",
+        "mode": "MODE",
+        "minutes": "mins",
 
         // Config
         "configuration": "CONFIGURATION",
@@ -193,6 +203,16 @@ export const translations = {
         "connection_error": "انقطع الاتصال. يرجى المحاولة مرة أخرى.",
         "builder_generate": "إنشاء الاختبار النهائي",
         "builder_negotiate_hint": "اتفق على المحتوى أعلاه. اضغط 'إنشاء الاختبار' عند الانتهاء.",
+        "exam_ready": "تم إنشاء الاختبار بنجاح",
+        "exam_ready_desc": "اختبارك المخصص جاهز. يمكنك البدء فوراً، حفظه في المكتبة، أو تحميله.",
+        "download_zplus": "تحميل ملف .ZPLUS",
+        "save_library": "حفظ في المكتبة",
+        "start_now": "ابدأ الآن",
+        "suggested_title": "العنوان",
+        "questions_count": "عدد الأسئلة",
+        "time_limit": "الوقت",
+        "mode": "الوضع",
+        "minutes": "دقيقة",
 
         // Config
         "configuration": "إعداد الاختبار",

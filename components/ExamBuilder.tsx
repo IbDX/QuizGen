@@ -1,16 +1,24 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, sendExamBuilderMessage, generateExamFromBuilderChat } from '../services/gemini';
-import { Question } from '../types';
+import { Question, ExamSettings } from '../types';
+import { saveFullExam } from '../services/library';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { t } from '../utils/translations';
 import { UILanguage } from '../types';
 
 interface ExamBuilderProps {
-    onExamGenerated: (questions: Question[]) => void;
+    onExamGenerated: (questions: Question[], settings: Partial<ExamSettings>, title?: string) => void;
     onCancel: () => void;
     isFullWidth: boolean;
     lang: UILanguage;
+}
+
+interface GeneratedExamData {
+    questions: Question[];
+    settings: Partial<ExamSettings>;
+    title: string;
 }
 
 export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCancel, isFullWidth, lang }) => {
@@ -22,6 +30,10 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
     const [isFinalizing, setIsFinalizing] = useState(false);
     const [quickReplies, setQuickReplies] = useState<string[]>([]);
     
+    // New state for holding the generated exam before starting
+    const [generatedData, setGeneratedData] = useState<GeneratedExamData | null>(null);
+    const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
     const scrollRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -103,12 +115,45 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
         if (messages.length < 2) return; 
         setIsFinalizing(true);
         try {
-            const questions = await generateExamFromBuilderChat(messages);
-            onExamGenerated(questions);
+            const { questions, settings, title } = await generateExamFromBuilderChat(messages);
+            setGeneratedData({ questions, settings, title });
         } catch (error) {
             console.error(error);
             alert("Failed to compile exam from chat. Please ensure the conversation has defined specific questions.");
             setIsFinalizing(false);
+        }
+    };
+
+    const handleStartExam = () => {
+        if (generatedData) {
+            onExamGenerated(generatedData.questions, generatedData.settings, generatedData.title);
+        }
+    };
+
+    const handleSaveToLibrary = () => {
+        if (generatedData) {
+            saveFullExam(generatedData.questions, generatedData.title);
+            setSaveStatus(t('saved', lang));
+            setTimeout(() => setSaveStatus(null), 2000);
+        }
+    };
+
+    const handleDownload = () => {
+        if (generatedData) {
+            const exportData = {
+                id: `exam_${Date.now()}`,
+                title: generatedData.title,
+                date: new Date().toISOString(),
+                questions: generatedData.questions
+            };
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = `${generatedData.title.replace(/\s+/g, '_')}_${Date.now()}.zplus`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
         }
     };
 
@@ -143,7 +188,70 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                 </button>
             </div>
 
-            {!languageSelected ? (
+            {/* If Exam is Generated, Show Success Overlay */}
+            {generatedData ? (
+                <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white dark:bg-black animate-fade-in relative z-50">
+                     <div className="max-w-md w-full text-center space-y-6 bg-gray-50 dark:bg-[#0c0c0c] p-8 rounded-xl border border-gray-200 dark:border-terminal-green/50 shadow-2xl">
+                        <div className="w-16 h-16 bg-terminal-green rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(0,255,65,0.4)]">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-black" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        
+                        <div>
+                            <h3 className="text-2xl font-bold font-mono text-gray-900 dark:text-white mb-2">{t('exam_ready', lang)}</h3>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">{t('exam_ready_desc', lang)}</p>
+                        </div>
+
+                        <div className="text-left bg-white dark:bg-black/50 p-4 rounded border border-gray-200 dark:border-gray-800 space-y-2 text-sm font-mono">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">{t('suggested_title', lang)}:</span>
+                                <span className="font-bold text-blue-600 dark:text-terminal-green">{generatedData.title}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">{t('questions_count', lang)}:</span>
+                                <span className="font-bold dark:text-white">{generatedData.questions.length}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">{t('time_limit', lang)}:</span>
+                                <span className="font-bold dark:text-white">
+                                    {generatedData.settings.timeLimitMinutes 
+                                        ? `${generatedData.settings.timeLimitMinutes} ${t('minutes', lang)}` 
+                                        : '∞'}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">{t('mode', lang)}:</span>
+                                <span className="font-bold dark:text-white">{generatedData.settings.mode}</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                            <button 
+                                onClick={handleStartExam}
+                                className="w-full py-3 bg-terminal-green hover:bg-terminal-dimGreen text-black font-bold uppercase tracking-widest rounded transition-colors shadow-lg"
+                            >
+                                {t('start_now', lang)}
+                            </button>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <button 
+                                    onClick={handleSaveToLibrary}
+                                    className="w-full py-2 border border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-bold uppercase text-xs rounded transition-colors"
+                                >
+                                    {saveStatus || t('save_library', lang)}
+                                </button>
+                                <button 
+                                    onClick={handleDownload}
+                                    className="w-full py-2 border border-gray-400 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 font-bold uppercase text-xs rounded transition-colors"
+                                >
+                                    {t('download_zplus', lang)}
+                                </button>
+                            </div>
+                        </div>
+                     </div>
+                </div>
+            ) : !languageSelected ? (
                 // LANGUAGE SELECTION SCREEN
                 <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white dark:bg-black animate-fade-in overflow-y-auto">
                     <div className="max-w-md w-full text-center space-y-8">
