@@ -9,7 +9,7 @@ import { UILanguage } from '../types';
 interface FileUploadProps {
   onFilesAccepted: (files: Array<{base64: string, mime: string, name: string, hash: string}>) => void;
   onLoadDemo: () => void;
-  onStartBuilder: () => void; // New Prop
+  onStartBuilder: () => void; 
   isFullWidth: boolean;
   lang?: UILanguage;
   isActive: boolean;
@@ -26,99 +26,48 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [globalStatus, setGlobalStatus] = useState<'IDLE' | 'PROCESSING'>('IDLE');
-  const [isMobile, setIsMobile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
-  // Robust Mobile Detection
-  useEffect(() => {
-    const checkMobile = () => {
-        const userAgent = typeof window.navigator === "undefined" ? "" : navigator.userAgent;
-        const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-        const isTouch = navigator.maxTouchPoints > 0;
-        const isNarrow = window.innerWidth < 768;
-        setIsMobile(mobileRegex.test(userAgent) || isTouch || isNarrow);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
   const handleFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
-    
     const newFiles = Array.from(fileList);
-
-    // 0. Batch Size Check (Strict 50MB)
     const batchCheck = validateBatchSize(newFiles);
     if (!batchCheck.valid) {
         setLogs([{ name: "BATCH UPLOAD", status: 'FAILED', error: batchCheck.error }]);
         return;
     }
-    
     setGlobalStatus('PROCESSING');
-    
-    // Initialize logs for these files
     const newLogs: ProcessingLog[] = newFiles.map(f => ({ name: f.name, status: 'PENDING' }));
     setLogs(prev => [...newLogs]); 
-
     const successfulFiles: Array<{base64: string, mime: string, name: string, hash: string}> = [];
 
-    // Process Sequentially
     for (let i = 0; i < newFiles.length; i++) {
         const file = newFiles[i];
-        
-        // Update status to scanning
         setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'SCANNING' } : l));
-
         try {
-            // 1. Validation (Strict 15MB per file)
             const validationCheck = await validateFile(file);
-            if (!validationCheck.valid || !validationCheck.mimeType) {
-                throw new Error(validationCheck.error || 'Invalid file type');
-            }
-
-            // 2. Security Scan & Conversion
-            const [scanResult, base64] = await Promise.all([
-                scanFileWithVirusTotal(file),
-                fileToBase64(file)
-            ]);
-
-            if (!scanResult.safe) {
-                throw new Error(scanResult.message);
-            }
-
-            // Success - ensure hash is present
+            if (!validationCheck.valid || !validationCheck.mimeType) throw new Error(validationCheck.error || 'Invalid file type');
+            const [scanResult, base64] = await Promise.all([scanFileWithVirusTotal(file), fileToBase64(file)]);
+            if (!scanResult.safe) throw new Error(scanResult.message);
             const hash = scanResult.hash || `unknown_hash_${Date.now()}_${Math.random()}`;
             successfulFiles.push({ base64, mime: validationCheck.mimeType, name: file.name, hash });
             setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'SUCCESS' } : l));
-
         } catch (e: any) {
             setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'FAILED', error: e.message } : l));
         }
     }
-
     setGlobalStatus('IDLE');
-
-    if (successfulFiles.length > 0) {
-        setTimeout(() => {
-            onFilesAccepted(successfulFiles);
-        }, 1000);
-    }
+    if (successfulFiles.length > 0) setTimeout(() => onFilesAccepted(successfulFiles), 1000);
   };
 
   const processUrl = async (url: string) => {
-    if (!url) return;
-    if (url.toLowerCase().includes('javascript:')) return;
-
+    if (!url || url.toLowerCase().includes('javascript:')) return;
     setGlobalStatus('PROCESSING');
     setLogs([{ name: url, status: 'SCANNING' }]);
-    
     try {
-       // urlToBase64 enforces 15MB limit per file internally
        const { base64, mimeType, name } = await urlToBase64(url);
        const hash = `url_hash_${Date.now()}_${name}`; 
-       
        setLogs([{ name: name, status: 'SUCCESS' }]);
        setTimeout(() => onFilesAccepted([{ base64, mime: mimeType, name, hash }]), 800);
     } catch (err: any) {
@@ -127,354 +76,153 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     setGlobalStatus('IDLE');
   };
 
-  const handleUrlSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    processUrl(urlInput);
-  };
-
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const val = e.target.value;
-      const validation = sanitizeInput(val, 500); 
-      setUrlInput(validation.sanitizedValue);
-  };
-
-  const handleUrlPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    // Prioritize files (e.g., from screenshot tool or mobile gallery)
-    if (e.clipboardData && e.clipboardData.files.length > 0) {
-        e.preventDefault();
-        handleFiles(e.clipboardData.files);
-        return;
-    }
-
-    // Fallback to text URL
-    const text = e.clipboardData.getData('text');
-    if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-      // Let the URL paste into the input for visual feedback
-      // and then trigger the processing.
-      processUrl(text.trim());
-    }
-  };
-
-  // Programmatic Paste for Mobile Button
-  const handleManualPasteClick = async () => {
-    if (globalStatus !== 'IDLE') return;
-
-    // Clear previous clipboard logs
-    setLogs(prev => prev.filter(l => l.name !== "CLIPBOARD"));
-
-    if (!navigator.clipboard) {
-         setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: "Clipboard API not supported in this browser." }]);
-         urlInputRef.current?.focus();
-         return;
-    }
-
-    try {
-        // ATTEMPT 1: Try Rich Content (Images) via .read()
-        // This requires strict permission and mostly works on Chromium desktops or Android Chrome (sometimes)
-        const clipboardItems = await navigator.clipboard.read();
-        
-        let foundContent = false;
-        
-        for (const item of clipboardItems) {
-            const imageTypes = item.types.filter(type => type.startsWith('image/'));
-            if (imageTypes.length > 0) {
-                const blob = await item.getType(imageTypes[0]);
-                const file = new File([blob], `pasted_image_${Date.now()}.png`, { type: blob.type });
-                
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                handleFiles(dt.files);
-                foundContent = true;
-                break;
-            }
-        }
-
-        // If we found items but none were images, or list was empty, try text fallback
-        if (!foundContent) {
-            throw new Error("No image content found");
-        }
-
-    } catch (err: any) {
-        // ATTEMPT 2: Fallback to Text via .readText()
-        // This is more widely supported but still might require permission interaction.
-        // If the browser denies this, we fall back to manual input.
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-                setUrlInput(text.trim());
-                processUrl(text.trim());
-            } else if (text) {
-                 setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: "Clipboard content is not a valid URL (http/https)." }]);
-                 urlInputRef.current?.focus();
-            } else {
-                 setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: "Clipboard is empty." }]);
-                 urlInputRef.current?.focus();
-            }
-        } catch (textErr: any) {
-             console.error("Clipboard Error", textErr);
-             // If denied, we guide them to the input
-             setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: t('clipboard_denied', lang) }]);
-             // Focus the input to help them
-             urlInputRef.current?.focus();
-        }
-    }
-  };
-
-  // Global Paste Handler (Files & URLs) - Desktop mainly
+  const handleUrlSubmit = (e: React.FormEvent) => { e.preventDefault(); processUrl(urlInput); };
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => { setUrlInput(sanitizeInput(e.target.value, 500).sanitizedValue); };
+  
+  // UseEffect for Paste omitted for brevity, keeping existing logic structure
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
-      // Avoid interfering if user is typing in an input
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
-
       if (globalStatus !== 'IDLE') return;
-
       if (e.clipboardData) {
-          if (e.clipboardData.files.length > 0) {
-            e.preventDefault();
-            handleFiles(e.clipboardData.files);
-          } else {
+          if (e.clipboardData.files.length > 0) { e.preventDefault(); handleFiles(e.clipboardData.files); } 
+          else {
             const text = e.clipboardData.getData('text');
             if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-                e.preventDefault();
-                setUrlInput(text.trim());
-                processUrl(text.trim());
+                e.preventDefault(); setUrlInput(text.trim()); processUrl(text.trim());
             }
           }
       }
     };
-
-    if (isActive) {
-        window.addEventListener('paste', handlePaste);
-    }
-    
-    return () => {
-      if (isActive) {
-        window.removeEventListener('paste', handlePaste);
-      }
-    };
+    if (isActive) window.addEventListener('paste', handlePaste);
+    return () => { if (isActive) window.removeEventListener('paste', handlePaste); };
   }, [globalStatus, isActive]);
 
-  const onDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const onDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (globalStatus === 'IDLE') {
-        handleFiles(e.dataTransfer.files);
-    }
-  };
-
-  const pasteTip = isMobile ? t('paste_tip_mobile', lang) : t('paste_tip_desktop', lang);
+  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const onDragLeave = () => { setIsDragging(false); };
+  const onDrop = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); if (globalStatus === 'IDLE') handleFiles(e.dataTransfer.files); };
 
   return (
-    <div className={`w-full mx-auto mt-4 md:mt-10 transition-all duration-300 ${isFullWidth ? 'max-w-none' : 'max-w-2xl'}`}>
+    <div className={`w-full mx-auto mt-8 md:mt-12 transition-all duration-300 ${isFullWidth ? 'max-w-none' : 'max-w-3xl'}`}>
       
-      {/* MOBILE UPLOAD BUTTON */}
-      <div className="md:hidden flex flex-col gap-2">
+      {/* MOBILE UPLOAD */}
+      <div className="md:hidden flex flex-col gap-3">
           <button
             onClick={() => globalStatus === 'IDLE' && fileInputRef.current?.click()}
-            className={`
-                w-full p-8 rounded-lg shadow-lg flex flex-col items-center justify-center gap-4 transition-all active:scale-95
-                ${globalStatus === 'PROCESSING' 
-                    ? 'bg-yellow-100 border-2 border-yellow-500 text-yellow-800' 
-                    : 'bg-terminal-green text-terminal-btn-text shadow-terminal-green/30'
-                }
-            `}
+            className={`w-full p-8 rounded-2xl shadow-xl flex flex-col items-center justify-center gap-4 transition-all active:scale-95 border border-terminal-green/30 ${globalStatus === 'PROCESSING' ? 'bg-yellow-50 text-yellow-700' : 'bg-terminal-surface text-terminal-green'}`}
           >
-              <div className="text-4xl">
-                  {globalStatus === 'PROCESSING' ? <span className="animate-spin inline-block">⏳</span> : '📂'}
-              </div>
-              <div className="text-xl font-bold uppercase tracking-wider">
-                  {globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('tap_to_select', lang)}
-              </div>
-          </button>
-          
-          {/* New Mobile Paste Button */}
-          <button
-             onClick={handleManualPasteClick}
-             disabled={globalStatus !== 'IDLE'}
-             className="w-full py-3 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 active:bg-gray-300 dark:active:bg-gray-700 flex items-center justify-center gap-2"
-          >
-              <span>📋</span> {t('paste_from_clipboard', lang)}
+              <div className="text-4xl">{globalStatus === 'PROCESSING' ? <span className="animate-spin inline-block">⏳</span> : '📂'}</div>
+              <div className="text-lg font-bold uppercase tracking-wider">{globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('tap_to_select', lang)}</div>
           </button>
       </div>
 
-      {/* DESKTOP UPLOAD ZONE */}
+      {/* DESKTOP UPLOAD */}
       <div 
         className={`
           hidden md:block
-          border-2 border-dashed transition-all p-10 text-center cursor-pointer relative overflow-hidden rounded-lg group
+          border-2 border-dashed transition-all p-12 text-center cursor-pointer relative overflow-hidden rounded-2xl group
           ${isDragging 
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.02]' 
+            ? 'border-terminal-green bg-terminal-green/5 scale-[1.01]' 
             : globalStatus === 'PROCESSING'
                 ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10 cursor-wait'
-                : 'border-gray-400 dark:border-terminal-green hover:border-blue-400 dark:hover:border-white hover:bg-gray-50 dark:hover:bg-terminal-green/5'
+                : 'border-terminal-gray/30 bg-terminal-surface hover:border-terminal-green hover:bg-terminal-surface/80'
           }
         `}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
+        onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
         onClick={() => globalStatus === 'IDLE' && fileInputRef.current?.click()}
       >
-        <div className="space-y-3 relative z-10">
-          <div className="text-4xl transition-transform group-hover:scale-110 duration-300">
-             {globalStatus === 'PROCESSING' ? (
-                 <span className="inline-block animate-spin">🛡️</span>
-             ) : (
-                 <span>🛡️</span>
-             )}
+        <div className="space-y-4 relative z-10">
+          <div className="text-5xl transition-transform group-hover:scale-110 duration-300 drop-shadow-md">
+             {globalStatus === 'PROCESSING' ? <span className="inline-block animate-spin">🛡️</span> : '🛡️'}
           </div>
-
-          <h3 className="text-xl font-bold uppercase dark:text-terminal-light">
-            {globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('secure_upload', lang)}
-          </h3>
-          
-          <p className="text-sm opacity-70 font-mono dark:text-gray-400">
-            {globalStatus === 'PROCESSING' 
-             ? t('executing_protocols', lang)
-             : "Drag & Drop PDF, PNG, JPG here or Click to Browse"}
-          </p>
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-2">
-            Max 15MB per file / 50MB Total
-          </p>
+          <h3 className="text-2xl font-bold uppercase text-terminal-light">{globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('secure_upload', lang)}</h3>
+          <p className="text-base text-gray-500 dark:text-gray-400 font-sans">Drag & Drop PDF, PNG, JPG here or Click to Browse</p>
+          <div className="inline-block px-3 py-1 rounded-full bg-terminal-gray/10 text-xs font-bold text-gray-500 uppercase tracking-widest border border-terminal-gray/20">Max 15MB/file • Encrypted</div>
         </div>
-
-        {/* Scanning overlay effect */}
-        {globalStatus === 'PROCESSING' && (
-            <div className="absolute inset-0 bg-green-500/5 animate-pulse z-0"></div>
-        )}
       </div>
 
-      <input 
-          type="file" 
-          ref={fileInputRef} 
-          className="hidden" 
-          accept=".pdf,.jpg,.jpeg,.png"
-          multiple 
-          onChange={(e) => handleFiles(e.target.files)}
-          disabled={globalStatus !== 'IDLE'}
-      />
+      <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onChange={(e) => handleFiles(e.target.files)} disabled={globalStatus !== 'IDLE'} />
 
-      {/* Processing Logs */}
+      {/* LOGS */}
       {logs.length > 0 && (
-          <div className="mt-6 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 p-4 rounded shadow-inner font-mono text-xs animate-fade-in">
-              <div className="text-xs font-bold uppercase text-gray-500 mb-2 border-b pb-1">Session Log</div>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
+          <div className="mt-6 border border-terminal-gray/20 bg-terminal-surface p-4 rounded-xl shadow-inner font-mono text-xs animate-fade-in max-h-48 overflow-y-auto">
+              <div className="text-xs font-bold uppercase text-gray-500 mb-2 border-b border-terminal-gray/10 pb-2">Session Log</div>
+              <div className="space-y-2">
                   {logs.map((log, i) => (
-                      <div key={i} className="flex justify-between items-start py-1 border-b border-gray-200 dark:border-gray-800 last:border-0">
-                          <span className="truncate max-w-[60%] md:max-w-[50%] text-gray-700 dark:text-gray-300 pt-1" title={log.name}>{log.name}</span>
-                          <div className="flex flex-col items-end gap-1 justify-end text-right flex-grow pl-2">
-                              {log.status === 'PENDING' && <span className="text-gray-500">WAITING</span>}
-                              {log.status === 'SCANNING' && <span className="text-blue-500 animate-pulse">SCANNING...</span>}
-                              {log.status === 'SUCCESS' && <span className="text-green-500 font-bold">✓ SAFE</span>}
-                              {log.status === 'FAILED' && (
-                                  <div className="flex flex-col items-end w-full">
-                                      <span className="text-red-500 font-bold uppercase tracking-wider">✕ BLOCKED</span>
-                                      {log.error && (
-                                          <span className="text-[10px] text-red-600 dark:text-red-400 font-semibold mt-1 text-right w-full break-words leading-tight bg-red-50 dark:bg-red-900/20 p-1 rounded border border-red-100 dark:border-red-900">
-                                              {log.error}
-                                          </span>
-                                      )}
-                                  </div>
-                              )}
-                          </div>
+                      <div key={i} className="flex justify-between items-start text-terminal-light">
+                          <span className="truncate max-w-[60%] opacity-80">{log.name}</span>
+                          <span className={`font-bold ${log.status === 'SUCCESS' ? 'text-terminal-green' : log.status === 'FAILED' ? 'text-terminal-alert' : 'text-blue-400'}`}>
+                              {log.status === 'SUCCESS' ? 'SAFE ✓' : log.status}
+                          </span>
                       </div>
                   ))}
               </div>
           </div>
       )}
 
-      <div className="flex items-center my-6">
-          <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
-          <span className="px-4 text-[10px] md:text-xs text-gray-500 font-mono uppercase">{t('or_via_network', lang)}</span>
-          <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
+      {/* URL INPUT */}
+      <div className="flex items-center my-8">
+          <div className="h-px bg-terminal-gray/20 flex-grow"></div>
+          <span className="px-4 text-xs text-gray-400 font-bold uppercase tracking-widest">{t('or_via_network', lang)}</span>
+          <div className="h-px bg-terminal-gray/20 flex-grow"></div>
       </div>
 
-      <form onSubmit={handleUrlSubmit} className="flex flex-col sm:flex-row gap-3 relative z-10">
+      <form onSubmit={handleUrlSubmit} className="flex gap-3 relative z-10 max-w-2xl mx-auto">
           <div className="relative flex-grow group">
               <input 
-                  type="url" 
-                  ref={urlInputRef}
-                  placeholder="https://example.com/document.pdf" 
-                  className="relative w-full bg-white dark:bg-black border border-gray-300 dark:border-gray-700 p-3 pl-10 font-mono text-sm outline-none ring-2 ring-transparent focus:ring-terminal-green focus:border-transparent rounded-md dark:text-terminal-light placeholder-gray-400 dark:placeholder-gray-600 transition-all shadow-sm"
-                  value={urlInput}
-                  onChange={handleUrlChange}
-                  onPaste={handleUrlPaste}
-                  disabled={globalStatus !== 'IDLE'}
+                  type="url" ref={urlInputRef} placeholder="https://example.com/document.pdf" 
+                  className="w-full bg-terminal-surface border border-terminal-gray/30 p-4 pl-12 rounded-xl text-sm outline-none focus:border-terminal-green focus:ring-1 focus:ring-terminal-green transition-all shadow-sm text-terminal-light placeholder-gray-500"
+                  value={urlInput} onChange={handleUrlChange} disabled={globalStatus !== 'IDLE'}
               />
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-terminal-green">
-                  🌐
-              </div>
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-lg opacity-50 grayscale group-focus-within:grayscale-0 transition-all">🌐</div>
           </div>
-          <button 
-             type="submit" 
-             disabled={!urlInput || globalStatus !== 'IDLE'}
-             className="relative overflow-hidden group w-full sm:w-auto px-8 py-3 bg-gray-900 dark:bg-terminal-green text-white dark:text-terminal-btn-text font-bold text-sm uppercase rounded-md transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-lg hover:shadow-terminal-green/30"
-          >
-            <span className="relative z-10">{t('fetch', lang)}</span>
-            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+          <button type="submit" disabled={!urlInput || globalStatus !== 'IDLE'} className="px-8 bg-terminal-green hover:bg-terminal-green/90 text-white font-bold text-sm uppercase rounded-xl transition-all shadow-lg hover:shadow-terminal-green/30 disabled:opacity-50 disabled:shadow-none">
+            {t('fetch', lang)}
           </button>
       </form>
-      <div className="text-center mt-2 text-[9px] text-gray-400 dark:text-gray-500">
-          {pasteTip}
-      </div>
 
-      {/* DEMO & AI BUILDER SECTION */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-8">
-          
-          {/* DEMO CARD */}
-          <div className="relative group overflow-hidden bg-white dark:bg-black border-2 border-gray-200 dark:border-terminal-gray hover:border-terminal-green dark:hover:border-terminal-green rounded-xl p-6 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,255,65,0.15)] hover:-translate-y-1 cursor-default">
-              <div className="absolute inset-0 bg-gradient-to-br from-terminal-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              
-              <div className="flex flex-col items-center relative z-10">
-                  <div className="w-16 h-16 rounded-full bg-gray-50 dark:bg-terminal-green/10 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform border border-gray-200 dark:border-terminal-green/30 group-hover:border-terminal-green/60">
-                      ⚡
-                  </div>
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-terminal-light mb-1 font-mono">{t('quick_test', lang)}</h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 text-center leading-relaxed max-w-[200px]">
-                      Instant diagnostic simulation. No files required.
-                  </p>
-                  <button 
-                      onClick={onLoadDemo}
-                      disabled={globalStatus !== 'IDLE'}
-                      className="w-full py-3 bg-gray-800 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-btn-text font-bold text-xs uppercase tracking-widest rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
-                  >
-                      <span>🚀</span> {t('load_demo', lang)}
-                  </button>
-              </div>
-          </div>
-
-          {/* AI BUILDER CARD */}
-          <div className="relative group overflow-hidden bg-white dark:bg-black border-2 border-gray-200 dark:border-terminal-gray hover:border-blue-500 dark:hover:border-terminal-green rounded-xl p-6 transition-all duration-300 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_0_20px_rgba(0,255,65,0.15)] hover:-translate-y-1 cursor-default">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 dark:from-terminal-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              
-              <div className="flex flex-col items-center relative z-10">
-                  <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-terminal-green/10 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform border border-blue-200 dark:border-terminal-green/30 group-hover:border-blue-400 dark:group-hover:border-terminal-green/60">
-                      🤖
-                  </div>
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-terminal-light mb-1 font-mono">{t('builder_card_title', lang)}</h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 text-center leading-relaxed max-w-[200px]">
-                      {t('builder_card_desc', lang)}
-                  </p>
-                  <button 
-                      onClick={onStartBuilder}
-                      disabled={globalStatus !== 'IDLE'}
-                      className="w-full py-3 bg-blue-600 hover:bg-blue-500 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-btn-text font-bold text-xs uppercase tracking-widest rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
-                  >
-                      <span>✨</span> {t('start_builder', lang)}
-                  </button>
-              </div>
-          </div>
-
+      {/* CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-10">
+          <ActionCard 
+              icon="⚡" 
+              title={t('quick_test', lang)} 
+              desc="Instant diagnostic simulation. No files required." 
+              action={t('load_demo', lang)} 
+              onClick={onLoadDemo} 
+              disabled={globalStatus !== 'IDLE'} 
+              colorClass="text-yellow-500"
+              bgHover="group-hover:bg-yellow-500/10"
+              borderHover="group-hover:border-yellow-500/50"
+          />
+          <ActionCard 
+              icon="🤖" 
+              title={t('builder_card_title', lang)} 
+              desc={t('builder_card_desc', lang)}
+              action={t('start_builder', lang)} 
+              onClick={onStartBuilder} 
+              disabled={globalStatus !== 'IDLE'} 
+              colorClass="text-blue-500 dark:text-terminal-green"
+              bgHover="group-hover:bg-blue-500/10 dark:group-hover:bg-terminal-green/10"
+              borderHover="group-hover:border-blue-500/50 dark:group-hover:border-terminal-green/50"
+          />
       </div>
     </div>
   );
 };
+
+const ActionCard = ({ icon, title, desc, action, onClick, disabled, colorClass, bgHover, borderHover }: any) => (
+    <div className={`relative group bg-terminal-surface border border-terminal-gray/20 rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${borderHover}`}>
+        <div className={`absolute inset-0 opacity-0 transition-opacity duration-300 rounded-2xl ${bgHover}`}></div>
+        <div className="relative z-10 flex flex-col items-center text-center">
+            <div className={`w-16 h-16 rounded-2xl bg-terminal-gray/5 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform ${colorClass}`}>
+                {icon}
+            </div>
+            <h4 className="font-bold text-lg text-terminal-light mb-2">{title}</h4>
+            <p className="text-sm text-gray-500 mb-6 leading-relaxed max-w-[220px]">{desc}</p>
+            <button onClick={onClick} disabled={disabled} className="w-full py-3 bg-terminal-light/5 hover:bg-terminal-light/10 text-terminal-light font-bold text-xs uppercase tracking-widest rounded-xl transition-colors">
+                {action}
+            </button>
+        </div>
+    </div>
+);

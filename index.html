@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -16,7 +17,9 @@
             },
             colors: {
               terminal: {
-                black: 'var(--color-term-black)',
+                // Mapping custom variables
+                black: 'var(--color-term-black)', 
+                surface: 'var(--color-term-surface)', // New surface color
                 green: 'var(--color-term-green)',
                 dimGreen: 'var(--color-term-dim-green)',
                 gray: 'var(--color-term-gray)',
@@ -24,6 +27,16 @@
                 alert: 'var(--color-term-alert)',
                 glass: 'var(--color-term-glass)',
                 'btn-text': 'var(--color-term-btn-text)'
+              }
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.3s ease-out forwards',
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
               }
             }
           },
@@ -74,38 +87,41 @@
     </script>
     <style>
       :root {
-        /* Default / Light Mode */
-        --color-term-black: #ffffff;
-        --color-term-green: #2563eb; /* Blue-600 for light mode primary */
-        --color-term-dim-green: #dbeafe; /* Blue-100 */
-        --color-term-gray: #f3f4f6;
-        --color-term-light: #1f2937;
-        --color-term-alert: #dc2626;
-        --color-term-glass: rgba(255, 255, 255, 0.9);
-        --color-term-btn-text: #ffffff; /* White text on blue button */
+        /* Default / Light Mode - Softer Off-White */
+        --color-term-black: #F8FAFC; /* Slate-50 background */
+        --color-term-surface: #FFFFFF; /* Pure white cards */
+        --color-term-green: #3b82f6; /* Blue-500 */
+        --color-term-dim-green: #eff6ff; /* Blue-50 */
+        --color-term-gray: #e2e8f0; /* Slate-200 */
+        --color-term-light: #1e293b; /* Slate-800 Text */
+        --color-term-alert: #ef4444;
+        --color-term-glass: rgba(255, 255, 255, 0.8);
+        --color-term-btn-text: #ffffff; 
       }
 
-      /* Terminal Dark Theme */
+      /* Terminal Dark Theme - DOMINANT GREEN with Nice Dark Gray */
       .dark {
-        --color-term-black: #0c0c0c;
-        --color-term-green: #00ff41; /* Hacker Green */
-        --color-term-dim-green: #008F11;
-        --color-term-gray: #1a1a1a;
-        --color-term-light: #e0e0e0;
-        --color-term-alert: #ff3333;
-        --color-term-glass: rgba(12, 12, 12, 0.95);
-        --color-term-btn-text: #000000; /* Black text on neon green button */
+        --color-term-black: #18181b; /* Zinc-900: A premium dark gray, not black */
+        --color-term-surface: #27272a; /* Zinc-800: Lighter gray for surfaces */
+        --color-term-green: #4ade80; /* Green-400: Vibrant, dominant Terminal Green */
+        --color-term-dim-green: #14532d; /* Green-900: Deep green for subtle backgrounds */
+        --color-term-gray: #3f3f46; /* Zinc-700: Borders */
+        --color-term-light: #e4e4e7; /* Zinc-200: Readable off-white text */
+        --color-term-alert: #f87171; /* Red-400 */
+        --color-term-glass: rgba(24, 24, 27, 0.9); /* Zinc-900 with opacity */
+        --color-term-btn-text: #000000; /* Black text on Green buttons for contrast */
       }
 
-      /* Palestine Theme (Soft Dark Variant) */
+      /* Palestine Theme - Elegant Red/Green/Black */
       .theme-palestine {
-        --color-term-black: #202020; 
-        --color-term-green: #007A3D; 
-        --color-term-dim-green: #004422;
-        --color-term-gray: #333333;
-        --color-term-light: #FFFFFF;
-        --color-term-alert: #CE1126;
-        --color-term-glass: rgba(32, 32, 32, 0.95);
+        --color-term-black: #1a1a1a; /* Soft Charcoal */
+        --color-term-surface: #262626; /* Neutral-800 */
+        --color-term-green: #15803d; /* Green-700 */
+        --color-term-dim-green: #14532d;
+        --color-term-gray: #404040;
+        --color-term-light: #f5f5f5;
+        --color-term-alert: #dc2626; /* Red-600 */
+        --color-term-glass: rgba(26, 26, 26, 0.9);
         --color-term-btn-text: #ffffff;
       }
 
@@ -127,6 +143,8 @@
 
       body {
         font-family: 'Fira Code', 'Cairo', monospace;
+        background-color: var(--color-term-black);
+        color: var(--color-term-light);
       }
       ::-webkit-scrollbar {
         width: 10px;
@@ -135,22 +153,23 @@
         background: var(--color-term-black);
       }
       ::-webkit-scrollbar-thumb {
-        background: #333;
+        background: var(--color-term-gray);
         border: 1px solid var(--color-term-green);
+        border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
         background: var(--color-term-green);
       }
       
-      /* MathJax Overrides - CRITICAL FOR RTL FIX */
+      /* MathJax Overrides */
       mjx-container {
         display: inline-block !important;
         margin: 0 !important;
-        direction: ltr !important; /* Force math to always be LTR */
+        direction: ltr !important; 
         text-align: left !important;
-        unicode-bidi: isolate !important; /* Isolate math from RTL context to prevent sentence scrambling */
+        unicode-bidi: isolate !important;
       }
-      .katex-wrapper { /* Keep class name for compatibility with old CSS ref if any */
+      .katex-wrapper { 
         display: inline-block;
       }
     </style>
@@ -170,7 +189,7 @@
 }
 </script>
 </head>
-  <body class="bg-gray-100 dark:bg-terminal-black text-gray-900 dark:text-terminal-light transition-colors duration-500 min-h-screen">
+  <body class="transition-colors duration-500 min-h-screen">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
