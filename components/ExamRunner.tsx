@@ -44,9 +44,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const isLastQuestion = currentIndex === questions.length - 1;
 
   useEffect(() => {
-      setSavedState(isQuestionSaved(currentQ.id));
-      setInputError(null);
-  }, [currentQ.id]);
+      if (currentQ) {
+        setSavedState(isQuestionSaved(currentQ.id));
+        setInputError(null);
+      }
+  }, [currentQ?.id]);
 
   useEffect(() => {
     if (settings.timeLimitMinutes > 0) {
@@ -63,6 +65,22 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       return () => clearInterval(timer);
     }
   }, [settings.timeLimitMinutes, onComplete]);
+
+  // Guard Clause: If question data is missing (empty array or index error), show error UI instead of crashing
+  if (!currentQ) {
+      return (
+        <div className={`flex flex-col h-full items-center justify-center p-8 transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
+            <div className="text-terminal-alert font-bold text-xl mb-4">⚠️ SYSTEM ERROR: Question Data Unavailable</div>
+            <p className="text-gray-500 mb-6 text-center">The requested question could not be loaded. The exam file might be empty or corrupted.</p>
+            <button 
+                onClick={() => onComplete([])}
+                className="px-6 py-3 bg-gray-800 text-white font-bold uppercase tracking-wider rounded hover:bg-gray-700 transition-colors"
+            >
+                {t('cancel_action', lang)}
+            </button>
+        </div>
+      );
+  }
 
   const scrollToTop = () => {
     if (topRef.current) {
