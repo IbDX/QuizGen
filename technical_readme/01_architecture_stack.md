@@ -117,6 +117,11 @@ stateDiagram-v2
     *   `zplus_exam_library`: JSON array of full exam snapshots.
     *   `exam_leaderboard`: High scores.
 
+### 5. UI/UX Architecture
+*   **Adaptive Theming:** Utilizes CSS variables and Tailwind's `dark` mode class to support distinct themes (Light, Terminal, Palestine).
+    *   **Glassmorphism:** Used in headers and overlays to provide depth.
+    *   **Dynamic Colors:** Controls like `Photo Fetcher` and `Exam Builder` adapt their accent colors based on the active theme variable `--color-term-green`.
+
 ---
 
 ## ⚡ Performance Considerations
