@@ -1,11 +1,11 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Layout, MobileAction } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
 import { ExamConfig } from './components/ExamConfig';
 import { ExamBuilder } from './components/ExamBuilder';
 import { ExamRunner } from './components/ExamRunner';
+import { ExamReadyScreen } from './components/ExamReadyScreen';
 import { Results } from './components/Results';
 import { Leaderboard } from './components/Leaderboard';
 import { QuestionLibrary } from './components/QuestionLibrary';
@@ -143,16 +143,57 @@ const App: React.FC = () => {
 
   const handleDemoLoad = () => {
       const content = `
+# Z+ SYSTEM DIAGNOSTIC EVALUATION
+# TARGET: MULTI-DISCIPLINARY ANALYSIS
+
+## SECTION 1: C++ (TRACING)
+Q1. Determine the exact output of the following pointer arithmetic code.
+\`\`\`cpp
 #include <iostream>
 using namespace std;
-// DEMO CONTENT...
+int main() {
+    int arr[] = {10, 20, 30};
+    int *p = arr;
+    p++;
+    cout << *p << " " << p[-1];
+    return 0;
+}
+\`\`\`
+
+## SECTION 2: JAVASCRIPT (MCQ)
+Q2. What is the result of the following loose equality check?
+\`\`\`javascript
+console.log(0 == '0');
+\`\`\`
+A. true
+B. false
+C. undefined
+D. NaN
+
+## SECTION 3: PYTHON (CODING)
+Q3. Write a Python function \`merge_dicts(d1, d2)\` that merges two dictionaries. If a key appears in both, sum their values.
+Example: d1={'a':10}, d2={'a':5, 'b':2} -> result={'a':15, 'b':2}
+
+## SECTION 4: MATHEMATICS (GRAPH VISUALIZATION)
+Q4. Visualize the intersection of a parabola and a line.
+Plot the functions:
+1. $f(x) = x^2 - 2$
+2. $g(x) = x + 1$
+Determine the visual intersection points in the domain [-3, 3].
+
+## SECTION 5: SOFTWARE ENGINEERING (ARCHITECTURE DIAGRAM)
+Q5. Design a "Authentication System" flow using a Sequence Diagram.
+- User sends credentials to LoginController.
+- LoginController validates with AuthService.
+- AuthService checks Database.
+- Database returns Result.
       `;
       const base64 = btoa(content);
       const demoFile = {
           base64: base64,
           mime: 'text/plain',
-          name: 'diagnostic_demo.cpp',
-          hash: 'DEMO_HASH_PRESET_001'
+          name: 'diagnostic_demo.txt',
+          hash: 'DEMO_HASH_V2_MULTI'
       };
       handleFilesAccepted([demoFile]);
   };
@@ -210,7 +251,9 @@ using namespace std;
       if (generatedQuestions.length === 0) throw new Error("No questions generated");
       
       setQuestions(generatedQuestions);
-      setAppState('EXAM');
+      
+      // NEW FLOW: Go to Ready Screen instead of directly to EXAM
+      setAppState('EXAM_READY');
 
     } catch (e: any) {
       console.error(e);
@@ -437,6 +480,16 @@ using namespace std;
                 files={uploadedFiles}
                 lang={uiLanguage}
             />
+          )}
+
+          {appState === 'EXAM_READY' && settings && (
+              <ExamReadyScreen 
+                  questions={questions}
+                  settings={settings}
+                  title={preloadedExamTitle}
+                  onStart={() => setAppState('EXAM')}
+                  lang={uiLanguage}
+              />
           )}
 
           {appState === 'EXAM' && settings && (

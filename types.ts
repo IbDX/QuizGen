@@ -87,6 +87,7 @@ export type AppState =
   | 'CONFIG'
   | 'BUILDER'
   | 'GENERATING'
+  | 'EXAM_READY'
   | 'EXAM'
   | 'RESULTS'
   | 'LIBRARY';
