@@ -348,12 +348,6 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </main>
 
-      <footer 
-        className="p-4 text-center text-xs text-gray-500 dark:text-gray-600 border-t border-gray-300 dark:border-terminal-border z-10 relative bg-gray-100/50 dark:bg-terminal-black/50 backdrop-blur-sm"
-      >
-        {t('status_online', uiLanguage)} | V1.5.0
-      </footer>
-
       {showSettings && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 cursor-default">
             <div className="bg-white dark:bg-[#0c0c0c] border-2 border-gray-300 dark:border-terminal-green w-full max-w-2xl shadow-2xl p-0 animate-fade-in relative max-h-[90vh] overflow-hidden flex flex-col rounded-lg">
@@ -447,16 +441,6 @@ export const Layout: React.FC<LayoutProps> = ({
                                     <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${autoHideHeader ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
                                 </div>
                             </label>
-
-                            {onToggleAutoHideFooter && (
-                                <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
-                                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('auto_hide_footer', uiLanguage)}</span>
-                                    <div className={`w-10 h-5 rounded-full relative transition-colors ${autoHideFooter ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                        <input type="checkbox" checked={autoHideFooter} onChange={onToggleAutoHideFooter} className="hidden" />
-                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${autoHideFooter ? 'left-6 rtl:right-6 rtl:left-auto' : 'left-1 rtl:right-1 rtl:left-auto'}`}></div>
-                                    </div>
-                                </label>
-                            )}
                         </div>
                     </div>
 
