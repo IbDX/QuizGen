@@ -79,10 +79,10 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
             
             {/* CHAT WINDOW */}
             {isOpen && (
-                <div className="mb-4 w-80 md:w-96 h-[500px] bg-white dark:bg-terminal-gray border border-gray-300 dark:border-terminal-border shadow-2xl flex flex-col animate-fade-in rounded-lg overflow-hidden relative backdrop-blur-sm">
+                <div className="mb-4 w-80 md:w-96 h-[500px] bg-white dark:bg-[#0c0c0c] border border-gray-300 dark:border-terminal-green shadow-2xl flex flex-col animate-fade-in rounded-lg overflow-hidden relative backdrop-blur-sm">
                     
                     {/* Header */}
-                    <div className="bg-gray-100 dark:bg-terminal-gray border-b border-gray-300 dark:border-terminal-border p-3 flex justify-between items-center">
+                    <div className="bg-gray-100 dark:bg-[#111] border-b border-gray-300 dark:border-terminal-border p-3 flex justify-between items-center">
                         <div className="flex items-center gap-3">
                              <div className="relative">
                                 <div className="w-2.5 h-2.5 bg-terminal-green rounded-full animate-pulse shadow-[0_0_8px_var(--color-term-green)]"></div>
@@ -106,14 +106,14 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
                     </div>
 
                     {/* Messages Area */}
-                    <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-terminal-black/80">
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-[#050505]">
                         {messages.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`
                                     max-w-[85%] p-3 text-xs md:text-sm leading-relaxed shadow-sm break-words
                                     ${m.role === 'user' 
                                         ? 'bg-terminal-green text-terminal-btn-text rounded-2xl rounded-br-none' 
-                                        : 'bg-white dark:bg-terminal-gray border border-gray-200 dark:border-terminal-border text-gray-800 dark:text-terminal-light rounded-2xl rounded-bl-none'
+                                        : 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#333] text-gray-800 dark:text-terminal-light rounded-2xl rounded-bl-none'
                                     }
                                 `}>
                                     {m.role === 'ai' ? (
@@ -126,7 +126,7 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
                         ))}
                         {isLoading && (
                             <div className="flex justify-start">
-                                <div className="bg-white dark:bg-terminal-gray border border-gray-200 dark:border-terminal-border p-3 rounded-2xl rounded-bl-none flex gap-1 items-center h-10">
+                                <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#333] p-3 rounded-2xl rounded-bl-none flex gap-1 items-center h-10">
                                     <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce"></div>
                                     <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce delay-100"></div>
                                     <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-terminal-green rounded-full animate-bounce delay-200"></div>
@@ -136,7 +136,7 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
                     </div>
 
                     {/* Input Area */}
-                    <form onSubmit={handleSubmit} className="p-3 border-t border-gray-300 dark:border-terminal-border bg-white dark:bg-terminal-gray">
+                    <form onSubmit={handleSubmit} className="p-3 border-t border-gray-300 dark:border-terminal-border bg-white dark:bg-[#111]">
                         <div className="relative flex gap-2 items-center">
                             <div className="flex-grow relative group">
                                 <input 
@@ -145,7 +145,7 @@ export const AiHelper: React.FC<AiHelperProps> = ({ lang, onSetUiLanguage }) => 
                                     onChange={(e) => setInput(e.target.value)}
                                     maxLength={MAX_CHARS}
                                     placeholder={t('ai_helper_placeholder', lang)}
-                                    className="w-full bg-gray-100 dark:bg-terminal-black border border-gray-300 dark:border-gray-700 rounded p-2.5 pr-12 text-sm outline-none focus:border-terminal-green dark:text-terminal-light transition-colors"
+                                    className="w-full bg-gray-100 dark:bg-[#050505] border border-gray-300 dark:border-gray-700 rounded p-2.5 pr-12 text-sm outline-none focus:border-terminal-green dark:text-terminal-light transition-colors"
                                 />
                                 <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-mono pointer-events-none ${input.length >= MAX_CHARS ? 'text-red-500' : 'text-gray-400'}`}>
                                     {input.length}/{MAX_CHARS}

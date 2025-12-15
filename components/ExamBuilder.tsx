@@ -148,13 +148,13 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
         // Mobile: Fixed full screen (inset-0 top-16) to sit exactly under navbar. No rounding.
         // Desktop: Relative card, centered, rounded, shadow.
         <div className={`
-            fixed inset-0 top-16 z-30 flex flex-col bg-white dark:bg-black 
+            fixed inset-0 top-16 z-30 flex flex-col bg-white dark:bg-[#050505] 
             md:static md:z-0 md:h-[calc(100vh-12rem)] md:min-h-[600px] md:mt-8 md:rounded-lg md:border-2 md:border-terminal-green md:shadow-[0_0_30px_rgba(0,255,65,0.15)]
             ${isFullWidth ? 'md:max-w-none' : 'md:max-w-5xl md:mx-auto'}
         `}>
             
             {/* Header */}
-            <div className="bg-gray-50 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-terminal-green/50 p-3 md:p-4 flex justify-between items-center shrink-0 shadow-sm z-20">
+            <div className="bg-gray-50 dark:bg-[#111] backdrop-blur border-b border-gray-200 dark:border-terminal-green/30 p-3 md:p-4 flex justify-between items-center shrink-0 shadow-sm z-20">
                 <div className="flex items-center gap-3">
                     <div className="w-2.5 h-2.5 bg-terminal-green rounded-full animate-pulse shadow-[0_0_8px_var(--color-term-green)]"></div>
                     <div>
@@ -168,7 +168,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                 </div>
                 <button 
                     onClick={onCancel}
-                    className="px-3 py-1.5 rounded text-xs font-bold font-mono border border-gray-300 dark:border-gray-700 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                    className="px-3 py-1.5 rounded text-xs font-bold font-mono border border-gray-300 dark:border-gray-700 dark:text-terminal-light hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
                 >
                     {t('abort', lang)}
                 </button>
@@ -176,8 +176,8 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
 
             {/* If Exam is Generated, Show Success Overlay */}
             {generatedData ? (
-                <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white dark:bg-black animate-fade-in relative z-50">
-                     <div className="max-w-md w-full text-center space-y-6 bg-gray-50 dark:bg-[#0c0c0c] p-8 rounded-xl border border-gray-200 dark:border-terminal-green/50 shadow-2xl">
+                <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white dark:bg-[#050505] animate-fade-in relative z-50">
+                     <div className="max-w-md w-full text-center space-y-6 bg-gray-50 dark:bg-[#121212] p-8 rounded-xl border border-gray-200 dark:border-terminal-green/50 shadow-2xl">
                         <div className="w-16 h-16 bg-terminal-green rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(0,255,65,0.4)]">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-black" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -189,7 +189,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                             <p className="text-gray-500 dark:text-gray-400 text-sm">{t('exam_ready_desc', lang)}</p>
                         </div>
 
-                        <div className="text-left bg-white dark:bg-black/50 p-4 rounded border border-gray-200 dark:border-gray-800 space-y-2 text-sm font-mono">
+                        <div className="text-left bg-white dark:bg-[#050505] p-4 rounded border border-gray-200 dark:border-terminal-border/50 space-y-2 text-sm font-mono">
                             <div className="flex justify-between">
                                 <span className="text-gray-500">{t('suggested_title', lang)}:</span>
                                 <span className="font-bold text-blue-600 dark:text-terminal-green">{generatedData.title}</span>
@@ -239,7 +239,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                 </div>
             ) : !languageSelected ? (
                 // LANGUAGE SELECTION SCREEN
-                <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white dark:bg-black animate-fade-in overflow-y-auto">
+                <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white dark:bg-[#050505] animate-fade-in overflow-y-auto">
                     <div className="max-w-md w-full text-center space-y-8">
                         <div className="space-y-3">
                              <div className="text-5xl mb-6 animate-bounce">👋</div>
@@ -250,7 +250,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                             <button 
                                 onClick={() => handleLanguageSelect('en')}
-                                className="p-6 border-2 border-gray-200 dark:border-gray-800 hover:border-blue-500 dark:hover:border-terminal-green bg-gray-50 dark:bg-gray-900 rounded-xl transition-all group flex flex-row md:flex-col items-center justify-center gap-4 active:scale-95"
+                                className="p-6 border-2 border-gray-200 dark:border-gray-800 hover:border-blue-500 dark:hover:border-terminal-green bg-gray-50 dark:bg-[#121212] rounded-xl transition-all group flex flex-row md:flex-col items-center justify-center gap-4 active:scale-95"
                             >
                                 <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">🇺🇸</span>
                                 <span className="font-bold font-mono text-lg text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-terminal-green">ENGLISH</span>
@@ -258,7 +258,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
 
                             <button 
                                 onClick={() => handleLanguageSelect('ar')}
-                                className="p-6 border-2 border-gray-200 dark:border-gray-800 hover:border-green-500 dark:hover:border-terminal-green bg-gray-50 dark:bg-gray-900 rounded-xl transition-all group flex flex-row md:flex-col items-center justify-center gap-4 active:scale-95"
+                                className="p-6 border-2 border-gray-200 dark:border-gray-800 hover:border-green-500 dark:hover:border-terminal-green bg-gray-50 dark:bg-[#121212] rounded-xl transition-all group flex flex-row md:flex-col items-center justify-center gap-4 active:scale-95"
                             >
                                 <span className="text-3xl grayscale group-hover:grayscale-0 transition-all">🇸🇦</span>
                                 <span className="font-bold font-sans text-lg text-gray-700 dark:text-gray-300 group-hover:text-green-600 dark:group-hover:text-terminal-green">العربية</span>
@@ -270,14 +270,14 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                 // CHAT INTERFACE
                 <>
                     {/* Chat Area */}
-                    <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-6 bg-white dark:bg-black scroll-smooth">
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-6 bg-white dark:bg-[#050505] scroll-smooth">
                         {messages.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
                                 <div className={`
                                     max-w-[90%] md:max-w-[75%] rounded-2xl px-4 py-3 shadow-sm text-sm md:text-base leading-relaxed break-words relative
                                     ${m.role === 'user' 
                                         ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-sm' 
-                                        : 'bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-sm'
+                                        : 'bg-gray-100 dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#333] text-gray-800 dark:text-gray-200 rounded-bl-sm'
                                     }
                                 `}>
                                     {m.role === 'model' && (
@@ -291,7 +291,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                         ))}
                         {isTyping && (
                             <div className="flex justify-start animate-pulse">
-                                <div className="bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-4 py-3 rounded-2xl rounded-bl-sm flex gap-1 items-center">
+                                <div className="bg-gray-100 dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#333] px-4 py-3 rounded-2xl rounded-bl-sm flex gap-1 items-center">
                                     <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
                                     <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100"></span>
                                     <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-200"></span>
@@ -303,7 +303,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                     </div>
 
                     {/* Controls Area */}
-                    <div className="bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shrink-0 pb-safe">
+                    <div className="bg-white dark:bg-[#111] border-t border-gray-200 dark:border-terminal-green/30 shrink-0 pb-safe">
                         
                         {isFinalizing ? (
                             <div className="flex flex-col items-center justify-center py-8 gap-4 px-6">
@@ -321,7 +321,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                             <button
                                                 key={idx}
                                                 onClick={() => handleSendMessage(reply)}
-                                                className="whitespace-nowrap px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-full text-xs font-bold text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm active:scale-95"
+                                                className="whitespace-nowrap px-4 py-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-full text-xs font-bold text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors shadow-sm active:scale-95"
                                             >
                                                 {reply}
                                             </button>
@@ -329,7 +329,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                                     </div>
                                 )}
 
-                                <form onSubmit={handleFormSubmit} className="flex gap-2 items-end bg-gray-100 dark:bg-gray-900 p-2 rounded-xl border border-transparent focus-within:border-blue-400 dark:focus-within:border-terminal-green transition-colors">
+                                <form onSubmit={handleFormSubmit} className="flex gap-2 items-end bg-gray-100 dark:bg-[#050505] p-2 rounded-xl border border-transparent dark:border-[#333] focus-within:border-blue-400 dark:focus-within:border-terminal-green transition-colors">
                                     <textarea 
                                         ref={textareaRef}
                                         rows={1}
