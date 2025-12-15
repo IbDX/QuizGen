@@ -9,7 +9,7 @@ import { UILanguage } from '../types';
 interface FileUploadProps {
   onFilesAccepted: (files: Array<{base64: string, mime: string, name: string, hash: string}>) => void;
   onLoadDemo: () => void;
-  onStartBuilder: () => void; // New Prop
+  onStartBuilder: () => void;
   isFullWidth: boolean;
   lang?: UILanguage;
   isActive: boolean;
@@ -30,7 +30,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
   const fileInputRef = useRef<HTMLInputElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
-  // Robust Mobile Detection
   useEffect(() => {
     const checkMobile = () => {
         const userAgent = typeof window.navigator === "undefined" ? "" : navigator.userAgent;
@@ -48,8 +47,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     if (!fileList || fileList.length === 0) return;
     
     const newFiles = Array.from(fileList);
-
-    // 0. Batch Size Check (Strict 50MB)
     const batchCheck = validateBatchSize(newFiles);
     if (!batchCheck.valid) {
         setLogs([{ name: "BATCH UPLOAD", status: 'FAILED', error: batchCheck.error }]);
@@ -57,28 +54,21 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     }
     
     setGlobalStatus('PROCESSING');
-    
-    // Initialize logs for these files
     const newLogs: ProcessingLog[] = newFiles.map(f => ({ name: f.name, status: 'PENDING' }));
     setLogs(prev => [...newLogs]); 
 
     const successfulFiles: Array<{base64: string, mime: string, name: string, hash: string}> = [];
 
-    // Process Sequentially
     for (let i = 0; i < newFiles.length; i++) {
         const file = newFiles[i];
-        
-        // Update status to scanning
         setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'SCANNING' } : l));
 
         try {
-            // 1. Validation (Strict 15MB per file)
             const validationCheck = await validateFile(file);
             if (!validationCheck.valid || !validationCheck.mimeType) {
                 throw new Error(validationCheck.error || 'Invalid file type');
             }
 
-            // 2. Security Scan & Conversion
             const [scanResult, base64] = await Promise.all([
                 scanFileWithVirusTotal(file),
                 fileToBase64(file)
@@ -88,7 +78,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                 throw new Error(scanResult.message);
             }
 
-            // Success - ensure hash is present
             const hash = scanResult.hash || `unknown_hash_${Date.now()}_${Math.random()}`;
             successfulFiles.push({ base64, mime: validationCheck.mimeType, name: file.name, hash });
             setLogs(prev => prev.map(l => l.name === file.name ? { ...l, status: 'SUCCESS' } : l));
@@ -115,7 +104,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     setLogs([{ name: url, status: 'SCANNING' }]);
     
     try {
-       // urlToBase64 enforces 15MB limit per file internally
        const { base64, mimeType, name } = await urlToBase64(url);
        const hash = `url_hash_${Date.now()}_${name}`; 
        
@@ -139,27 +127,19 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
   };
 
   const handleUrlPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    // Prioritize files (e.g., from screenshot tool or mobile gallery)
     if (e.clipboardData && e.clipboardData.files.length > 0) {
         e.preventDefault();
         handleFiles(e.clipboardData.files);
         return;
     }
-
-    // Fallback to text URL
     const text = e.clipboardData.getData('text');
     if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-      // Let the URL paste into the input for visual feedback
-      // and then trigger the processing.
       processUrl(text.trim());
     }
   };
 
-  // Programmatic Paste for Mobile Button
   const handleManualPasteClick = async () => {
     if (globalStatus !== 'IDLE') return;
-
-    // Clear previous clipboard logs
     setLogs(prev => prev.filter(l => l.name !== "CLIPBOARD"));
 
     if (!navigator.clipboard) {
@@ -169,10 +149,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
     }
 
     try {
-        // ATTEMPT 1: Try Rich Content (Images) via .read()
-        // This requires strict permission and mostly works on Chromium desktops or Android Chrome (sometimes)
         const clipboardItems = await navigator.clipboard.read();
-        
         let foundContent = false;
         
         for (const item of clipboardItems) {
@@ -188,45 +165,32 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                 break;
             }
         }
-
-        // If we found items but none were images, or list was empty, try text fallback
-        if (!foundContent) {
-            throw new Error("No image content found");
-        }
-
+        if (!foundContent) throw new Error("No image content found");
     } catch (err: any) {
-        // ATTEMPT 2: Fallback to Text via .readText()
-        // This is more widely supported but still might require permission interaction.
-        // If the browser denies this, we fall back to manual input.
         try {
             const text = await navigator.clipboard.readText();
             if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
                 setUrlInput(text.trim());
                 processUrl(text.trim());
             } else if (text) {
-                 setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: "Clipboard content is not a valid URL (http/https)." }]);
+                 setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: "Clipboard content is not a valid URL." }]);
                  urlInputRef.current?.focus();
             } else {
                  setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: "Clipboard is empty." }]);
                  urlInputRef.current?.focus();
             }
         } catch (textErr: any) {
-             console.error("Clipboard Error", textErr);
-             // If denied, we guide them to the input
              setLogs([{ name: "CLIPBOARD", status: 'FAILED', error: t('clipboard_denied', lang) }]);
-             // Focus the input to help them
              urlInputRef.current?.focus();
         }
     }
   };
 
-  // Global Paste Handler (Files & URLs) - Desktop mainly
+  // Global Paste Handler
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
-      // Avoid interfering if user is typing in an input
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
-
       if (globalStatus !== 'IDLE') return;
 
       if (e.clipboardData) {
@@ -244,33 +208,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
       }
     };
 
-    if (isActive) {
-        window.addEventListener('paste', handlePaste);
-    }
-    
-    return () => {
-      if (isActive) {
-        window.removeEventListener('paste', handlePaste);
-      }
-    };
+    if (isActive) window.addEventListener('paste', handlePaste);
+    return () => { if (isActive) window.removeEventListener('paste', handlePaste); };
   }, [globalStatus, isActive]);
 
-  const onDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const onDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (globalStatus === 'IDLE') {
-        handleFiles(e.dataTransfer.files);
-    }
-  };
+  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const onDragLeave = () => { setIsDragging(false); };
+  const onDrop = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); if (globalStatus === 'IDLE') handleFiles(e.dataTransfer.files); };
 
   const pasteTip = isMobile ? t('paste_tip_mobile', lang) : t('paste_tip_desktop', lang);
 
@@ -285,7 +229,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                 w-full p-8 rounded-lg shadow-lg flex flex-col items-center justify-center gap-4 transition-all active:scale-95
                 ${globalStatus === 'PROCESSING' 
                     ? 'bg-yellow-100 border-2 border-yellow-500 text-yellow-800' 
-                    : 'bg-terminal-green text-terminal-btn-text shadow-terminal-green/30'
+                    : 'bg-terminal-green text-terminal-btn-text shadow-[0_0_15px_var(--color-term-green)] border border-terminal-green'
                 }
             `}
           >
@@ -297,11 +241,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
               </div>
           </button>
           
-          {/* New Mobile Paste Button */}
           <button
              onClick={handleManualPasteClick}
              disabled={globalStatus !== 'IDLE'}
-             className="w-full py-3 bg-gray-200 dark:bg-gray-800 border border-gray-400 dark:border-gray-600 rounded text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 active:bg-gray-300 dark:active:bg-gray-700 flex items-center justify-center gap-2"
+             className="w-full py-3 bg-gray-200 dark:bg-terminal-gray border border-gray-400 dark:border-terminal-border rounded text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-terminal-green active:bg-gray-300 dark:active:bg-gray-800 flex items-center justify-center gap-2"
           >
               <span>📋</span> {t('paste_from_clipboard', lang)}
           </button>
@@ -311,12 +254,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
       <div 
         className={`
           hidden md:block
-          border-2 border-dashed transition-all p-10 text-center cursor-pointer relative overflow-hidden rounded-lg group
+          border-2 border-dashed transition-all p-12 text-center cursor-pointer relative overflow-hidden rounded-lg group
+          text-gray-400 dark:text-terminal-green
           ${isDragging 
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.02]' 
+            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.02] shadow-[0_0_20px_rgba(59,130,246,0.3)]' 
             : globalStatus === 'PROCESSING'
                 ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10 cursor-wait'
-                : 'border-gray-400 dark:border-terminal-green hover:border-blue-400 dark:hover:border-white hover:bg-gray-50 dark:hover:bg-terminal-green/5'
+                : 'border-gray-400 dark:border-terminal-green/50 hover:border-blue-400 dark:hover:border-terminal-green hover:bg-gray-50 dark:hover:bg-terminal-green/5'
           }
         `}
         onDragOver={onDragOver}
@@ -324,32 +268,44 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
         onDrop={onDrop}
         onClick={() => globalStatus === 'IDLE' && fileInputRef.current?.click()}
       >
-        <div className="space-y-3 relative z-10">
-          <div className="text-4xl transition-transform group-hover:scale-110 duration-300">
+        {/* Dynamic Theme Pattern Background */}
+        <div 
+            className="absolute inset-0 opacity-5 dark:opacity-20 pointer-events-none transition-opacity duration-500" 
+            style={{ 
+                backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', 
+                backgroundSize: '24px 24px' 
+            }}
+        ></div>
+
+        <div className="space-y-4 relative z-10 flex flex-col items-center justify-center">
+          <div className="text-5xl transition-transform group-hover:scale-110 duration-300 filter drop-shadow-md">
              {globalStatus === 'PROCESSING' ? (
-                 <span className="inline-block animate-spin">🛡️</span>
+                 <span className="inline-block animate-spin text-yellow-500 dark:text-terminal-green">⏳</span>
              ) : (
-                 <span>🛡️</span>
+                 <span className="text-gray-600 dark:text-terminal-green">🛡️</span>
              )}
           </div>
 
-          <h3 className="text-xl font-bold uppercase dark:text-terminal-light">
-            {globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('secure_upload', lang)}
-          </h3>
+          <div className="flex flex-col gap-1">
+              <h3 className="text-2xl font-bold uppercase tracking-widest text-gray-800 dark:text-terminal-light group-hover:text-blue-600 dark:group-hover:text-terminal-green transition-colors">
+                {globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('secure_upload', lang)}
+              </h3>
+              <div className="h-0.5 w-1/3 bg-gray-300 dark:bg-terminal-green/30 mx-auto rounded-full"></div>
+          </div>
           
-          <p className="text-sm opacity-70 font-mono dark:text-gray-400">
+          <p className="text-sm opacity-80 font-mono text-gray-600 dark:text-gray-400 max-w-sm mx-auto">
             {globalStatus === 'PROCESSING' 
              ? t('executing_protocols', lang)
              : "Drag & Drop PDF, PNG, JPG here or Click to Browse"}
           </p>
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-2">
+          <p className="text-[10px] text-gray-400 dark:text-terminal-dimGreen font-bold uppercase tracking-[0.2em] mt-2 border border-gray-200 dark:border-terminal-border px-3 py-1 rounded-full bg-white dark:bg-terminal-black/50">
             Max 15MB per file / 50MB Total
           </p>
         </div>
 
         {/* Scanning overlay effect */}
         {globalStatus === 'PROCESSING' && (
-            <div className="absolute inset-0 bg-green-500/5 animate-pulse z-0"></div>
+            <div className="absolute inset-0 bg-terminal-green/5 animate-pulse z-0"></div>
         )}
       </div>
 
@@ -365,21 +321,21 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
 
       {/* Processing Logs */}
       {logs.length > 0 && (
-          <div className="mt-6 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 p-4 rounded shadow-inner font-mono text-xs animate-fade-in">
-              <div className="text-xs font-bold uppercase text-gray-500 mb-2 border-b pb-1">Session Log</div>
+          <div className="mt-6 border border-gray-300 dark:border-terminal-border bg-gray-100 dark:bg-terminal-gray p-4 rounded shadow-inner font-mono text-xs animate-fade-in">
+              <div className="text-xs font-bold uppercase text-gray-500 dark:text-terminal-green mb-2 border-b border-gray-300 dark:border-terminal-border pb-1">Session Log</div>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                   {logs.map((log, i) => (
-                      <div key={i} className="flex justify-between items-start py-1 border-b border-gray-200 dark:border-gray-800 last:border-0">
-                          <span className="truncate max-w-[60%] md:max-w-[50%] text-gray-700 dark:text-gray-300 pt-1" title={log.name}>{log.name}</span>
+                      <div key={i} className="flex justify-between items-start py-1 border-b border-gray-200 dark:border-terminal-border/30 last:border-0">
+                          <span className="truncate max-w-[60%] md:max-w-[50%] text-gray-700 dark:text-terminal-light pt-1" title={log.name}>{log.name}</span>
                           <div className="flex flex-col items-end gap-1 justify-end text-right flex-grow pl-2">
                               {log.status === 'PENDING' && <span className="text-gray-500">WAITING</span>}
-                              {log.status === 'SCANNING' && <span className="text-blue-500 animate-pulse">SCANNING...</span>}
-                              {log.status === 'SUCCESS' && <span className="text-green-500 font-bold">✓ SAFE</span>}
+                              {log.status === 'SCANNING' && <span className="text-blue-500 dark:text-terminal-green animate-pulse">SCANNING...</span>}
+                              {log.status === 'SUCCESS' && <span className="text-green-600 dark:text-terminal-green font-bold">✓ SAFE</span>}
                               {log.status === 'FAILED' && (
                                   <div className="flex flex-col items-end w-full">
-                                      <span className="text-red-500 font-bold uppercase tracking-wider">✕ BLOCKED</span>
+                                      <span className="text-red-500 dark:text-terminal-alert font-bold uppercase tracking-wider">✕ BLOCKED</span>
                                       {log.error && (
-                                          <span className="text-[10px] text-red-600 dark:text-red-400 font-semibold mt-1 text-right w-full break-words leading-tight bg-red-50 dark:bg-red-900/20 p-1 rounded border border-red-100 dark:border-red-900">
+                                          <span className="text-[10px] text-red-600 dark:text-terminal-alert font-semibold mt-1 text-right w-full break-words leading-tight bg-red-50 dark:bg-red-900/20 p-1 rounded border border-red-100 dark:border-terminal-alert/30">
                                               {log.error}
                                           </span>
                                       )}
@@ -393,9 +349,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
       )}
 
       <div className="flex items-center my-6">
-          <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
-          <span className="px-4 text-[10px] md:text-xs text-gray-500 font-mono uppercase">{t('or_via_network', lang)}</span>
-          <div className="h-px bg-gray-300 dark:bg-gray-700 flex-grow"></div>
+          <div className="h-px bg-gray-300 dark:bg-terminal-border flex-grow"></div>
+          <span className="px-4 text-[10px] md:text-xs text-gray-500 dark:text-gray-500 font-mono uppercase">{t('or_via_network', lang)}</span>
+          <div className="h-px bg-gray-300 dark:bg-terminal-border flex-grow"></div>
       </div>
 
       <form onSubmit={handleUrlSubmit} className="flex flex-col sm:flex-row gap-3 relative z-10">
@@ -405,7 +361,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                   type="url" 
                   ref={urlInputRef}
                   placeholder="https://example.com/document.pdf" 
-                  className="relative w-full bg-white dark:bg-black border-2 border-gray-300 dark:border-terminal-gray p-3 pl-10 font-mono text-sm outline-none focus:border-blue-500 dark:focus:border-terminal-green rounded-md dark:text-terminal-light placeholder-gray-400 dark:placeholder-gray-600 transition-all shadow-sm"
+                  className="relative w-full bg-white dark:bg-terminal-black border-2 border-gray-300 dark:border-terminal-border p-3 pl-10 font-mono text-sm outline-none focus:border-blue-500 dark:focus:border-terminal-green rounded-md dark:text-terminal-light placeholder-gray-400 dark:placeholder-gray-600 transition-all shadow-sm"
                   value={urlInput}
                   onChange={handleUrlChange}
                   onPaste={handleUrlPaste}
@@ -418,7 +374,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           <button 
              type="submit" 
              disabled={!urlInput || globalStatus !== 'IDLE'}
-             className="relative overflow-hidden group w-full sm:w-auto px-8 py-3 bg-gray-900 dark:bg-terminal-green text-white dark:text-black font-bold text-sm uppercase rounded-md transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-lg"
+             className="relative overflow-hidden group w-full sm:w-auto px-8 py-3 bg-gray-900 dark:bg-terminal-green text-white dark:text-terminal-btn-text font-bold text-sm uppercase rounded-md transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-lg"
           >
             <span className="relative z-10">{t('fetch', lang)}</span>
             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
@@ -432,7 +388,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-8">
           
           {/* DEMO CARD */}
-          <div className="relative group overflow-hidden bg-white dark:bg-black border-2 border-gray-200 dark:border-terminal-gray hover:border-yellow-500 dark:hover:border-yellow-500 rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+          <div className="relative group overflow-hidden bg-white dark:bg-terminal-gray border-2 border-gray-200 dark:border-terminal-border hover:border-yellow-500 dark:hover:border-yellow-500 rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               
               <div className="flex flex-col items-center relative z-10">
@@ -454,7 +410,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           </div>
 
           {/* AI BUILDER CARD */}
-          <div className="relative group overflow-hidden bg-white dark:bg-black border-2 border-gray-200 dark:border-terminal-gray hover:border-blue-500 dark:hover:border-terminal-green rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+          <div className="relative group overflow-hidden bg-white dark:bg-terminal-gray border-2 border-gray-200 dark:border-terminal-border hover:border-blue-500 dark:hover:border-terminal-green rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 dark:from-terminal-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               
               <div className="flex flex-col items-center relative z-10">
@@ -468,7 +424,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                   <button 
                       onClick={onStartBuilder}
                       disabled={globalStatus !== 'IDLE'}
-                      className="w-full py-3 bg-blue-600 dark:bg-terminal-green hover:bg-blue-500 dark:hover:bg-terminal-dimGreen text-white dark:text-black font-bold text-xs uppercase tracking-widest rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-blue-600 dark:bg-terminal-green hover:bg-blue-500 dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-btn-text font-bold text-xs uppercase tracking-widest rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
                   >
                       <span>✨</span> {t('start_builder', lang)}
                   </button>
