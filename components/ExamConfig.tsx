@@ -291,7 +291,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
   return (
     <div className={`
         border-2 border-gray-300 dark:border-terminal-border 
-        p-0 bg-white/95 dark:bg-terminal-black/95 backdrop-blur-md 
+        p-0 bg-white/95 dark:bg-[#050505]/95 backdrop-blur-md 
         mt-4 md:mt-10 shadow-2xl mx-auto transition-all duration-300 relative rounded-lg overflow-hidden
         ${isFullWidth ? 'max-w-none w-full' : 'max-w-3xl'}
     `}>
@@ -330,7 +330,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
           
           {/* Target Sources Panel */}
           {!preloadedTitle && (
-          <div className="bg-gray-100 dark:bg-terminal-gray/20 border border-gray-300 dark:border-terminal-border p-4 rounded-lg shadow-inner relative">
+          <div className="bg-gray-100 dark:bg-[#121212] border border-gray-300 dark:border-terminal-border p-4 rounded-lg shadow-inner relative">
             <div className="absolute top-0 right-0 p-1">
                 <span className="text-[10px] font-mono text-gray-400 dark:text-terminal-border opacity-50 px-2">SRC_DATA</span>
             </div>
@@ -342,7 +342,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                 {files.map((f, i) => (
                     <li 
                         key={i} 
-                        className="font-mono text-xs md:text-sm bg-white dark:bg-terminal-black border border-gray-200 dark:border-terminal-border p-2 flex items-center justify-between group hover:border-blue-400 dark:hover:border-terminal-green hover:shadow-md transition-all cursor-help select-none rounded-sm"
+                        className="font-mono text-xs md:text-sm bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-terminal-border p-2 flex items-center justify-between group hover:border-blue-400 dark:hover:border-terminal-green hover:shadow-md transition-all cursor-help select-none rounded-sm"
                         onMouseEnter={(e) => handleMouseEnterFile(e, f)}
                         onMouseLeave={handleMouseLeaveFile}
                         onTouchStart={(e) => handleTouchStartFile(e, f)}
@@ -371,7 +371,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                     onClick={!isScanning ? handleAddFileClick : undefined}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
-                    className={`h-full border-2 border-dashed border-gray-300 dark:border-terminal-border/50 bg-white dark:bg-terminal-black/30 p-2 text-center cursor-pointer hover:bg-blue-50 dark:hover:bg-terminal-green/5 transition-colors rounded ${isScanning ? 'opacity-50 cursor-wait' : ''}`}
+                    className={`h-full border-2 border-dashed border-gray-300 dark:border-terminal-border/50 bg-white dark:bg-[#0a0a0a] p-2 text-center cursor-pointer hover:bg-blue-50 dark:hover:bg-terminal-green/5 transition-colors rounded ${isScanning ? 'opacity-50 cursor-wait' : ''}`}
                 >
                     <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onChange={(e) => processNewFiles(e.target.files)} disabled={isScanning} />
                     <div className="text-xs font-bold text-gray-500 dark:text-terminal-green uppercase flex items-center justify-center gap-2 h-full py-2">
@@ -386,7 +386,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                         onChange={(e) => setUrlInput(e.target.value)}
                         onPaste={handleUrlPaste}
                         placeholder="https://..."
-                        className="w-full md:w-64 bg-white dark:bg-terminal-black border border-gray-300 dark:border-terminal-border p-2.5 text-xs font-mono outline-none focus:border-blue-500 dark:focus:border-terminal-green rounded dark:text-white transition-colors shadow-sm"
+                        className="w-full md:w-64 bg-white dark:bg-[#0c0c0c] border border-gray-300 dark:border-terminal-border p-2.5 text-xs font-mono outline-none focus:border-blue-500 dark:focus:border-terminal-green rounded dark:text-white transition-colors shadow-sm"
                         disabled={isScanning}
                     />
                     <button 
@@ -413,7 +413,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
             {/* Left Column: Language & Format */}
             <div className="space-y-4">
                 {!preloadedTitle && (
-                <div className="bg-gray-50 dark:bg-terminal-gray/20 p-4 border border-gray-200 dark:border-terminal-border rounded-lg relative overflow-hidden">
+                <div className="bg-gray-50 dark:bg-[#121212] p-4 border border-gray-200 dark:border-terminal-border rounded-lg relative overflow-hidden">
                     <label className="block text-xs font-bold mb-3 text-gray-500 dark:text-terminal-green uppercase tracking-wider">{t('output_lang', lang)}</label>
                     <div className="flex gap-2">
                         {['en', 'ar', 'auto'].map((l) => (
@@ -436,7 +436,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                 </div>
                 )}
 
-                <div className="bg-gray-50 dark:bg-terminal-gray/20 p-4 border border-gray-200 dark:border-terminal-border rounded-lg">
+                <div className="bg-gray-50 dark:bg-[#121212] p-4 border border-gray-200 dark:border-terminal-border rounded-lg">
                     <label className="block text-xs font-bold mb-3 text-gray-500 dark:text-terminal-green uppercase tracking-wider">{t('mode_select', lang)}</label>
                     <div className="flex flex-col gap-2">
                         {[ExamMode.ONE_WAY, ExamMode.TWO_WAY].map((m) => (
@@ -476,7 +476,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
             {/* Right Column: Format & Time */}
             <div className="space-y-4">
                 {!preloadedTitle && (
-                <div className="bg-gray-50 dark:bg-terminal-gray/20 p-4 border border-gray-200 dark:border-terminal-border rounded-lg h-auto lg:h-[calc(50%-0.5rem)]">
+                <div className="bg-gray-50 dark:bg-[#121212] p-4 border border-gray-200 dark:border-terminal-border rounded-lg h-auto lg:h-[calc(50%-0.5rem)]">
                     <label className="block text-xs font-bold mb-3 text-gray-500 dark:text-terminal-green uppercase tracking-wider">{t('output_format', lang)}</label>
                     <div className="grid grid-cols-3 gap-2">
                         {FORMAT_OPTIONS.map((opt) => (
@@ -499,7 +499,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                 </div>
                 )}
 
-                <div className="bg-gray-50 dark:bg-terminal-gray/20 p-4 border border-gray-200 dark:border-terminal-border rounded-lg">
+                <div className="bg-gray-50 dark:bg-[#121212] p-4 border border-gray-200 dark:border-terminal-border rounded-lg">
                     <div className="flex justify-between items-center mb-4">
                         <label className="text-xs font-bold text-gray-500 dark:text-terminal-green uppercase tracking-wider">{t('time_alloc', lang)}</label>
                         <div className="flex items-center gap-2">
@@ -534,7 +534,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
 
           {/* Custom Instructions - Hidden if preloaded */}
           {!preloadedTitle && (
-          <div className="bg-gray-50 dark:bg-terminal-gray/20 p-4 border border-gray-200 dark:border-terminal-border rounded-lg relative group focus-within:border-blue-400 dark:focus-within:border-terminal-green transition-colors">
+          <div className="bg-gray-50 dark:bg-[#121212] p-4 border border-gray-200 dark:border-terminal-border rounded-lg relative group focus-within:border-blue-400 dark:focus-within:border-terminal-green transition-colors">
               <label className="block text-xs font-bold mb-2 text-gray-500 dark:text-terminal-green uppercase tracking-wider">
                   {lang === 'ar' ? 'تعليمات مخصصة (اختياري)' : 'CUSTOM INSTRUCTIONS (OPTIONAL)'}
               </label>
@@ -543,7 +543,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({ onStart, onRemoveFile, o
                   onChange={handleInstructionsChange}
                   maxLength={300}
                   placeholder={lang === 'ar' ? "مثال: ركز على المصفوفات..." : "e.g., Focus on Arrays, or Generate exactly 5 questions."}
-                  className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded text-sm font-mono focus:outline-none dark:text-gray-300 resize-none h-20 shadow-inner"
+                  className="w-full p-3 bg-white dark:bg-[#0c0c0c] border border-gray-300 dark:border-gray-700 rounded text-sm font-mono focus:outline-none dark:text-gray-300 resize-none h-20 shadow-inner"
               />
               <div className="absolute bottom-2 right-2 text-[9px] text-gray-400 pointer-events-none rtl:right-auto rtl:left-2 bg-white dark:bg-black px-1 rounded border dark:border-gray-800">
                   {instructions.length}/300

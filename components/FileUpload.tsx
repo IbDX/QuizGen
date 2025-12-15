@@ -260,7 +260,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.02] shadow-[0_0_20px_rgba(59,130,246,0.3)]' 
             : globalStatus === 'PROCESSING'
                 ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10 cursor-wait'
-                : 'border-gray-400 dark:border-terminal-green/50 hover:border-blue-400 dark:hover:border-terminal-green hover:bg-gray-50 dark:hover:bg-terminal-green/5'
+                : 'border-gray-400 dark:border-terminal-green/50 hover:border-blue-400 dark:hover:border-terminal-green hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
           }
         `}
         onDragOver={onDragOver}
@@ -298,7 +298,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
              ? t('executing_protocols', lang)
              : "Drag & Drop PDF, PNG, JPG here or Click to Browse"}
           </p>
-          <p className="text-[10px] text-gray-400 dark:text-terminal-dimGreen font-bold uppercase tracking-[0.2em] mt-2 border border-gray-200 dark:border-terminal-border px-3 py-1 rounded-full bg-white dark:bg-terminal-black/50">
+          <p className="text-[10px] text-gray-400 dark:text-terminal-dimGreen font-bold uppercase tracking-[0.2em] mt-2 border border-gray-200 dark:border-terminal-border px-3 py-1 rounded-full bg-white dark:bg-[#1a1a1a]">
             Max 15MB per file / 50MB Total
           </p>
         </div>
@@ -361,7 +361,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
                   type="url" 
                   ref={urlInputRef}
                   placeholder="https://example.com/document.pdf" 
-                  className="relative w-full bg-white dark:bg-terminal-black border-2 border-gray-300 dark:border-terminal-border p-3 pl-10 font-mono text-sm outline-none focus:border-blue-500 dark:focus:border-terminal-green rounded-md dark:text-terminal-light placeholder-gray-400 dark:placeholder-gray-600 transition-all shadow-sm"
+                  className="relative w-full bg-white dark:bg-[#0c0c0c] border-2 border-gray-300 dark:border-terminal-border p-3 pl-10 font-mono text-sm outline-none focus:border-blue-500 dark:focus:border-terminal-green rounded-md dark:text-terminal-light placeholder-gray-400 dark:placeholder-gray-600 transition-all shadow-sm"
                   value={urlInput}
                   onChange={handleUrlChange}
                   onPaste={handleUrlPaste}
@@ -388,7 +388,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-8">
           
           {/* DEMO CARD */}
-          <div className="relative group overflow-hidden bg-white dark:bg-terminal-gray border-2 border-gray-200 dark:border-terminal-border hover:border-yellow-500 dark:hover:border-yellow-500 rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+          <div className="relative group overflow-hidden bg-white dark:bg-[#1a1a1a] border-2 border-gray-200 dark:border-terminal-border hover:border-yellow-500 dark:hover:border-yellow-500 rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               
               <div className="flex flex-col items-center relative z-10">
@@ -410,7 +410,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           </div>
 
           {/* AI BUILDER CARD */}
-          <div className="relative group overflow-hidden bg-white dark:bg-terminal-gray border-2 border-gray-200 dark:border-terminal-border hover:border-blue-500 dark:hover:border-terminal-green rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+          <div className="relative group overflow-hidden bg-white dark:bg-[#1a1a1a] border-2 border-gray-200 dark:border-terminal-border hover:border-blue-500 dark:hover:border-terminal-green rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 dark:from-terminal-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               
               <div className="flex flex-col items-center relative z-10">

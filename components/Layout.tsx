@@ -356,14 +356,14 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {showSettings && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 cursor-default">
-            <div className="bg-white dark:bg-terminal-black border-2 border-gray-300 dark:border-terminal-green w-full max-w-2xl shadow-2xl p-0 animate-fade-in relative max-h-[90vh] overflow-hidden flex flex-col rounded-lg">
-                <div className="p-4 border-b border-gray-300 dark:border-terminal-border flex justify-between items-center bg-gray-50 dark:bg-terminal-gray/20">
+            <div className="bg-white dark:bg-[#0c0c0c] border-2 border-gray-300 dark:border-terminal-green w-full max-w-2xl shadow-2xl p-0 animate-fade-in relative max-h-[90vh] overflow-hidden flex flex-col rounded-lg">
+                <div className="p-4 border-b border-gray-300 dark:border-terminal-border flex justify-between items-center bg-gray-50 dark:bg-[#111]">
                     <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-terminal-green">
                         <span className="text-2xl">⚙️</span> {t('system_preferences', uiLanguage)}
                     </h2>
                     <button 
                         onClick={() => setShowSettings(false)}
-                        className="text-gray-500 hover:text-red-500 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                        className="text-gray-500 hover:text-red-500 hover:bg-gray-200 dark:hover:bg-red-900/20 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
                     >
                         ✕
                     </button>
@@ -432,7 +432,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     <div>
                         <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-terminal-border pb-1">{t('settings_display', uiLanguage)}</h3>
                         <div className="space-y-3">
-                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
+                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
                                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('full_width', uiLanguage)}</span>
                                 <div className={`w-10 h-5 rounded-full relative transition-colors ${isFullWidth ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
                                     <input type="checkbox" checked={isFullWidth} onChange={onToggleFullWidth} className="hidden" />
@@ -440,7 +440,7 @@ export const Layout: React.FC<LayoutProps> = ({
                                 </div>
                             </label>
 
-                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
+                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
                                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('auto_hide_menu', uiLanguage)}</span>
                                 <div className={`w-10 h-5 rounded-full relative transition-colors ${autoHideHeader ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
                                     <input type="checkbox" checked={autoHideHeader} onChange={() => setAutoHideHeader(!autoHideHeader)} className="hidden" />
@@ -449,7 +449,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             </label>
 
                             {onToggleAutoHideFooter && (
-                                <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
+                                <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
                                     <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('auto_hide_footer', uiLanguage)}</span>
                                     <div className={`w-10 h-5 rounded-full relative transition-colors ${autoHideFooter ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
                                         <input type="checkbox" checked={autoHideFooter} onChange={onToggleAutoHideFooter} className="hidden" />
@@ -464,7 +464,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     <div>
                         <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-terminal-border pb-1">{t('settings_visuals', uiLanguage)}</h3>
                         <div className="space-y-3">
-                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
+                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
                                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('matrix_rain', uiLanguage)}</span>
                                 <div className={`w-10 h-5 rounded-full relative transition-colors ${enableBackgroundAnim ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
                                     <input type="checkbox" checked={enableBackgroundAnim} onChange={() => setEnableBackgroundAnim(!enableBackgroundAnim)} className="hidden" />
@@ -472,7 +472,7 @@ export const Layout: React.FC<LayoutProps> = ({
                                 </div>
                             </label>
 
-                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
+                            <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 cursor-pointer hover:border-blue-400 dark:hover:border-terminal-green transition-colors">
                                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{t('terminal_cursor', uiLanguage)}</span>
                                 <div className={`w-10 h-5 rounded-full relative transition-colors ${useCustomCursor ? 'bg-blue-600 dark:bg-terminal-green' : 'bg-gray-300 dark:bg-gray-700'}`}>
                                     <input type="checkbox" checked={useCustomCursor} onChange={() => setUseCustomCursor(!useCustomCursor)} className="hidden" />
@@ -489,7 +489,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             href="https://github.com/your-repo/terminal-exam-gen/issues" 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-terminal-black/30 rounded border border-gray-200 dark:border-terminal-border/50 hover:bg-red-50 dark:hover:bg-red-900/10 hover:border-red-400 dark:hover:border-red-500 transition-colors group"
+                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#151515] rounded border border-gray-200 dark:border-terminal-border/50 hover:bg-red-50 dark:hover:bg-red-900/10 hover:border-red-400 dark:hover:border-red-500 transition-colors group"
                         >
                             <span className="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400">
                                 {t('report_issue', uiLanguage)}
@@ -499,7 +499,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     </div>
 
                 </div>
-                <div className="p-4 border-t border-gray-300 dark:border-terminal-border bg-gray-50 dark:bg-terminal-gray/20">
+                <div className="p-4 border-t border-gray-300 dark:border-terminal-border bg-gray-50 dark:bg-[#111]">
                     <button onClick={() => setShowSettings(false)} className="w-full py-3 bg-gray-800 hover:bg-gray-700 dark:bg-terminal-green dark:hover:bg-terminal-dimGreen text-white dark:text-terminal-btn-text font-bold uppercase transition-colors rounded shadow-lg">{t('save_close', uiLanguage)}</button>
                 </div>
             </div>
