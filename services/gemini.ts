@@ -97,7 +97,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
         diagramConfig: {
             type: Type.OBJECT,
             nullable: true,
-            description: "Structure for UML, Flowcharts, Trees, Logic Circuits, or any node-link diagrams. Use Mermaid.js syntax. Do NOT use visualBounds for these. IMPORTANT: For 'classDiagram', if a method or class is ABSTRACT, you MUST append '*' to the method name (e.g., '+methodName()*') or use '<<abstract>>' for classes to render italics. STRICT SYNTAX: Do NOT use 'class Name : member' (remove 'class'). Use 'Name : member' or brackets. Use '<|--' for inheritance, NOT ':'.",
+            description: "Structure for UML, Flowcharts, Trees, Logic Circuits, or any node-link diagrams. Use Mermaid.js syntax. Do NOT use visualBounds for these. IMPORTANT: 1. For 'classDiagram', use 'namespace' instead of 'package'. 2. For 'graph'/'flowchart', ALWAYS WRAP node text in double quotes if it contains parentheses or special chars. 3. FOR LOGIC CIRCUITS: Use 'graph LR'. MUST use rigid, orthogonal lines by pre-pending '%%{init: {\"flowchart\": {\"curve\": \"stepAfter\"}}}%%'. 4. FOR ER DIAGRAMS: Attributes inside `{}` MUST have a type and name (e.g. `string id PK`). Do NOT use commas. 5. Do NOT use 'packageDiagram', use 'classDiagram'.",
             properties: {
                 type: { type: Type.STRING, enum: ['mermaid'] },
                 code: { type: Type.STRING, description: "Valid Mermaid.js code string describing the diagram. Ensure strict syntax compliance." }
@@ -371,6 +371,8 @@ If the question contains a 2D mathematical graph, ANALYZE it and extract paramet
 If the question contains a schematic diagram (UML, Sequence, Flowchart, Logic Gates), return valid **Mermaid.js** code in \`diagramConfig\`.
 - **Abstract Classes/Methods:** Use '<<abstract>>' or append '*' to method names for italics.
 - **Syntax Compliance:** NEVER write \`class Person : +method()\`. Write \`Person : +method()\` or use brackets.
+- **Packages:** Use 'namespace' instead of 'package' for grouping classes.
+- **NO DOTS:** Do not use dot notation in class names or relationships (e.g. \`Q1.Order\`). Use underscores \`Q1_Order\` or simple names inside \`namespace\`.
 
 PHASE 3: QUESTION CLASSIFICATION & FORMATTING
 - **MCQ:** If options (A, B, C...) are present.
@@ -593,8 +595,10 @@ export const generateExam = async (
     } catch (error: any) {
        console.warn(`Gemini Generation Attempt ${attempt + 1} failed:`, error);
        
-       // Use robust 429 detection logic
-       if (isRateLimitError(error)) {
+       // Enhanced Rate Limit Handling (429)
+       const isRateLimit = error.message?.includes('429') || error.message?.includes('Quota') || error.status === 429 || error.code === 429;
+       
+       if (isRateLimit) {
            console.warn("Rate limit hit. Waiting significantly longer...");
            // Base wait of 10s + exponential backoff + jitter for rate limits
            const waitTime = 10000 + (3000 * Math.pow(2, attempt)) + (Math.random() * 2000);
@@ -712,14 +716,11 @@ export const gradeCodingAnswer = async (question: Question, code: string, lang: 
     });
 
     if (response.text) {
-      // Heuristic cleaning: sometimes models wrap JSON in markdown despite schema config
-      const cleanJson = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(cleanJson);
+      return JSON.parse(response.text);
     }
     return { isCorrect: false, feedback: "AI grading failed to parse response." };
   } catch (error) {
-    console.error("AI Grading Error:", error);
-    return { isCorrect: false, feedback: "Error connecting to AI grading service. Please try again." };
+    return { isCorrect: false, feedback: "Error connecting to AI grading service." };
   }
 };
 
@@ -745,9 +746,8 @@ export const gradeShortAnswer = async (question: Question, answer: string, lang:
       
       INSTRUCTIONS:
       1. Determine if the user's answer conveys the correct meaning/concept compared to the expected answer.
-      2. For Math or Logic: Accept variations like "x=1, x=2", "{1, 2}", "1 and 2", or "x = 1; x = 2". Order does not matter unless specified.
-      3. Be lenient with spelling or grammar, focus on the core technical concept.
-      4. If the user's answer is empty or completely irrelevant, mark as incorrect.
+      2. Be lenient with spelling or grammar, focus on the core technical concept.
+      3. If the user's answer is empty or completely irrelevant, mark as incorrect.
       
       OUTPUT: Return a JSON object.
       {
@@ -766,12 +766,10 @@ export const gradeShortAnswer = async (question: Question, answer: string, lang:
     });
 
     if (response.text) {
-        const cleanJson = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(cleanJson);
+        return JSON.parse(response.text);
     }
     return { isCorrect: false, feedback: "Grading Error." };
   } catch (e) {
-      console.error("AI Short Answer Grading Error:", e);
       return { isCorrect: false, feedback: "Grading Service Unavailable." };
   }
 };
@@ -910,12 +908,8 @@ export const sendExamBuilderMessage = async (history: ChatMessage[], newMessage:
 
         const result = await chat.sendMessage({ message: newMessage });
         return result.text;
-    } catch (error: any) {
+    } catch (error) {
         console.error("Exam Builder Chat Error", error);
-        // FIX: Propagate Rate Limit Errors
-        if (isRateLimitError(error)) {
-            throw new Error("429_RATE_LIMIT");
-        }
         throw new Error("Failed to communicate with Exam Builder Agent.");
     }
 }
@@ -963,12 +957,8 @@ export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promi
         }
         throw new Error("No exam JSON generated");
 
-    } catch (error: any) {
+    } catch (error) {
          console.error("Exam Builder Finalization Error", error);
-         // FIX: Propagate Rate Limit Errors
-         if (isRateLimitError(error)) {
-             throw new Error("429_RATE_LIMIT");
-         }
          throw error;
     }
 }
