@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage } from "../types";
 
@@ -97,7 +98,7 @@ const getExamSchema = (preference: QuestionFormatPreference): Schema => {
         diagramConfig: {
             type: Type.OBJECT,
             nullable: true,
-            description: "Structure for UML, Flowcharts, Trees, Logic Circuits, or any node-link diagrams. Use Mermaid.js syntax. Do NOT use visualBounds for these. IMPORTANT: 1. For 'classDiagram', use 'namespace' instead of 'package'. 2. For 'graph'/'flowchart', ALWAYS WRAP node text in double quotes if it contains parentheses or special chars. 3. FOR LOGIC CIRCUITS: Use 'graph LR'. MUST use rigid, orthogonal lines by pre-pending '%%{init: {\"flowchart\": {\"curve\": \"stepAfter\"}}}%%'. 4. FOR ER DIAGRAMS: Attributes inside `{}` MUST have a type and name (e.g. `string id PK`). Do NOT use commas. 5. Do NOT use 'packageDiagram', use 'classDiagram'.",
+            description: "Structure for UML, Flowcharts, ERDs, etc. Use Mermaid.js syntax. Do NOT use visualBounds. IMPORTANT: 1. For ERDs, you MUST use 'graph TD' to ensure rigid lines. 2. For 'classDiagram', use 'namespace'. 3. For 'graph'/'flowchart', wrap node text in quotes for special chars. 4. **Layout:** Prioritize clarity and avoid intersecting lines.",
             properties: {
                 type: { type: Type.STRING, enum: ['mermaid'] },
                 code: { type: Type.STRING, description: "Valid Mermaid.js code string describing the diagram. Ensure strict syntax compliance." }
@@ -367,12 +368,20 @@ If the question contains a 2D mathematical graph, ANALYZE it and extract paramet
 - **Identify Function**: e.g. 'x^2', '2*x + 5', 'sin(x)'.
 - **Domain/Range**: Estimate visible bounds.
 
-**DIAGRAM EXTRACTION (UML, TREES, FLOWCHARTS):**
-If the question contains a schematic diagram (UML, Sequence, Flowchart, Logic Gates), return valid **Mermaid.js** code in \`diagramConfig\`.
-- **Abstract Classes/Methods:** Use '<<abstract>>' or append '*' to method names for italics.
-- **Syntax Compliance:** NEVER write \`class Person : +method()\`. Write \`Person : +method()\` or use brackets.
-- **Packages:** Use 'namespace' instead of 'package' for grouping classes.
-- **NO DOTS:** Do not use dot notation in class names or relationships (e.g. \`Q1.Order\`). Use underscores \`Q1_Order\` or simple names inside \`namespace\`.
+**DIAGRAM EXTRACTION (UML, ERD, FLOWCHARTS):**
+If a question contains a schematic diagram, return valid **Mermaid.js** code in \`diagramConfig\`.
+- **ENTITY-RELATIONSHIP DIAGRAMS (ERD):** To ensure rigid, non-curvy lines, you MUST represent database schemas using \`graph TD\`.
+  - **Entities:** Represent tables as nodes. Node text should be the table name, then columns using \`<br/>\`. Use simple types like 'int', 'string', 'date'. Example: \`employees["employees<br/>---<br/>emp_no int PK<br/>birth_date date"]\`
+  - **Relationships:** Use standard arrows with labels. Example: \`employees -- "manages" --> departments\`
+- **LOGIC CIRCUITS:** You MUST use \`graph TD\` or \`flowchart TD\`. The type \`logicDiagram\` is **INVALID**.
+- **CLASS DIAGRAMS:**
+  - Use '<<abstract>>' for abstract classes/methods.
+  - Use 'namespace', not 'package'.
+  - Correct syntax is \`ClassName : +method()\`, NOT \`class ClassName : ...\`.
+- **GENERAL RULES:**
+  - **NO DOTS:** Do not use dot notation in names (e.g., \`Q1.Order\`). Use underscores (\`Q1_Order\`).
+  - **RESERVED WORDS:** For 'classDef', do not use Mermaid reserved keywords (like 'end', 'graph', 'subgraph', 'style') as class names. Use a different name like 'endStyle' instead of 'end'.
+  - **Layout:** For ALL diagrams, arrange nodes to **PREVENT LINES FROM INTERSECTING**. Keep lines short and direct. Clarity is the top priority.
 
 PHASE 3: QUESTION CLASSIFICATION & FORMATTING
 - **MCQ:** If options (A, B, C...) are present.

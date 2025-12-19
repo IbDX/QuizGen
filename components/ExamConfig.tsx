@@ -142,7 +142,7 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({
 }) => {
   const [timeLimit, setTimeLimit] = useState(0);
   const [mode, setMode] = useState<ExamMode>(ExamMode.ONE_WAY);
-  const [format, setFormat] = useState<QuestionFormatPreference>(QuestionFormatPreference.MIXED);
+  const [format, setFormat] = useState<QuestionFormatPreference>(QuestionFormatPreference.ORIGINAL);
   const [outLang, setOutLang] = useState<OutputLanguage>('auto');
   const [instructions, setInstructions] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -362,11 +362,12 @@ export const ExamConfig: React.FC<ExamConfigProps> = ({
                                     className="w-full bg-gray-50 dark:bg-[#050505] border border-gray-300 dark:border-terminal-border text-gray-800 dark:text-terminal-light text-sm p-3 rounded focus:border-blue-500 dark:focus:border-terminal-green outline-none appearance-none cursor-pointer hover:bg-white dark:hover:bg-[#111] transition-colors"
                                 >
                                     <option value={QuestionFormatPreference.MIXED}>MIXED (Smart Selection)</option>
+                                    <option value={QuestionFormatPreference.ORIGINAL}>Strict Original Format</option>
                                     <option value={QuestionFormatPreference.MCQ}>MCQ Only</option>
                                     <option value={QuestionFormatPreference.CODING}>Coding Only</option>
                                     <option value={QuestionFormatPreference.TRACING}>Tracing Only</option>
                                     <option value={QuestionFormatPreference.SHORT_ANSWER}>Short Answer</option>
-                                    <option value={QuestionFormatPreference.ORIGINAL}>Strict Original Format</option>
+                                    
                                 </select>
                                 <div className={`absolute top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 ${lang === 'ar' ? 'left-3' : 'right-3'}`}>▼</div>
                             </div>
