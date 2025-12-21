@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ThemeOption, UILanguage } from '../types';
 import { t } from '../utils/translations';
+import { PerformanceDashboard } from './PerformanceDashboard';
 
 interface SettingsViewProps {
     isFullWidth: boolean;
@@ -42,8 +43,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     useCustomCursor, setUseCustomCursor,
     onClose
 }) => {
+    const [showDiagnostics, setShowDiagnostics] = useState(false);
+
     return (
         <div className={`mx-auto transition-all duration-300 animate-fade-in ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>
+            {showDiagnostics && <PerformanceDashboard onClose={() => setShowDiagnostics(false)} />}
+            
             <div className="bg-white dark:bg-terminal-black border-2 border-gray-300 dark:border-terminal-green shadow-xl p-0 relative overflow-hidden flex flex-col rounded-lg">
                 
                 {/* Header */}
@@ -182,7 +187,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                 <span>🛠️</span> {t('settings_system', uiLanguage)}
                             </h3>
                         </div>
-                        <div className="lg:col-span-2">
+                        <div className="lg:col-span-2 space-y-3">
+                            <button
+                                onClick={() => setShowDiagnostics(true)}
+                                className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-[#150505] rounded border border-gray-300 dark:border-terminal-green/30 hover:bg-gray-100 dark:hover:bg-terminal-green/10 hover:border-terminal-green transition-all group text-left"
+                            >
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-gray-800 dark:text-terminal-green">PERFORMANCE MONITOR</span>
+                                    <span className="text-[10px] text-gray-500">View API latency, storage quota, and interactions</span>
+                                </div>
+                                <span className="text-gray-400 dark:text-terminal-green">📊</span>
+                            </button>
+
                             <a 
                                 href="https://github.com/your-repo/terminal-exam-gen/issues" 
                                 target="_blank" 

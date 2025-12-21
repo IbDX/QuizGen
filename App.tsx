@@ -17,6 +17,7 @@ import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 import { generateExamPDF } from './utils/pdfGenerator';
 import { t } from './utils/translations';
 import { saveToHistory } from './services/library';
+import { monitor } from './services/monitor';
 
 const FONT_OPTIONS = [
     { name: 'Fira Code', value: "'Fira Code', monospace" },
@@ -59,6 +60,17 @@ const App: React.FC = () => {
     message: '',
     onConfirm: () => {},
   });
+
+  // Global Interaction Tracking for Performance Monitor
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const label = target.innerText?.slice(0, 20) || target.tagName;
+        monitor.log('INTERACTION', `Click: ${label}`);
+    };
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
 
   // Effect: Apply Theme Classes
   useEffect(() => {

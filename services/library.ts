@@ -2,10 +2,16 @@
 import { Question, SavedExam } from "../types";
 import { compressData, decompressData, calculateStringHash } from "../utils/crypto";
 import { validateExamSchema } from "../utils/security";
+import { monitor } from "./monitor";
 
 const QUESTION_STORAGE_KEY = "zplus_question_library";
 const EXAM_STORAGE_KEY = "zplus_exam_library";
 const EXAM_HISTORY_KEY = "zplus_exam_history";
+
+const logStorageMetric = () => {
+    const usage = monitor.getStorageUsage();
+    monitor.log('STORAGE_USAGE', 'LocalStorage', usage.used);
+};
 
 // --- QUESTION LIBRARY ---
 export const getLibrary = (): Question[] => {
@@ -24,12 +30,14 @@ export const saveQuestion = (question: Question) => {
   if (library.some(q => q.id === question.id)) return;
   const newLibrary = [question, ...library];
   localStorage.setItem(QUESTION_STORAGE_KEY, JSON.stringify(newLibrary));
+  logStorageMetric();
 };
 
 export const removeQuestion = (questionId: string) => {
   const library = getLibrary();
   const newLibrary = library.filter(q => q.id !== questionId);
   localStorage.setItem(QUESTION_STORAGE_KEY, JSON.stringify(newLibrary));
+  logStorageMetric();
 };
 
 export const isQuestionSaved = (questionId: string): boolean => {
@@ -60,6 +68,7 @@ export const saveFullExam = (questions: Question[], title?: string) => {
     
     const newExams = [newExam, ...exams];
     localStorage.setItem(EXAM_STORAGE_KEY, JSON.stringify(newExams));
+    logStorageMetric();
     return newExam.id;
 };
 
@@ -105,6 +114,7 @@ export const importSavedExam = async (content: string): Promise<{ success: boole
         
         const newExams = [newExam, ...exams];
         localStorage.setItem(EXAM_STORAGE_KEY, JSON.stringify(newExams));
+        logStorageMetric();
         return { success: true };
     } catch (e) {
         console.error("Import failed", e);
@@ -116,6 +126,7 @@ export const removeExam = (examId: string) => {
     const exams = getSavedExams();
     const newExams = exams.filter(e => e.id !== examId);
     localStorage.setItem(EXAM_STORAGE_KEY, JSON.stringify(newExams));
+    logStorageMetric();
 };
 
 // --- HISTORY SECTION ---
@@ -141,6 +152,7 @@ export const saveToHistory = (questions: Question[], title: string) => {
     // Add to top, keep only last 3
     const newHistory = [newEntry, ...history].slice(0, 3);
     localStorage.setItem(EXAM_HISTORY_KEY, JSON.stringify(newHistory));
+    logStorageMetric();
 };
 
 // --- DOWNLOAD HELPER ---

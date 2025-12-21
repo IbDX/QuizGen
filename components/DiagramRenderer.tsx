@@ -32,6 +32,14 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
         cleaned = cleaned.replace(/^```\s*mermaid\s*$/gim, '').replace(/^```\s*$/gim, '').trim(); 
         cleaned = cleaned.replace(/```mermaid/gi, '').replace(/```/g, '').trim();
 
+        // FIX: Quote unquoted pipe characters in node labels [Data | Next] -> ["Data | Next"]
+        // This prevents parsing errors where | is interpreted as a separator outside quotes
+        cleaned = cleaned.replace(/\[([^"\]\n]*?\|[^"\]\n]*?)\]/g, '["$1"]');
+
+        // FIX: Quote specific symbols in circle nodes that confuse the parser (( - )) -> (("-"))
+        cleaned = cleaned.replace(/\(\(\s*(-)\s*\)\)/g, '(("-"))');
+        cleaned = cleaned.replace(/\(\(\s*(\+)\s*\)\)/g, '(("+"))');
+
         // 2. Locate start of diagram
         const diagramTypes = ['classDiagram', 'graph', 'sequenceDiagram', 'erDiagram', 'stateDiagram', 'gantt', 'pie', 'flowchart', 'mindmap', 'logicDiagram'];
         let startIndex = -1;
