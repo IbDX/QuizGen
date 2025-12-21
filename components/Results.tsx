@@ -7,7 +7,7 @@ import { CodeWindow } from './CodeWindow';
 import { GraphRenderer } from './GraphRenderer';
 import { DiagramRenderer } from './DiagramRenderer';
 import { saveFullExam, triggerExamDownload } from '../services/library';
-import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini';
+import { gradeQuestionBatch, GradingResult } from '../services/gemini';
 
 interface ResultsProps {
     questions: Question[];
@@ -23,8 +23,6 @@ interface ResultsProps {
 }
 
 // --- OPTIMIZATION: Memoized Result Row ---
-// Isolates the result card. Since the grading phase updates a progress bar frequently,
-// we don't want to re-render all 50+ Result items every time the progress bar moves.
 const ResultItem = React.memo(({ q, ua, realIndex, lang, viewMode }: { q: Question, ua?: UserAnswer, realIndex: number, lang: UILanguage, viewMode: string }) => {
     let isCorrect = false;
     let userAnswerDisplay = t('no_answer_provided', lang);
@@ -136,56 +134,113 @@ export const Results: React.FC<ResultsProps> = ({
   };
 
   useEffect(() => {
-      const runGrading = async () => {
-          const pendingGrading = questions.filter(q => {
+      const executeGradingPipeline = async () => {
+          // 1. Identify Questions that require grading
+          const pendingGradingIndices = questions.map((q, idx) => {
               const ua = answers.find(a => a.questionId === q.id);
-              if (!ua) return false; 
-              if (ua.isCorrect !== undefined) return false;
-              return isSubjectiveQuestion(q);
+              if (!ua || ua.isCorrect !== undefined) return -1; // Already graded or missing
+              if (isSubjectiveQuestion(q)) return idx;
+              return -1;
+          }).filter(i => i !== -1);
+
+          // Clone answers to mutate
+          const updatedAnswers = [...answers];
+          const aiCandidates: { id: string; question: string; context: string; userAnswer: string }[] = [];
+
+          // 2. Pre-process: Handle empty answers & exact matches immediately (Client-side optimization)
+          pendingGradingIndices.forEach(idx => {
+              const q = questions[idx];
+              const uaIndex = updatedAnswers.findIndex(a => a.questionId === q.id);
+              if(uaIndex === -1) return;
+              
+              const ua = updatedAnswers[uaIndex];
+              const userText = String(ua.answer).trim();
+
+              // Rule A: Empty Answer -> Fail
+              if (!userText) {
+                  updatedAnswers[uaIndex] = { ...ua, isCorrect: false, feedback: t('no_answer_provided', lang) };
+                  return;
+              }
+
+              // Rule B: Coding Question with Expected Output -> Auto-Check
+              // If the user's code output exactly matches the expected output, we can mark it correct 
+              // without AI, though we lose the "feedback" on code quality. 
+              // *DECISION: Still use AI for feedback on Code quality, but prioritizing batching.*
+              
+              aiCandidates.push({
+                  id: q.id,
+                  question: q.text,
+                  context: q.explanation,
+                  userAnswer: userText
+              });
           });
 
-          if (pendingGrading.length === 0) {
-              setFinalAnswers(answers);
+          if (aiCandidates.length === 0) {
+              setFinalAnswers(updatedAnswers);
               setIsGradingPhase(false);
               return;
           }
 
-          setGradingProgress({ current: 0, total: pendingGrading.length });
-          const updatedAnswers = [...answers];
+          // 3. Batch Processing with Concurrency Control
+          const BATCH_SIZE = 5; // Send 5 questions per API call
+          const CONCURRENCY = 3; // Max simultaneous API calls
+          
+          setGradingProgress({ current: 0, total: aiCandidates.length });
+          let completed = 0;
 
-          for (let i = 0; i < pendingGrading.length; i++) {
-              const q = pendingGrading[i];
-              const uaIndex = updatedAnswers.findIndex(a => a.questionId === q.id);
-              const ua = updatedAnswers[uaIndex];
+          // Split into chunks
+          const chunks = [];
+          for (let i = 0; i < aiCandidates.length; i += BATCH_SIZE) {
+              chunks.push(aiCandidates.slice(i, i + BATCH_SIZE));
+          }
 
-              if (!String(ua.answer).trim()) {
-                  updatedAnswers[uaIndex] = { ...ua, isCorrect: false, feedback: t('no_answer_provided', lang) };
-              } else {
-                  try {
-                      let result;
-                      if (q.type === QuestionType.CODING) {
-                          result = await gradeCodingAnswer(q, String(ua.answer), lang);
-                      } else {
-                          result = await gradeShortAnswer(q, String(ua.answer), lang);
+          // Helper to process a chunk
+          const processChunk = async (chunk: typeof aiCandidates) => {
+              try {
+                  const results = await gradeQuestionBatch(chunk, lang);
+                  results.forEach((res: GradingResult) => {
+                      const uaIndex = updatedAnswers.findIndex(a => a.questionId === res.id);
+                      if (uaIndex !== -1) {
+                          updatedAnswers[uaIndex] = { 
+                              ...updatedAnswers[uaIndex], 
+                              isCorrect: res.isCorrect, 
+                              feedback: res.feedback 
+                          };
                       }
-                      updatedAnswers[uaIndex] = { ...ua, isCorrect: result.isCorrect, feedback: result.feedback };
-                  } catch (e: any) {
-                      console.error("Grading error", e);
-                      if (e.message?.includes('429') || e.message?.toLowerCase().includes('quota')) {
-                          onQuotaError();
-                      }
-                      updatedAnswers[uaIndex] = { ...ua, isCorrect: false, feedback: "System Error: Automated grading failed." };
+                  });
+              } catch (e: any) {
+                  console.error("Batch error", e);
+                  if (e.message?.includes('429') || e.message?.toLowerCase().includes('quota')) {
+                      onQuotaError();
                   }
+                  // Mark failed chunk as unverified but don't crash
+                  chunk.forEach(item => {
+                      const uaIndex = updatedAnswers.findIndex(a => a.questionId === item.id);
+                      if(uaIndex !== -1) {
+                          updatedAnswers[uaIndex] = { 
+                              ...updatedAnswers[uaIndex], 
+                              isCorrect: false, 
+                              feedback: "System Error: Automated grading failed due to network load." 
+                          };
+                      }
+                  });
+              } finally {
+                  completed += chunk.length;
+                  setGradingProgress(prev => ({ ...prev, current: completed }));
               }
-              
-              setGradingProgress({ current: i + 1, total: pendingGrading.length });
+          };
+
+          // Execution Pool
+          for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+              const activeChunks = chunks.slice(i, i + CONCURRENCY);
+              await Promise.all(activeChunks.map(chunk => processChunk(chunk)));
           }
 
           setFinalAnswers(updatedAnswers);
           setIsGradingPhase(false);
       };
 
-      runGrading();
+      executeGradingPipeline();
   }, [questions, answers, lang, onQuotaError]);
 
   useEffect(() => {

@@ -7,6 +7,12 @@ export interface ChatMessage {
     text: string;
 }
 
+export interface GradingResult {
+    id: string;
+    isCorrect: boolean;
+    feedback: string;
+}
+
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
@@ -153,6 +159,7 @@ export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promi
     return JSON.parse(response.text || "{}");
 };
 
+// --- SINGLE GRADING (Legacy/Fallback) ---
 export const gradeCodingAnswer = async (q: Question, answer: string, lang: string) => {
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -175,6 +182,60 @@ export const gradeShortAnswer = async (q: Question, answer: string, lang: string
         }
     });
     return JSON.parse(response.text || '{"isCorrect":false,"feedback":"Grading Error"}');
+};
+
+// --- BATCH GRADING (New High-Performance) ---
+export const gradeQuestionBatch = async (
+    items: { id: string; question: string; context: string; userAnswer: string }[],
+    lang: string
+): Promise<GradingResult[]> => {
+    if (items.length === 0) return [];
+
+    const prompt = JSON.stringify(items.map(item => ({
+        id: item.id,
+        q: item.question,
+        ctx: item.context,
+        ans: item.userAnswer
+    })));
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Bulk Grade these submissions. Input: ${prompt}`,
+            config: {
+                systemInstruction: `You are a high-speed Batch Grading Engine.
+                Analyze the JSON input array. For each item, compare 'ans' (User Answer) against 'q' (Question) and 'ctx' (Ideal Solution/Context).
+                
+                Language: ${lang === 'ar' ? 'Arabic' : 'English'}.
+                
+                Output: A JSON Array of objects.
+                Each object MUST have:
+                - id: (Matches input ID)
+                - isCorrect: boolean
+                - feedback: string (Concise, technical justification. If wrong, explain why.)`,
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            id: { type: Type.STRING },
+                            isCorrect: { type: Type.BOOLEAN },
+                            feedback: { type: Type.STRING }
+                        },
+                        required: ["id", "isCorrect", "feedback"]
+                    }
+                }
+            }
+        });
+
+        return JSON.parse(response.text || "[]");
+    } catch (e: any) {
+        console.error("Batch Grading Failed", e);
+        // If batch fails (rate limit), return empty to trigger retry or fallback
+        if (e.message && e.message.includes('429')) throw new Error("429_RATE_LIMIT");
+        return [];
+    }
 };
 
 export const generateLoadingTips = async (files: any[], lang: string) => {
