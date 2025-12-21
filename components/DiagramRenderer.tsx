@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 
 interface DiagramRendererProps {
@@ -21,59 +22,110 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
     const dragStartRef = useRef({ startX: 0, startY: 0, posX: position.x, posY: position.y });
     const viewportRef = useRef<HTMLDivElement>(null);
 
-    const cleanMermaidCode = (raw: string): string => {
+    /**
+     * Advanced Mermaid Syntax Repair Engine
+     * Fixes common AI hallucinations without requiring a re-generation call.
+     */
+    const repairMermaidSyntax = (raw: string): string => {
         if (!raw) return "";
-        let cleaned = raw.trim();
-        cleaned = cleaned.replace(/```mermaid/gi, '').replace(/```/g, '').trim();
+        let lines = raw
+            .replace(/```mermaid/gi, '')
+            .replace(/```/g, '')
+            .split('\n')
+            .map(l => l.trim())
+            .filter(l => l.length > 0);
 
-        // 1. Repair common AI syntax issues (Nested shapes and unquoted labels)
-        // Fix A -->|label| B(("Text")) where label has illegal chars
-        cleaned = cleaned.split('\n').map(line => {
-            let l = line.trim();
-            if (!l) return "";
-            // Quote box/rounded labels
-            l = l.replace(/(\w+)\[([^"\]\s]+(?:\s+[^"\]\s]+)*)\]/g, '$1["$2"]');
-            l = l.replace(/(\w+)\(\(([^" \)]+(?:\s+[^" \)]+)*)\)\)/g, '$1(("$2"))');
-            // Quote arrow labels
-            l = l.replace(/--+>\|([^"\|]+)\|/g, '-->|"$1"|');
-            return l;
-        }).join('\n');
+        // 1. Detect Diagram Type (Default to graph LR if missing)
+        const isFlowchart = lines.some(l => /^(graph|flowchart)/i.test(l));
+        const isSequence = lines.some(l => /^sequenceDiagram/i.test(l));
+        const isClass = lines.some(l => /^classDiagram/i.test(l));
+        const isKnownType = isFlowchart || isSequence || isClass || lines.some(l => /^(erDiagram|stateDiagram|gantt|pie|mindmap)/i.test(l));
 
-        const isFlowchart = /^(graph|flowchart)/i.test(cleaned);
-        
-        if (!isFlowchart && !/^(sequenceDiagram|classDiagram|erDiagram|stateDiagram|gantt|pie|mindmap)/i.test(cleaned)) {
-            cleaned = `graph LR\n${cleaned}`;
+        if (!isKnownType) {
+            // Heuristic: If it looks like nodes/edges, treat as flowchart
+            if (lines.some(l => l.includes('-->') || l.includes('->'))) {
+                lines.unshift('graph LR');
+            }
         }
 
-        // 2. Safe Styler: Instead of inline ::: which breaks connectors/semicolons, 
-        // we use the 'class ID classname' definition at the bottom.
-        if (isFlowchart || !/^(sequenceDiagram|classDiagram|erDiagram|stateDiagram|gantt|pie|mindmap)/i.test(cleaned)) {
-            const classDefs = `
-  classDef logic fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
-  classDef power fill:#ffebee,stroke:#c62828,stroke-width:3px,color:#b71c1c;
-  classDef memory fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#1b5e20;
-  classDef mux fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
-  classDef decoder fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c;
-  classDef passive fill:#fafafa,stroke:#424242,stroke-width:1px,color:#212121;
-            `;
+        // Processing Logic varies by diagram type
+        const processedLines = lines.map(line => {
+            let cleanLine = line;
 
-            // Collect all IDs found in the diagram to apply generic classes safely
-            const nodeIds = Array.from(new Set(cleaned.match(/\b\w+\b/g) || []));
+            if (isFlowchart || !isKnownType) {
+                // A. Fix Invalid Node IDs with spaces: "Node One[Label]" -> "Node_One[Label]"
+                // Only matches if it looks like a definition line
+                if (/^[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s*[\[\(\{\<]/.test(cleanLine)) {
+                    cleanLine = cleanLine.replace(/^([a-zA-Z0-9]+)\s+([a-zA-Z0-9]+)(\s*[\[\(\{\<])/, '$1_$2$3');
+                }
+
+                // B. Auto-Quote Unquoted Labels (Crucial for AI output)
+                // Fixes: A[User: Login] -> A["User: Login"]
+                // Matches ID followed by bracket, capture content, ensure it's not already quoted
+                const shapeRegex = /^([a-zA-Z0-9_]+)(\s*)([\[\(\{\<]+)(?!")(.+?)(?!")([\]\)\}\>]+)(\s*.*)$/;
+                const match = cleanLine.match(shapeRegex);
+                
+                if (match) {
+                    const [full, id, space, open, content, close, rest] = match;
+                    
+                    // Check if content needs quoting (has spaces or special chars)
+                    // and isn't a subgraph or specific keyword
+                    if (/[:,\-\(\)\{\}\[\]]/.test(content) || (content.includes(' ') && !content.startsWith('"'))) {
+                        // Correct bracket mismatches if necessary (e.g. A[Text) -> A[Text])
+                        let safeClose = close;
+                        if(open.includes('[') && !close.includes(']')) safeClose = ']';
+                        if(open.includes('(') && !close.includes(')')) safeClose = ')';
+                        if(open.includes('{') && !close.includes('}')) safeClose = '}';
+                        
+                        cleanLine = `${id}${space}${open}"${content.replace(/"/g, "'")}"${safeClose}${rest}`;
+                    }
+                }
+
+                // C. Fix Broken Edge Labels
+                // Fixes: -->|Text with : chars| -> -->|"Text with : chars"|
+                if (cleanLine.includes('|')) {
+                    cleanLine = cleanLine.replace(/(--+|==+)\|([^"\|]+)\|/g, (m, arrow, label) => {
+                        return `${arrow}|"${label.replace(/"/g, "'")}"|`;
+                    });
+                }
+            }
+
+            return cleanLine;
+        });
+
+        // 3. Append Styling Classes safely
+        if (isFlowchart || !isKnownType) {
+            const classDefs = `
+classDef logic fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+classDef power fill:#ffebee,stroke:#c62828,stroke-width:3px,color:#b71c1c;
+classDef memory fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#1b5e20;
+classDef mux fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+classDef passive fill:#fafafa,stroke:#424242,stroke-width:1px,color:#212121;
+            `.trim();
+
+            const fullText = processedLines.join('\n');
+            const nodeIds = Array.from(new Set(fullText.match(/^\s*([a-zA-Z0-9_]+)[\[\(\{\<]/gm)?.map(s => s.split(/[\[\(\{\<]/)[0].trim()) || []));
             const classAssignments: string[] = [];
 
             nodeIds.forEach(id => {
-                if (/Battery|BATT|VCC|Source|Vdd|Vss/i.test(id)) classAssignments.push(`class ${id} power`);
-                else if (/Reg|RAM|ROM|PC|Stack|Cache|Memory|D-FF/i.test(id)) classAssignments.push(`class ${id} memory`);
-                else if (/AND|OR|XOR|NOT|NAND|NOR|Gate|Flip|FF|Latch/i.test(id)) classAssignments.push(`class ${id} logic`);
-                else if (/MUX|DEMUX|Multiplexer/i.test(id)) classAssignments.push(`class ${id} mux`);
-                else if (/Decoder|Encoder|3:8|2:4|ALU/i.test(id)) classAssignments.push(`class ${id} decoder`);
-                else if (/Resistor|Capacitor|Inductor|R\d|C\d|L\d|Ohm/i.test(id)) classAssignments.push(`class ${id} passive`);
+                // Determine class based on ID conventions or Label content
+                // We grep the line defining this ID to check its label content
+                const defLine = processedLines.find(l => l.startsWith(id));
+                const content = defLine ? defLine.toLowerCase() : id.toLowerCase();
+
+                if (/battery|vcc|gnd|source|power/.test(content)) classAssignments.push(`class ${id} power`);
+                else if (/reg|ram|rom|memory|cache/.test(content)) classAssignments.push(`class ${id} memory`);
+                else if (/and|or|xor|not|nand|gate/.test(content)) classAssignments.push(`class ${id} logic`);
+                else if (/mux|demux/.test(content)) classAssignments.push(`class ${id} mux`);
+                else if (/resistor|capacitor|inductor/.test(content)) classAssignments.push(`class ${id} passive`);
             });
 
-            return cleaned + '\n' + classAssignments.join('\n') + '\n' + classDefs;
+            if (classAssignments.length > 0) {
+                return processedLines.join('\n') + '\n' + classAssignments.join('\n') + '\n' + classDefs;
+            }
         }
 
-        return cleaned;
+        return processedLines.join('\n');
     };
 
     useEffect(() => {
@@ -92,13 +144,17 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
                     flowchart: {
                         curve: 'stepBefore',
                         padding: 20,
-                        useMaxWidth: false
+                        useMaxWidth: false,
+                        htmlLabels: true
                     }
                 });
 
-                const safeCode = cleanMermaidCode(code);
+                const safeCode = repairMermaidSyntax(code);
+                
+                // Attempt Render
                 const { svg: renderedSvg } = await window.mermaid.render(id, safeCode);
                 
+                // Post-Process SVG for Theme Consistency
                 const styledSvg = renderedSvg.replace('<style>', `
                     <style>
                         .node rect, .node polygon, .node circle, .node ellipse, .node path {
@@ -108,17 +164,19 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
                            background-image: radial-gradient(#888 0.3px, transparent 0.3px);
                            background-size: 20px 20px;
                         }
-                        .edgePath path { stroke-width: 2.5px !important; }
+                        /* Hardware Schematic Colors */
                         .dark .edgePath path { stroke: #00ff41 !important; }
-                        .dark .node rect { fill: #0a0a0a !important; stroke: #00ff41 !important; }
-                        .dark .node .label { color: #00ff41 !important; }
+                        .dark .node rect, .dark .node polygon { fill: #0a0a0a !important; stroke: #00ff41 !important; }
+                        .dark .node .label { color: #00ff41 !important; fill: #00ff41 !important; }
                         .dark .label foreignObject { color: #00ff41 !important; }
+                        .dark .marker { fill: #00ff41 !important; stroke: #00ff41 !important; }
                 `);
 
                 setSvg(styledSvg);
                 setError(null);
             } catch (err: any) {
                 console.error("Mermaid Render Error:", err);
+                console.debug("Failed Code:", code);
                 setError(err.message || "Logic Rendering Violation.");
             }
         };
@@ -145,9 +203,14 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
     if (error) {
         return (
             <div className={`p-4 border border-red-500 bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 text-[10px] font-mono rounded-lg ${className}`}>
-                <div className="font-bold mb-2 flex items-center gap-2 uppercase tracking-tighter">⚠️ Diagram Protocol Fault</div>
-                <pre className="bg-black/10 p-2 rounded mb-2 overflow-x-auto whitespace-pre text-[8px] max-h-32">{code}</pre>
-                <div className="opacity-70 italic text-[8px]">{error}</div>
+                <div className="font-bold mb-2 flex items-center gap-2 uppercase tracking-tighter">
+                    <span>⚠️</span> Diagram Protocol Fault
+                </div>
+                <div className="mb-2 opacity-80">The generated schematic contained syntax errors. Raw output displayed:</div>
+                <pre className="bg-black/10 dark:bg-black/50 p-2 rounded mb-2 overflow-x-auto whitespace-pre text-[8px] max-h-32 border border-red-500/30">
+                    {code}
+                </pre>
+                <div className="opacity-70 italic text-[8px] border-t border-red-500/20 pt-1 mt-1">{error}</div>
             </div>
         );
     }
