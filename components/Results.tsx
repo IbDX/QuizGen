@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Question, UserAnswer, QuestionType, UILanguage, LeaderboardEntry } from '../types';
+import { Question, UserAnswer, QuestionType, UILanguage, LeaderboardEntry, AppError, ErrorCode } from '../types';
 import { t } from '../utils/translations';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
@@ -209,18 +209,21 @@ export const Results: React.FC<ResultsProps> = ({
                       }
                   });
               } catch (e: any) {
-                  console.error("Batch error", e);
-                  if (e.message?.includes('429') || e.message?.toLowerCase().includes('quota')) {
+                  const appError = e instanceof AppError ? e : new AppError(e.message, ErrorCode.UNKNOWN);
+                  console.error("Batch error", appError);
+                  
+                  if (appError.code === ErrorCode.RATE_LIMIT) {
                       onQuotaError();
                   }
-                  // Mark failed chunk as unverified but don't crash
+                  
+                  // Mark failed chunk as unverified but don't crash the whole UI
                   chunk.forEach(item => {
                       const uaIndex = updatedAnswers.findIndex(a => a.questionId === item.id);
                       if(uaIndex !== -1) {
                           updatedAnswers[uaIndex] = { 
                               ...updatedAnswers[uaIndex], 
                               isCorrect: false, 
-                              feedback: "System Error: Automated grading failed due to network load." 
+                              feedback: `${t(appError.code, lang).title}: ${t(appError.code, lang).msg}` 
                           };
                       }
                   });

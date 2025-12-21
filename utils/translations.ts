@@ -1,4 +1,6 @@
 
+import { ErrorCode } from '../types';
+
 export const translations = {
     en: {
         // Layout & Settings
@@ -302,10 +304,69 @@ export const translations = {
     }
 };
 
+export const errorTranslations = {
+  en: {
+    [ErrorCode.NETWORK_TIMEOUT]: {
+      title: "Connection Timed Out",
+      msg: "The AI is taking too long to respond. Please check your connection and try again."
+    },
+    [ErrorCode.RATE_LIMIT]: {
+      title: "System Busy",
+      msg: "We are experiencing high traffic (Quota Exceeded). Please wait 30 seconds before retrying."
+    },
+    [ErrorCode.MALFORMED_RESPONSE]: {
+      title: "Data Processing Error",
+      msg: "The AI generated an invalid format. We are automatically retrying..."
+    },
+    [ErrorCode.PARTIAL_DATA]: {
+      title: "Partial Success",
+      msg: "Some content was unreadable and has been filtered out to ensure stability."
+    },
+    [ErrorCode.API_ERROR]: {
+      title: "Server Error",
+      msg: "Unable to contact Gemini servers."
+    },
+    [ErrorCode.UNKNOWN]: {
+      title: "Unexpected Error",
+      msg: "An unknown error occurred. Please refresh."
+    }
+  },
+  ar: {
+    [ErrorCode.NETWORK_TIMEOUT]: {
+      title: "انتهت مهلة الاتصال",
+      msg: "استغرق الذكاء الاصطناعي وقتاً طويلاً. يرجى التحقق من الإنترنت والمحاولة مجدداً."
+    },
+    [ErrorCode.RATE_LIMIT]: {
+      title: "النظام مشغول جداً",
+      msg: "حركة المرور عالية حالياً (تجاوز الحصة). يرجى الانتظار 30 ثانية."
+    },
+    [ErrorCode.MALFORMED_RESPONSE]: {
+      title: "خطأ في معالجة البيانات",
+      msg: "أنتج النظام تنسيقاً غير صالح. جاري إعادة المحاولة..."
+    },
+    [ErrorCode.PARTIAL_DATA]: {
+      title: "نجاح جزئي",
+      msg: "تم استبعاد بعض البيانات غير الصالحة لضمان استقرار النظام."
+    },
+    [ErrorCode.API_ERROR]: {
+      title: "خطأ في الخادم",
+      msg: "تعذر الاتصال بخوادم Gemini."
+    },
+    [ErrorCode.UNKNOWN]: {
+      title: "خطأ غير متوقع",
+      msg: "حدث خطأ غير معروف. يرجى تحديث الصفحة."
+    }
+  }
+};
+
 export type TranslationKey = keyof typeof translations['en'];
 
-export const t = (key: TranslationKey, lang: string): string => {
-    return translations[lang === 'ar' ? 'ar' : 'en'][key] || translations['en'][key] || key;
+export const t = (key: TranslationKey | ErrorCode, lang: string): any => {
+    // Check if it's an error code first for object return
+    if (Object.values(ErrorCode).includes(key as ErrorCode)) {
+        return errorTranslations[lang === 'ar' ? 'ar' : 'en'][key as ErrorCode];
+    }
+    return translations[lang === 'ar' ? 'ar' : 'en'][key as TranslationKey] || translations['en'][key as TranslationKey] || key;
 };
 
 const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];

@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, sendExamBuilderMessage, generateExamFromBuilderChat } from '../services/gemini';
-import { Question, ExamSettings } from '../types';
+import { Question, ExamSettings, AppError, ErrorCode } from '../types';
 import { saveFullExam, triggerExamDownload } from '../services/library';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { t } from '../utils/translations';
@@ -100,14 +100,14 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
             setQuickReplies(newSuggestions.slice(0, 3)); // Ensure max 3
 
         } catch (error: any) {
-            // SPECIFIC 429 HANDLING
-            if (error.message === "429_RATE_LIMIT" || 
-                error.message?.includes('429') || 
-                error.message?.toLowerCase().includes('quota') ||
-                error.message?.toLowerCase().includes('resource_exhausted')) {
+            const appError = error instanceof AppError ? error : new AppError(error.message, ErrorCode.UNKNOWN);
+            
+            if (appError.code === ErrorCode.RATE_LIMIT) {
                 onQuotaError();
+                setMessages(prev => [...prev, { role: 'model', text: t('system_locked', lang) }]); // Or explicit error message
+            } else {
+                setMessages(prev => [...prev, { role: 'model', text: t('connection_error', lang) }]);
             }
-            setMessages(prev => [...prev, { role: 'model', text: t('connection_error', lang) }]);
         } finally {
             setIsTyping(false);
         }
@@ -123,17 +123,17 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
         setIsFinalizing(true);
         try {
             const { questions, settings, title } = await generateExamFromBuilderChat(messages);
+            if (!questions || questions.length === 0) throw new AppError("No questions", ErrorCode.MALFORMED_RESPONSE);
             setGeneratedData({ questions, settings, title });
         } catch (error: any) {
             console.error(error);
-            // SPECIFIC 429 HANDLING
-            if (error.message === "429_RATE_LIMIT" || 
-                error.message?.includes('429') || 
-                error.message?.toLowerCase().includes('quota') ||
-                error.message?.toLowerCase().includes('resource_exhausted')) {
+            const appError = error instanceof AppError ? error : new AppError(error.message, ErrorCode.UNKNOWN);
+            
+            if (appError.code === ErrorCode.RATE_LIMIT) {
                 onQuotaError();
+            } else {
+                alert(t(appError.code, lang).msg || "Failed to compile exam.");
             }
-            alert("Failed to compile exam from chat. Please ensure the conversation has defined specific questions.");
             setIsFinalizing(false);
         }
     };
@@ -267,7 +267,7 @@ export const ExamBuilder: React.FC<ExamBuilderProps> = ({ onExamGenerated, onCan
                      </div>
                 </div>
             ) : !languageSelected ? (
-                // LANGUAGE SELECTION SCREEN
+                // LANGUAGE SELECTION SCREEN ...
                 <div className="flex-grow flex flex-col items-center justify-center p-6 bg-[#050505] animate-fade-in overflow-y-auto relative z-10">
                     <div className="max-w-md w-full text-center space-y-8">
                         <div className="space-y-3">

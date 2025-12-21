@@ -92,3 +92,28 @@ export type AppState =
   | 'EXAM'
   | 'RESULTS'
   | 'LIBRARY';
+
+// --- ERROR HANDLING TYPES ---
+
+export enum ErrorCode {
+  NETWORK_TIMEOUT = 'NETWORK_TIMEOUT',
+  RATE_LIMIT = 'RATE_LIMIT', // 429
+  MALFORMED_RESPONSE = 'MALFORMED_RESPONSE',
+  PARTIAL_DATA = 'PARTIAL_DATA',
+  API_ERROR = 'API_ERROR',
+  UNKNOWN = 'UNKNOWN'
+}
+
+export class AppError extends Error {
+  code: ErrorCode;
+  originalError?: any;
+  recoverable: boolean;
+
+  constructor(message: string, code: ErrorCode, originalError?: any, recoverable: boolean = true) {
+    super(message);
+    this.name = 'AppError';
+    this.code = code;
+    this.originalError = originalError;
+    this.recoverable = recoverable;
+  }
+}
