@@ -151,21 +151,24 @@
         background: var(--color-term-green);
       }
       
-      /* MathJax Overrides - CRITICAL FOR RTL FIX & VISUAL ARTIFACTS */
+      /* MathJax Overrides */
       mjx-container {
-        display: inline-block !important;
-        margin: 0 !important;
-        direction: ltr !important; /* Force math to always be LTR */
-        text-align: left !important;
-        unicode-bidi: isolate !important; /* Isolate math from RTL context */
         outline: none !important; /* Remove potential focus outlines */
       }
+      /* Ensure SVG allows overflow for tall math symbols but respects flow */
       mjx-container svg {
-        display: block; /* Fix vertical alignment issues */
-        overflow: visible; /* Allow glyphs to extend if needed */
+        overflow: visible; 
       }
+      /* Hide the assistive MathML to prevent the 'double rendering' or 'weird line' artifacts */
       mjx-assistive-mathml {
-        display: none !important; /* Hard hide to prevent line artifacts */
+        display: none !important;
+        position: absolute !important;
+        clip: rect(1px, 1px, 1px, 1px);
+        padding: 0;
+        border: 0;
+        height: 1px;
+        width: 1px;
+        overflow: hidden;
       }
       .katex-wrapper { /* Keep class name for compatibility */
         display: inline-block;
@@ -192,4 +195,3 @@
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
-    

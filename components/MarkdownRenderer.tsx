@@ -14,8 +14,6 @@ interface MarkdownRendererProps {
 }
 
 // --- MATHJAX CACHING STRATEGY ---
-// Caches the generated SVG HTML string for a given LaTeX input.
-// This prevents expensive re-rendering of common symbols (e.g., "x", "y", integrals).
 const mathCache = new Map<string, string>();
 
 const getCachedMath = async (latex: string, displayMode: boolean): Promise<string> => {
@@ -36,59 +34,14 @@ const getCachedMath = async (latex: string, displayMode: boolean): Promise<strin
         return html;
     } catch (e) {
         console.warn('MathJax Render Error', e);
-        return latex;
+        return `<span class="text-red-500 text-xs">${latex}</span>`;
     }
 };
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content, className = "" }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [processedHtml, setProcessedHtml] = useState<string>('');
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const processContent = async () => {
-        if (!content) return;
-
-        // 1. Pre-process Markdown (Bold, Italic, Inline Code)
-        let html = processInlineMarkdown(content);
-
-        // 2. Identify Math Delimiters and replace with Cached SVG
-        // We use a regex to find all math segments first
-        const mathRegex = /(\$\$[\s\S]+?\$\$)|(\$[^$\n]+?\$)|(\\\[[\s\S]+?\\\])|(\\\([^)\n]+?\\\))/g;
-        
-        // We need to process async replacements. 
-        // split by regex includes capturing groups, so we iterate carefully.
-        const parts = html.split(mathRegex);
-        
-        const resolvedParts = await Promise.all(parts.map(async (part) => {
-            if (!part) return '';
-            
-            // Check if this part is a math string
-            if (part.startsWith('$$') || part.startsWith('\\[')) {
-                const tex = part.replace(/^\$\$|\$\$|\\\[|\\\]$/g, '');
-                return await getCachedMath(tex, true);
-            } else if (part.startsWith('$') || part.startsWith('\\(')) {
-                const tex = part.replace(/^\$|\$|\\\(|\\\)$/g, '');
-                return await getCachedMath(tex, false);
-            }
-            return part;
-        }));
-
-        if (isMounted) {
-            setProcessedHtml(resolvedParts.join(''));
-        }
-    };
-
-    processContent();
-
-    return () => { isMounted = false; };
-  }, [content]);
-
   if (!content) return null;
 
   // Split content by code blocks to avoid rendering Markdown/Math inside code
-  // This logic runs BEFORE the async math processing to ensure code blocks remain pristine
   const parts = content.split(/```(\w*)\n?([\s\S]*?)```/g);
 
   return (
@@ -99,11 +52,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ c
         // Case 0: Regular Text (Markdown + Math)
         if (mod === 0) {
           if (!part.trim()) return null;
-          // If we are in the main text block, we use the processed HTML state if available, 
-          // otherwise fallback to raw until effect runs (prevents flicker, but might show raw latex briefly)
-          // However, since we split by code blocks *outside*, the 'content' prop passed to THIS component
-          // might be just a chunk.
-          // To simplify: We render a sub-component for text chunks to handle the async math.
           return <AsyncMathText key={index} content={part} />;
         }
 
@@ -124,31 +72,45 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ c
 
 // Sub-component to handle async math rendering for text chunks
 const AsyncMathText: React.FC<{ content: string }> = ({ content }) => {
-    const [html, setHtml] = useState<string>(processInlineMarkdown(content)); // Initial state is markdown processed
+    const [html, setHtml] = useState<string>(content); // Initial state is raw content (avoids flash of broken md)
 
     useEffect(() => {
         let isMounted = true;
         const renderMath = async () => {
-            const mathRegex = /(\$\$[\s\S]+?\$\$)|(\$[^$\n]+?\$)|(\\\[[\s\S]+?\\\])|(\\\([^)\n]+?\\\))/g;
+            // Regex to find math. Supports $$...$$, \[...\], $...$, \(...\)
+            // Updated to be more permissive with newlines in inline math if needed
+            const mathRegex = /(\$\$[\s\S]+?\$\$)|(\$[^$]+?\$)|(\\\[[\s\S]+?\\\])|(\\\([^)\n]+?\\\))/g;
+            
+            // 1. Split content by Math regex
             const parts = content.split(mathRegex);
             
-            // Reconstruct string replacing math parts with SVGs
+            // 2. Process each part: If match math regex -> Render Math. Else -> Process Markdown.
             const result = await Promise.all(parts.map(async (part) => {
                 if (!part) return '';
-                // Determine if part matches a math delimiter
-                if (part.match(mathRegex)) {
+                
+                // Strict check: Is this part EXACTLY a math string?
+                // The split regex captures the delimiters, so 'part' will be "$x$" or "$$x$$" etc.
+                const isMath = /^(\$\$[\s\S]+?\$\$)|(\$[^$]+?\$)|(\\\[[\s\S]+?\\\])|(\\\([^)\n]+?\\\))$/.test(part);
+
+                if (isMath) {
                     const isDisplay = part.startsWith('$$') || part.startsWith('\\[');
-                    // Strip delimiters
+                    // Strip delimiters for MathJax processing
                     const cleanTex = part.replace(/^(\$\$|\$|\\\[|\\\()|(\$\$|\$|\\\]|\\\))$/g, '');
+                    
                     const svg = await getCachedMath(cleanTex, isDisplay);
-                    // Wrap in span for accessibility
+                    
+                    // Wrap in span to protect from subsequent markdown processing (if any, though we did it separately)
+                    // and for accessibility/styling
                     return `<span class="math-container" aria-label="${cleanTex.replace(/"/g, '&quot;')}" role="img">${svg}</span>`;
                 }
+                
+                // If not math, apply Markdown formatting (Bold, Italic, Inline Code)
                 return processInlineMarkdown(part);
             }));
 
             if (isMounted) setHtml(result.join(''));
         };
+        
         renderMath();
         return () => { isMounted = false; };
     }, [content]);
@@ -172,6 +134,7 @@ export const processInlineMarkdown = (text: string) => {
     };
 
     // 1. Inline Code `text` - Ensure high contrast for accessibility
+    // Process this FIRST so backticks aren't confused with other things
     temp = temp.replace(/`([^`]+)`/g, (match, codeContent) => {
         const escaped = codeContent
             .replace(/&/g, "&amp;")
@@ -180,18 +143,19 @@ export const processInlineMarkdown = (text: string) => {
         return store(`<span class="font-mono text-[0.9em] bg-gray-200 dark:bg-[#1e1e1e] text-red-700 dark:text-terminal-green px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 break-words box-decoration-clone" dir="ltr">${escaped}</span>`);
     });
 
-    // 2. HTML Escape
+    // 2. HTML Escape (Basic) - Prevent XSS from raw text while preserving our placeholders
     temp = temp
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
     // 3. Markdown Formatting
-    // Strong/Bold
-    temp = temp.replace(/\*\*([^*]+?)\*\*/g, '<strong class="text-black dark:text-white font-bold">$1</strong>');
+    // Strong/Bold (** or __)
+    temp = temp.replace(/(\*\*|__)(.*?)\1/g, '<strong class="text-black dark:text-white font-bold">$2</strong>');
     
-    // Italic
-    temp = temp.replace(/(^|[^\\*])\*([^*]+?)\*(?!\*)/g, '$1<em class="italic">$2</em>');
+    // Italic (* or _)
+    // Note: We use a stricter regex to avoid matching math symbols if they leaked here (though math is processed first now)
+    temp = temp.replace(/(\*|_)(.*?)\1/g, '<em class="italic">$2</em>');
 
     // 4. Restore Placeholders
     placeholders.forEach(ph => {
