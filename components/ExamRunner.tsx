@@ -59,16 +59,27 @@ const QuestionPanel: React.FC<QuestionPanelProps> = React.memo(({
     return (
         <div className="flex-grow border border-gray-300 dark:border-terminal-green p-4 md:p-10 bg-white dark:bg-terminal-black relative overflow-hidden shadow-xl flex flex-col transition-colors duration-300 min-h-[500px]">
             {enlargedImage && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" onClick={() => setEnlargedImage(null)}>
-                    <img src={enlargedImage} alt="Visual" className="max-w-full max-h-full object-contain rounded border border-gray-700" />
-                    <button className="absolute top-4 right-4 text-white text-2xl font-bold p-2 hover:text-red-500">✕</button>
+                <div 
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" 
+                    onClick={() => setEnlargedImage(null)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Enlarged Image View"
+                >
+                    <img src={enlargedImage} alt="Visual Detail" className="max-w-full max-h-full object-contain rounded border border-gray-700" />
+                    <button className="absolute top-4 right-4 text-white text-2xl font-bold p-2 hover:text-red-500" aria-label="Close Image">✕</button>
                 </div>
             )}
 
             <div className="flex justify-between items-start mb-6">
                 <span className="text-xs text-gray-400 dark:text-terminal-green/50 font-mono uppercase tracking-widest">{t('question', lang)} {idx + 1}</span>
                 <div className="flex items-center gap-3">
-                    <button onClick={onToggleSave} className={`transition-transform hover:scale-125 ${savedState ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}>
+                    <button 
+                        onClick={onToggleSave} 
+                        className={`transition-transform hover:scale-125 ${savedState ? 'text-red-500' : 'text-gray-300 dark:text-gray-700 hover:text-red-400'}`}
+                        aria-label={savedState ? "Unsave Question" : "Save Question for Later"}
+                        title={savedState ? "Unsave" : "Save"}
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                         </svg>
@@ -78,7 +89,7 @@ const QuestionPanel: React.FC<QuestionPanelProps> = React.memo(({
             </div>
             
             <div className="mb-8">
-                 <div className="text-lg md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-terminal-light">
+                 <div className="text-lg md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-terminal-light" id={`q-text-${q.id}`}>
                    <MarkdownRenderer content={q.text} className="w-full" />
                  </div>
             </div>
@@ -87,7 +98,7 @@ const QuestionPanel: React.FC<QuestionPanelProps> = React.memo(({
             {q.diagramConfig && <div className="mb-10"><DiagramRenderer code={q.diagramConfig.code} /></div>}
             {!q.graphConfig && !q.diagramConfig && q.visual && (
                 <div className="mb-10 inline-block rounded border border-gray-300 dark:border-terminal-gray overflow-hidden cursor-zoom-in bg-gray-50 dark:bg-black" onClick={() => setEnlargedImage(`data:image/png;base64,${q.visual}`)}>
-                    <img src={`data:image/png;base64,${q.visual}`} alt="Visual" className="max-h-64 object-contain" />
+                    <img src={`data:image/png;base64,${q.visual}`} alt="Question Visual" className="max-h-64 object-contain" />
                 </div>
             )}
 
@@ -99,21 +110,32 @@ const QuestionPanel: React.FC<QuestionPanelProps> = React.memo(({
               <div className="mb-6">
                 <h4 className="text-[10px] font-bold text-gray-400 dark:text-terminal-green uppercase tracking-widest mb-3">Response Buffer:</h4>
                 {isStandardMCQ ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3" role="radiogroup" aria-labelledby={`q-text-${q.id}`}>
                     {q.options!.map((opt, optIdx) => (
-                        <label key={optIdx} className={`flex items-center p-4 border rounded cursor-pointer transition-all ${answer === optIdx ? 'border-terminal-green bg-terminal-green/5 shadow-inner' : 'border-gray-300 dark:border-terminal-gray hover:bg-gray-50 dark:hover:bg-terminal-gray/20'}`}>
-                        <div className={`w-5 h-5 rounded-full border-2 mr-4 rtl:mr-0 rtl:ml-4 flex items-center justify-center flex-shrink-0 transition-colors ${answer === optIdx ? 'border-terminal-green bg-terminal-green' : 'border-gray-400'}`}>
-                                {answer === optIdx && <div className="w-1.5 h-1.5 bg-black rounded-full"></div>}
-                        </div>
-                        <input type="radio" name={`q-${q.id}`} checked={answer === optIdx} onChange={() => onAnswer(optIdx)} className="hidden" disabled={showFeedback && isTwoWay} />
-                        <span className="text-sm md:text-base font-medium dark:text-terminal-light"><MarkdownRenderer content={opt} /></span>
+                        <label 
+                            key={optIdx} 
+                            className={`flex items-center p-4 border rounded cursor-pointer transition-all focus-within:ring-2 focus-within:ring-blue-500 dark:focus-within:ring-terminal-green ${answer === optIdx ? 'border-terminal-green bg-terminal-green/5 shadow-inner' : 'border-gray-300 dark:border-terminal-gray hover:bg-gray-50 dark:hover:bg-terminal-gray/20'}`}
+                        >
+                            <div className={`w-5 h-5 rounded-full border-2 mr-4 rtl:mr-0 rtl:ml-4 flex items-center justify-center flex-shrink-0 transition-colors ${answer === optIdx ? 'border-terminal-green bg-terminal-green' : 'border-gray-400'}`}>
+                                    {answer === optIdx && <div className="w-1.5 h-1.5 bg-black rounded-full"></div>}
+                            </div>
+                            {/* WCAG FIX: Use sr-only instead of hidden to allow keyboard focus */}
+                            <input 
+                                type="radio" 
+                                name={`q-${q.id}`} 
+                                checked={answer === optIdx} 
+                                onChange={() => onAnswer(optIdx)} 
+                                className="sr-only" 
+                                disabled={showFeedback && isTwoWay} 
+                            />
+                            <span className="text-sm md:text-base font-medium dark:text-terminal-light"><MarkdownRenderer content={opt} /></span>
                         </label>
                     ))}
                     </div>
                 ) : (
                     <div className="space-y-3">
                         {q.type === QuestionType.CODING ? (
-                            <div className="border-2 border-gray-300 dark:border-terminal-green/30 rounded overflow-hidden shadow-inner">
+                            <div className="border-2 border-gray-300 dark:border-terminal-green/30 rounded overflow-hidden shadow-inner focus-within:ring-2 focus-within:ring-terminal-green">
                                 <div className="bg-gray-100 dark:bg-[#151515] p-2 text-[10px] font-bold border-b dark:border-terminal-green/20 text-gray-500 dark:text-terminal-green/60 uppercase">Input Terminal</div>
                                 <Editor
                                     value={String(answer)}
@@ -123,7 +145,9 @@ const QuestionPanel: React.FC<QuestionPanelProps> = React.memo(({
                                     style={{ fontFamily: 'Fira Code, monospace', fontSize: 13, minHeight: '180px', backgroundColor: 'transparent' }}
                                     disabled={showFeedback && isTwoWay}
                                     className="dark:text-terminal-light"
+                                    textareaId={`code-input-${q.id}`}
                                 />
+                                <label htmlFor={`code-input-${q.id}`} className="sr-only">Code Answer</label>
                             </div>
                         ) : (
                             <textarea 
@@ -132,6 +156,7 @@ const QuestionPanel: React.FC<QuestionPanelProps> = React.memo(({
                                 className="w-full bg-gray-50 dark:bg-[#0c0c0c] border-2 border-gray-300 dark:border-terminal-green/30 p-4 font-mono focus:border-blue-500 dark:focus:border-terminal-green outline-none text-base md:text-lg rounded dark:text-terminal-light min-h-[140px] shadow-inner transition-colors"
                                 disabled={showFeedback && isTwoWay}
                                 placeholder="..."
+                                aria-label="Short Answer Input"
                             />
                         )}
                     </div>
@@ -139,7 +164,7 @@ const QuestionPanel: React.FC<QuestionPanelProps> = React.memo(({
               </div>
 
               {showFeedback && (
-                  <div className={`mb-8 p-5 border-l-4 animate-fade-in ${isCorrect ? 'border-green-500 bg-green-500/5' : 'border-red-500 bg-red-500/5'}`}>
+                  <div role="alert" className={`mb-8 p-5 border-l-4 animate-fade-in ${isCorrect ? 'border-green-500 bg-green-500/5' : 'border-red-500 bg-red-500/5'}`}>
                       <h4 className={`font-bold mb-3 text-sm tracking-widest ${isCorrect ? 'text-green-500' : 'text-red-500'}`}>
                           {isCorrect ? "✓ LOGIC VERIFIED" : "✕ LOGIC FAULT"}
                       </h4>
@@ -148,7 +173,12 @@ const QuestionPanel: React.FC<QuestionPanelProps> = React.memo(({
               )}
 
               <div className="pt-6 border-t border-gray-200 dark:border-terminal-gray/30 flex items-center justify-between gap-4">
-                   <button onClick={onPrev} disabled={isFirst || !isTwoWay && isGrading} className="p-3 rounded-full text-terminal-green hover:bg-terminal-green/10 disabled:opacity-0 transition-all active:scale-90">
+                   <button 
+                        onClick={onPrev} 
+                        disabled={isFirst || !isTwoWay && isGrading} 
+                        className="p-3 rounded-full text-terminal-green hover:bg-terminal-green/10 disabled:opacity-0 transition-all active:scale-90"
+                        aria-label="Previous Question"
+                   >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                    </button>
 
@@ -165,7 +195,12 @@ const QuestionPanel: React.FC<QuestionPanelProps> = React.memo(({
                        )}
                    </div>
 
-                   <button onClick={onNext} disabled={isLast || isGrading} className="p-3 rounded-full text-terminal-green hover:bg-terminal-green/10 disabled:opacity-0 transition-all active:scale-90">
+                   <button 
+                        onClick={onNext} 
+                        disabled={isLast || isGrading} 
+                        className="p-3 rounded-full text-terminal-green hover:bg-terminal-green/10 disabled:opacity-0 transition-all active:scale-90"
+                        aria-label="Next Question"
+                   >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                    </button>
               </div>
@@ -221,6 +256,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         const yOffset = -120;
         const y = topRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
         window.scrollTo({top: y, behavior: 'smooth'});
+        topRef.current.focus(); // Set focus to top
     } else {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -305,7 +341,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   
   return (
     <div className={`flex flex-col h-full transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-5xl mx-auto'}`}>
-      <div ref={topRef} className="scroll-mt-32"></div>
+      <div ref={topRef} className="scroll-mt-32 outline-none" tabIndex={-1}></div>
 
       {/* HEADER SECTION (Updates frequently due to timer) */}
       <div className="mb-4">
@@ -319,19 +355,21 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 p-3 border border-gray-300 dark:border-terminal-green bg-white dark:bg-terminal-black shadow-sm gap-4 sticky top-[64px] z-20 backdrop-blur-sm">
-         <div className="flex flex-wrap gap-1.5 justify-center rtl:flex-row-reverse">
+         <div className="flex flex-wrap gap-1.5 justify-center rtl:flex-row-reverse" role="navigation" aria-label="Question Navigation">
             {questions.map((q, idx) => (
                 <button
                     key={idx}
                     onClick={() => jumpToQuestion(idx)}
                     disabled={isOneWay || isGrading}
+                    aria-label={`Go to Question ${idx + 1}`}
+                    aria-current={idx === currentIndex ? 'true' : undefined}
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all ${idx === currentIndex ? 'bg-terminal-green text-black border-terminal-green scale-110 shadow-lg' : answers.has(q.id) ? 'bg-gray-200 dark:bg-terminal-dimGreen text-black border-terminal-dimGreen' : 'bg-transparent text-gray-400 dark:text-terminal-green border-gray-300 dark:border-terminal-gray hover:border-terminal-green'}`}
                 >
                     {lang === 'ar' ? toArabicNumerals(idx + 1) : idx + 1}
                 </button>
             ))}
          </div>
-        <div className={`text-lg font-mono ${settings.timeLimitMinutes > 0 && timeLeft < 60 ? 'text-terminal-alert animate-pulse' : 'text-terminal-green'}`}>
+        <div className={`text-lg font-mono ${settings.timeLimitMinutes > 0 && timeLeft < 60 ? 'text-terminal-alert animate-pulse' : 'text-terminal-green'}`} role="timer" aria-live={timeLeft < 60 ? "assertive" : "off"}>
            {t('time_remaining', lang)}: {settings.timeLimitMinutes > 0 ? `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2,'0')}` : "∞"}
         </div>
       </div>

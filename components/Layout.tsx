@@ -114,7 +114,7 @@ const ZPlusLogo: React.FC<{ theme: ThemeOption }> = ({ theme }) => {
     const isLight = theme === 'light';
 
     return (
-        <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+        <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible" role="img" aria-label="Z+ Logo">
             <defs>
                 <linearGradient id="termMetal" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor={isLight ? "#1e3a8a" : "#0f3923"} />
@@ -211,6 +211,14 @@ export const Layout: React.FC<LayoutProps> = ({
         dir={uiLanguage === 'ar' ? 'rtl' : 'ltr'}
         style={palestineBgStyle}
     >
+      {/* SKIP LINK FOR ACCESSIBILITY */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:fixed focus:z-[100] focus:top-4 focus:left-4 focus:bg-terminal-green focus:text-black focus:p-4 focus:font-bold focus:shadow-xl focus:border-2 focus:border-white focus:outline-none"
+      >
+        {t('home', uiLanguage)}: Skip to Content
+      </a>
+
       {enableBackgroundAnim && <BackgroundEffect theme={theme} />}
       <AiHelper lang={uiLanguage} onSetUiLanguage={onSetUiLanguage} />
 
@@ -250,6 +258,7 @@ export const Layout: React.FC<LayoutProps> = ({
         }}
         onMouseLeave={handleMouseLeaveHeader}
         onMouseEnter={handleMouseEnterHeader}
+        role="banner"
       >
         {/* Subtle Overlay to dampen pattern opacity */}
         <div className="absolute inset-0 bg-white/90 dark:bg-[#050505]/90 pointer-events-none"></div>
@@ -261,6 +270,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     onClick={onHome}
                     className="relative group outline-none focus:outline-none flex items-center gap-3"
                     title={t('home', uiLanguage)}
+                    aria-label={t('home', uiLanguage)}
                 >
                     <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border border-transparent dark:border-terminal-green/20 rounded bg-gray-100 dark:bg-black group-hover:border-terminal-green transition-colors overflow-hidden">
                         <ZPlusLogo theme={theme} />
@@ -273,7 +283,7 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
             
             {/* CENTER: Status Indicator (Desktop) */}
-            <div className={`hidden md:flex items-center gap-2 border ${getStatusBorderColor()} px-3 py-1 rounded-sm bg-gray-50 dark:bg-[#0a0a0a]`}>
+            <div className={`hidden md:flex items-center gap-2 border ${getStatusBorderColor()} px-3 py-1 rounded-sm bg-gray-50 dark:bg-[#0a0a0a]`} role="status" aria-live="polite">
                 <div className={`w-2 h-2 rounded-full ${getStatusColor()} animate-pulse`}></div>
                 <span className={`text-[10px] font-bold ${getStatusTextColor()} tracking-widest uppercase`}>
                     SYSTEM: {systemStatus.replace('_', ' ')}
@@ -292,6 +302,8 @@ export const Layout: React.FC<LayoutProps> = ({
                         }
                     `}
                     title={t('library', uiLanguage)}
+                    aria-label={t('library', uiLanguage)}
+                    aria-expanded={isLibraryOpen}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -308,6 +320,8 @@ export const Layout: React.FC<LayoutProps> = ({
                         }
                     `}
                     title={t('settings', uiLanguage)}
+                    aria-label={t('settings', uiLanguage)}
+                    aria-expanded={isSettingsOpen}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -321,6 +335,8 @@ export const Layout: React.FC<LayoutProps> = ({
                 <button 
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     className="p-2 text-gray-800 dark:text-terminal-green hover:bg-gray-200 dark:hover:bg-terminal-green dark:hover:text-black rounded border border-gray-400 dark:border-terminal-green/50 transition-all"
+                    aria-label="Toggle Menu"
+                    aria-expanded={isMobileMenuOpen}
                 >
                     <div className="space-y-1.5">
                         <div className={`w-5 h-0.5 bg-current transition-transform duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></div>
@@ -399,7 +415,11 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </header>
 
-      <main className={`flex-grow p-4 md:p-8 w-full transition-all duration-300 pt-20 md:pt-28 z-10 ${isFullWidth ? 'px-4' : 'max-w-5xl mx-auto'}`}>
+      <main 
+        id="main-content" 
+        className={`flex-grow p-4 md:p-8 w-full transition-all duration-300 pt-20 md:pt-28 z-10 ${isFullWidth ? 'px-4' : 'max-w-5xl mx-auto'}`}
+        tabIndex={-1}
+      >
         <div className="relative">
           <div className="relative z-10">{children}</div>
         </div>

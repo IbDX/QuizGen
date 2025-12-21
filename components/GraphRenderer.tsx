@@ -71,7 +71,11 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({ config }) => {
     }, [config]);
 
     return (
-        <div className="p-2 bg-white dark:bg-[#0a0a0a] rounded-xl border-2 border-gray-300 dark:border-terminal-green/30 shadow-inner overflow-hidden">
+        <div 
+            className="p-2 bg-white dark:bg-[#0a0a0a] rounded-xl border-2 border-gray-300 dark:border-terminal-green/30 shadow-inner overflow-hidden"
+            role="img"
+            aria-label={`Interactive Graph: ${config.title || 'Mathematical Function Plot'}. Functions: ${config.functions.join(', ')}`}
+        >
             <div ref={rootEl} className="w-full" />
         </div>
     );

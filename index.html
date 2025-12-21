@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -42,6 +43,7 @@
     <!-- MathJax Config -->
     <script>
       window.MathJax = {
+        loader: {load: ['[tex]/noerrors', '[tex]/noundefined', 'ui/menu', 'a11y/assistive-mml']},
         tex: {
           inlineMath: [['$', '$'], ['\\(', '\\)']],
           displayMath: [['$$', '$$'], ['\\[', '\\]']],
@@ -52,7 +54,14 @@
         },
         options: {
           ignoreHtmlClass: 'tex2jax_ignore',
-          processHtmlClass: 'tex2jax_process'
+          processHtmlClass: 'tex2jax_process',
+          enableMenu: true, // Allow right-click for a11y options
+          menuOptions: {
+            settings: {
+              assistiveMml: true, // Generate hidden MathML for Screen Readers
+              collapsible: false
+            }
+          }
         },
         startup: {
           typeset: false // We will call typesetPromise manually
@@ -154,8 +163,18 @@
         text-align: left !important;
         unicode-bidi: isolate !important; /* Isolate math from RTL context to prevent sentence scrambling */
       }
-      .katex-wrapper { /* Keep class name for compatibility with old CSS ref if any */
-        display: inline-block;
+      
+      /* Screen Reader Only Utility */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
       }
     </style>
   <script type="importmap">
