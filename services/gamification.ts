@@ -158,21 +158,6 @@ export class GamificationService {
         }
         return false;
     }
-
-    unlockEverything() {
-        this.profile.level = 100;
-        this.profile.xp = 9999999;
-        this.profile.unlockedThemes = ['light', 'dark', 'palestine', 'cyberpunk', 'synthwave'];
-        
-        BADGES_DB.forEach(badgeDef => {
-            if (!this.profile.badges.some(b => b.id === badgeDef.id)) {
-                this.profile.badges.push({ ...badgeDef, unlockedAt: new Date().toISOString() });
-            }
-        });
-        
-        this.saveProfile();
-        return { ...this.profile };
-    }
 }
 
 export const gamification = new GamificationService();

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -53,11 +52,7 @@
         },
         options: {
           ignoreHtmlClass: 'tex2jax_ignore',
-          processHtmlClass: 'tex2jax_process',
-          enableMenu: false, // Disable context menu
-          renderActions: {
-            assistiveMml: [] // DISABLE ASSISTIVE MATHML to prevent visual artifacts
-          }
+          processHtmlClass: 'tex2jax_process'
         },
         startup: {
           typeset: false // We will call typesetPromise manually
@@ -151,26 +146,15 @@
         background: var(--color-term-green);
       }
       
-      /* MathJax Overrides */
+      /* MathJax Overrides - CRITICAL FOR RTL FIX */
       mjx-container {
-        outline: none !important; /* Remove potential focus outlines */
+        display: inline-block !important;
+        margin: 0 !important;
+        direction: ltr !important; /* Force math to always be LTR */
+        text-align: left !important;
+        unicode-bidi: isolate !important; /* Isolate math from RTL context to prevent sentence scrambling */
       }
-      /* Ensure SVG allows overflow for tall math symbols but respects flow */
-      mjx-container svg {
-        overflow: visible; 
-      }
-      /* Hide the assistive MathML to prevent the 'double rendering' or 'weird line' artifacts */
-      mjx-assistive-mathml {
-        display: none !important;
-        position: absolute !important;
-        clip: rect(1px, 1px, 1px, 1px);
-        padding: 0;
-        border: 0;
-        height: 1px;
-        width: 1px;
-        overflow: hidden;
-      }
-      .katex-wrapper { /* Keep class name for compatibility */
+      .katex-wrapper { /* Keep class name for compatibility with old CSS ref if any */
         display: inline-block;
       }
     </style>
