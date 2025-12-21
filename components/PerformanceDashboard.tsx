@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { monitor, ApiStats, MetricType, PerformanceLog } from '../services/monitor';
+import { monitor, MetricType, PerformanceLog } from '../services/monitor';
 
 interface PerformanceDashboardProps {
     onClose: () => void;
@@ -31,6 +31,7 @@ interface SystemCategory {
     history: number[]; // Trend data for sparkline
     health: number; // 0-100
     details: { label: string, value: string, status: 'ok' | 'warn' | 'err' }[];
+    logs: PerformanceLog[]; // Raw logs for this system
 }
 
 // --- Sub-Components ---
@@ -90,19 +91,41 @@ const CircularGauge = ({ value, color, label }: { value: number, color: string, 
     );
 };
 
+// StatusBar Component
+const StatusBar = ({ label, current, max, colorClass }: { label: string, current: number, max: number, colorClass: string }) => {
+    const percentage = Math.min(100, Math.max(0, (current / (max || 1)) * 100));
+    return (
+        <div>
+            <div className="flex justify-between text-[10px] text-gray-500 mb-1 font-mono">
+                <span className="truncate">{label}</span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                    className={`h-full ${colorClass} transition-all duration-500`} 
+                    style={{ width: `${percentage}%` }}
+                ></div>
+            </div>
+        </div>
+    );
+};
+
 // --- EMOJI MAPPER ---
 const getFunctionIcon = (label: string, type: MetricType): string => {
     const l = label.toLowerCase();
     if (type === 'API_LATENCY') return '🧠'; // Brain for AI
     if (type === 'STORAGE_USAGE') return '💾'; // Disk
     if (type === 'RENDER_TIME') return '🎨'; // Art
+    if (type === 'INTERACTION') return '👆';
+    
+    if (l.includes('generate')) return '⚙️';
+    if (l.includes('grade')) return '⚖️';
     if (l.includes('click')) return '👆';
-    if (l.includes('type')) return '⌨️';
+    if (l.includes('submit')) return '🚀';
+    if (l.includes('save')) return '💾';
     if (l.includes('error') || l.includes('fail')) return '⚠️';
     if (l.includes('success')) return '✅';
     if (l.includes('upload')) return '📂';
-    if (l.includes('generate')) return '⚙️';
-    if (l.includes('grade')) return '⚖️';
+    
     return '⚡';
 };
 
@@ -124,7 +147,6 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
         'KERNEL': Array(20).fill(0)
     });
 
-    // Stress Test State
     const [stressStatus, setStressStatus] = useState<'IDLE' | 'RUNNING' | 'COMPLETE'>('IDLE');
     const [stressResult, setStressResult] = useState<{ fps: number, score: number, frames: number } | null>(null);
     const [renderTick, setRenderTick] = useState(0);
@@ -136,7 +158,6 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
             setReport(newReport);
             
             // Update History Arrays based on instantaneous load approximation
-            // We calculate "Load" based on activity in the last second
             const now = Date.now();
             const recentLogs = newReport.logs.filter(l => now - l.timestamp < 1000);
             
@@ -147,17 +168,63 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                     if (type === 'MEMORY') return l.type === 'STORAGE_USAGE' || l.type === 'CACHE_UPDATE';
                     return true; // Kernel gets everything else basically
                 });
-                return Math.min(100, logs.length * 5 + (type === 'RENDER' ? (stressStatus === 'RUNNING' ? 80 : 0) : 0));
+                return Math.min(100, logs.length * 5);
             };
 
             ['NEURAL', 'RENDER', 'MEMORY', 'KERNEL'].forEach(key => {
                 const load = calcLoad(key);
                 historyRef.current[key] = [...historyRef.current[key].slice(1), load];
             });
+            
+            setRenderTick(t => t + 1);
 
         }, 1000);
         return () => clearInterval(interval);
+    }, []);
+
+    // Stress Test Logic
+    useEffect(() => {
+        if (stressStatus !== 'RUNNING') return;
+        
+        let frameId: number;
+        let frames = 0;
+        const startTime = performance.now();
+        const duration = 2000; 
+
+        const loop = () => {
+            frames++;
+            // We increment renderTick in the main loop, but here we force updates faster
+            // Actually relying on the main React render cycle is safer for "Visual" stress
+            const elapsed = performance.now() - startTime;
+
+            if (elapsed < duration) {
+                frameId = requestAnimationFrame(loop);
+            } else {
+                const fps = Math.round((frames / elapsed) * 1000);
+                const score = Math.round(fps * 25); 
+                setStressResult({ fps, score, frames });
+                setStressStatus('COMPLETE');
+            }
+        };
+
+        frameId = requestAnimationFrame(loop);
+        return () => cancelAnimationFrame(frameId);
     }, [stressStatus]);
+
+    // Render Stress Grid Items 
+    const StressGrid = useMemo(() => {
+        if (stressStatus !== 'RUNNING' && stressStatus !== 'COMPLETE') return null;
+        return (
+            <div className="grid grid-cols-25 gap-px w-full h-24 overflow-hidden bg-black border border-terminal-green/30 mt-2 p-1">
+                {Array.from({ length: 400 }).map((_, i) => {
+                    const hue = (i + renderTick * 5) % 360;
+                    return (
+                        <div key={i} style={{ backgroundColor: `hsl(${hue}, 100%, 50%)` }} className="w-full h-full opacity-70"></div>
+                    );
+                })}
+            </div>
+        );
+    }, [stressStatus, renderTick]);
 
     // Advanced Data Processing
     const systemMetrics = useMemo(() => {
@@ -165,22 +232,22 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
             'NEURAL': { 
                 id: 'NEURAL', label: 'NEURAL ENGINE', color: 'text-blue-400', icon: '🧠', 
                 metrics: [], totalCpu: 0, totalMemory: 0, totalTokens: 0, 
-                history: historyRef.current['NEURAL'], health: 100, details: [] 
+                history: historyRef.current['NEURAL'], health: 100, details: [], logs: [] 
             },
             'RENDER': { 
                 id: 'RENDER', label: 'HOLOGRAPHIC RENDERER', color: 'text-purple-400', icon: '💎', 
                 metrics: [], totalCpu: 0, totalMemory: 0, totalTokens: 0, 
-                history: historyRef.current['RENDER'], health: 100, details: []
+                history: historyRef.current['RENDER'], health: 100, details: [], logs: []
             },
             'MEMORY': { 
                 id: 'MEMORY', label: 'MEMORY BANK', color: 'text-yellow-400', icon: '💾', 
                 metrics: [], totalCpu: 0, totalMemory: 0, totalTokens: 0, 
-                history: historyRef.current['MEMORY'], health: 100, details: []
+                history: historyRef.current['MEMORY'], health: 100, details: [], logs: []
             },
             'KERNEL': { 
                 id: 'KERNEL', label: 'KERNEL I/O', color: 'text-green-400', icon: '⚡', 
                 metrics: [], totalCpu: 0, totalMemory: 0, totalTokens: 0, 
-                history: historyRef.current['KERNEL'], health: 100, details: []
+                history: historyRef.current['KERNEL'], health: 100, details: [], logs: []
             },
         };
 
@@ -195,8 +262,6 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
             return funcMap[key];
         };
 
-        let totalErrors = 0;
-
         report.logs.forEach(log => {
             let sysId = 'KERNEL';
             let gpuFactor = 0;
@@ -208,7 +273,6 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                 sysId = 'NEURAL';
                 tokenFactor = log.details?.tokens || Math.floor((log.value || 0) / 50); 
                 memFactor = (log.details?.responseSize || 1024);
-                if (log.label.includes('Fail')) totalErrors++;
             } else if (log.type === 'RENDER_TIME') {
                 sysId = 'RENDER';
                 gpuFactor = (log.value || 0) > 16 ? 80 : 20; 
@@ -219,6 +283,9 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                 sysId = 'RENDER';
                 gpuFactor = 50;
             }
+
+            // Assign log to system
+            systems[sysId].logs.push(log);
 
             const cleanName = log.label.split('-')[0].trim() || 'Anonymous Process';
             const metric = getFunc(cleanName, sysId);
@@ -250,7 +317,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
             { label: 'Success', value: `${((report.summary.apiStats.success / (report.summary.apiStats.total || 1)) * 100).toFixed(0)}%`, status: 'ok' }
         ];
 
-        systems['RENDER'].health = stressStatus === 'RUNNING' ? 60 : 100; // Simulated
+        systems['RENDER'].health = stressStatus === 'RUNNING' ? 60 : 100;
         systems['RENDER'].details = [
             { label: 'FPS Estimate', value: stressResult ? `${stressResult.fps}` : '60', status: 'ok' },
             { label: 'Active Nodes', value: document.getElementsByTagName('*').length.toString(), status: 'ok' }
@@ -262,52 +329,14 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
             { label: 'Keys', value: Object.keys(localStorage).length.toString(), status: 'ok' }
         ];
 
-        systems['KERNEL'].health = 98; // Base stability
+        systems['KERNEL'].health = 98; 
         systems['KERNEL'].details = [
             { label: 'Uplink', value: navigator.onLine ? 'ONLINE' : 'OFFLINE', status: navigator.onLine ? 'ok' : 'err' },
             { label: 'Threads', value: `${navigator.hardwareConcurrency || 4}`, status: 'ok' }
         ];
 
         return Object.values(systems);
-    }, [report.logs, stressStatus, report.summary, report.storage]);
-
-    // Stress Test Logic
-    useEffect(() => {
-        if (stressStatus !== 'RUNNING') return;
-        
-        let frameId: number;
-        let frames = 0;
-        const startTime = performance.now();
-        const duration = 2000; 
-
-        const loop = () => {
-            frames++;
-            setRenderTick(t => t + 1); 
-            const elapsed = performance.now() - startTime;
-
-            if (elapsed < duration) {
-                frameId = requestAnimationFrame(loop);
-            } else {
-                const fps = Math.round((frames / elapsed) * 1000);
-                const score = Math.round(fps * 25); 
-                setStressResult({ fps, score, frames });
-                setStressStatus('COMPLETE');
-            }
-        };
-
-        frameId = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(frameId);
-    }, [stressStatus]);
-
-    const handleExport = () => {
-        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `zplus_telemetry_${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
+    }, [report.logs, report.summary, report.storage, stressStatus, stressResult]);
 
     const handlePing = async () => {
         setIsPinging(true);
@@ -319,6 +348,17 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
     const handleToggleLogType = (type: MetricType) => {
         monitor.toggleLogType(type);
         setReport(monitor.getReport()); 
+    };
+
+    const handleExport = () => {
+        const reportData = monitor.getReport();
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `zplus_diagnostics_${Date.now()}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
     };
 
     const formatBytes = (bytes: number) => {
@@ -334,7 +374,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
     const api = report.summary.apiStats;
     const enabledTypes = report.config.enabledTypes;
 
-    // Filter Logs
+    // Filter Logs for Bottom Panel
     const displayLogs = report.logs
         .slice()
         .reverse()
@@ -348,39 +388,8 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
         })
         .slice(0, 100);
 
-    // Latest Log for Live Monitor
-    const latestLog = displayLogs.length > 0 ? displayLogs[0] : null;
-
-    // Render Stress Grid Items 
-    const StressGrid = useMemo(() => {
-        if (stressStatus !== 'RUNNING' && stressStatus !== 'COMPLETE') return null;
-        return (
-            <div className="grid grid-cols-25 gap-px w-full h-24 overflow-hidden bg-black border border-terminal-green/30 mt-2 p-1">
-                {Array.from({ length: 400 }).map((_, i) => {
-                    const hue = (i + renderTick * 5) % 360;
-                    return (
-                        <div key={i} style={{ backgroundColor: `hsl(${hue}, 100%, 50%)` }} className="w-full h-full opacity-70"></div>
-                    );
-                })}
-            </div>
-        );
-    }, [stressStatus, renderTick]);
-
-    // Status Bar Helper
-    const StatusBar = ({ label, current, max, colorClass }: { label: string, current: number, max: number, colorClass: string }) => {
-        const pct = Math.min(100, (current / max) * 100);
-        return (
-            <div className="w-full">
-                <div className="flex justify-between text-[10px] text-gray-400 mb-1 font-mono uppercase">
-                    <span>{label}</span>
-                    <span>{pct.toFixed(1)}%</span>
-                </div>
-                <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
-                    <div className={`h-full transition-all duration-500 ${colorClass}`} style={{ width: `${pct}%` }}></div>
-                </div>
-            </div>
-        );
-    };
+    // LIVE MONITOR: Get last 5 operations for global view
+    const globalLiveOperations = report.logs.slice().reverse().slice(0, 5);
 
     const dashboardContent = (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in font-mono">
@@ -423,11 +432,10 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
 
                 {/* Main Content Area */}
                 <div className="flex-grow overflow-y-auto custom-scrollbar bg-[#050505]">
-                    
                     {viewMode === 'STANDARD' ? (
-                        /* STANDARD VIEW (Existing) */
-                        <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {/* ... Standard View Blocks ... */}
+                        /* STANDARD VIEW */
+                        <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+                            {/* Neural Link Status */}
                             <div className="bg-[#111] border border-gray-800 p-4 rounded hover:border-terminal-green/50 transition-colors group">
                                 <h4 className="text-xs font-bold text-gray-400 mb-4 border-b border-gray-800 pb-2 flex justify-between items-center group-hover:text-terminal-green">
                                     <span>NEURAL LINK STATUS</span>
@@ -444,25 +452,20 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <div className="flex justify-between text-xs text-gray-400">
-                                        <span>Success Rate</span>
-                                        <span>{api.total > 0 ? Math.round((api.success / api.total) * 100) : 100}%</span>
-                                    </div>
-                                    <div className="w-full h-1 bg-gray-800 rounded overflow-hidden">
-                                        <div className="h-full bg-blue-500" style={{ width: `${api.total > 0 ? (api.success / api.total) * 100 : 100}%` }}></div>
-                                    </div>
+                                    <StatusBar 
+                                        label="Success Rate" 
+                                        current={api.success} 
+                                        max={api.total || 1} 
+                                        colorClass="bg-blue-500" 
+                                    />
                                     <div className="flex justify-between text-[10px] text-gray-500 pt-1">
                                         <span>Avg Latency</span>
                                         <span className="text-white">{report.summary.avgLatency} ms</span>
                                     </div>
-                                    {api.rateLimited > 0 && (
-                                        <div className="bg-red-900/20 border border-red-900/50 text-red-500 text-[10px] p-2 rounded text-center animate-pulse mt-2">
-                                            ⚠️ QUOTA EXHAUSTED ({api.rateLimited} EVENTS)
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
+                            {/* Memory Core */}
                             <div className="bg-[#111] border border-gray-800 p-4 rounded hover:border-terminal-green/50 transition-colors group">
                                 <h4 className="text-xs font-bold text-gray-400 mb-4 border-b border-gray-800 pb-2 group-hover:text-terminal-green">MEMORY CORE</h4>
                                 <div className="space-y-4">
@@ -491,6 +494,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                                 </div>
                             </div>
 
+                            {/* Graphics Benchmark */}
                             <div className="bg-[#111] border border-gray-800 p-4 rounded hover:border-terminal-green/50 transition-colors group relative overflow-hidden">
                                 <h4 className="text-xs font-bold text-gray-400 mb-2 border-b border-gray-800 pb-2 group-hover:text-terminal-green flex justify-between">
                                     <span>GRAPHICS CORE BENCHMARK</span>
@@ -535,6 +539,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                                 </div>
                             </div>
 
+                            {/* Network Uplink */}
                             <div className="bg-[#111] border border-gray-800 p-4 rounded hover:border-terminal-green/50 transition-colors group">
                                 <div className="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
                                     <h4 className="text-xs font-bold text-gray-400 group-hover:text-terminal-green">NETWORK UPLINK</h4>
@@ -559,9 +564,6 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                                             <span className={`text-xl font-bold font-mono ${ping < 100 ? 'text-green-500' : ping < 300 ? 'text-yellow-500' : 'text-red-500'}`}>{ping} ms</span>
                                         ) : (
                                             <span className="text-xs text-gray-600">--</span>
-                                        )}
-                                        {conn && conn.rtt && ping === null && (
-                                            <div className="text-[9px] text-gray-600">Est: ~{conn.rtt}ms</div>
                                         )}
                                     </div>
                                 </div>
@@ -590,11 +592,9 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                                         </div>
                                         
                                         <div className="relative z-10 space-y-3">
-                                            {/* Sparkline Area */}
                                             <div className="w-full h-10 border-b border-gray-800/50 mb-2">
                                                 <Sparkline data={sys.history} color={sys.color} height={40} />
                                             </div>
-
                                             <div className="grid grid-cols-2 gap-2 text-[9px] font-mono">
                                                 <div className="bg-black/50 p-1 rounded border border-gray-800">
                                                     <span className="text-gray-500 block">HEALTH</span>
@@ -610,10 +610,12 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                                 ))}
                             </div>
 
-                            {/* Drill Down View */}
+                            {/* EXPANDED VIEW */}
                             {expandedSystem ? (() => {
                                 const sys = systemMetrics.find(s => s.id === expandedSystem);
                                 if (!sys) return null;
+                                const systemLogs = sys.logs.slice().reverse().slice(0, 10); 
+
                                 return (
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
                                         {/* LEFT: Function Table */}
@@ -685,7 +687,58 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                                                 </div>
                                             </div>
 
-                                            {/* LIVE VISUALIZER: Replaced static charts with Live Function view */}
+                                            {/* SPECIFIC VISUALIZER */}
+                                            <div className="bg-[#111] border border-gray-800 rounded p-4">
+                                                <h4 className="text-xs font-bold text-gray-400 mb-4 border-b border-gray-800 pb-2">DEEP DIVE VISUALIZER</h4>
+                                                
+                                                {sys.id === 'NEURAL' && (
+                                                    <div className="h-full flex flex-col justify-center items-center gap-4">
+                                                        <div className="w-full flex items-end gap-1 h-32 border-b border-gray-700 pb-1">
+                                                            {sys.history.map((h, i) => (
+                                                                <div key={i} className="flex-1 bg-blue-500/20 hover:bg-blue-500/50 transition-colors" style={{ height: `${h}%` }}></div>
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-[10px] text-gray-500 text-center">TOKEN CONSUMPTION RATE (Last 20s)</p>
+                                                    </div>
+                                                )}
+
+                                                {sys.id === 'RENDER' && (
+                                                    <div className="space-y-4">
+                                                        <div className="grid grid-cols-5 gap-1">
+                                                            {Array.from({length: 25}).map((_, i) => (
+                                                                <div key={i} className={`aspect-square rounded-sm ${Math.random() > 0.8 ? 'bg-purple-500/40' : 'bg-gray-800'}`}></div>
+                                                            ))}
+                                                        </div>
+                                                        <div className="text-[9px] text-gray-500 font-mono text-center">VRAM FRAGMENTATION MAP</div>
+                                                    </div>
+                                                )}
+
+                                                {sys.id === 'MEMORY' && (
+                                                    <div className="space-y-2">
+                                                        <div className="w-full aspect-square bg-black border border-gray-800 p-1 grid grid-cols-8 gap-0.5">
+                                                            {Array.from({length: 64}).map((_, i) => (
+                                                                <div key={i} className={`w-full h-full ${i < (sys.totalMemory / 1024 / 1024) * 5 ? 'bg-yellow-500' : 'bg-gray-900'}`}></div>
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-[9px] text-gray-500 text-center">STORAGE BLOCK ALLOCATION</p>
+                                                    </div>
+                                                )}
+
+                                                {sys.id === 'KERNEL' && (
+                                                    <div className="flex flex-col gap-2 h-full">
+                                                        <div className="flex-grow bg-black border border-green-900/30 relative overflow-hidden p-2 font-mono text-[9px] text-green-700">
+                                                            {Array.from({length: 8}).map((_, i) => (
+                                                                <div key={i} className="truncate">
+                                                                    [{parseInt(Date.now().toString().slice(-6)) - i*100}] SYSCALL_ACK::OK
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-[9px] text-gray-500 text-center">EVENT LOOP STREAM</p>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* LIVE EXECUTION FEED (EMOJI) */}
                                             <div className="bg-[#111] border border-gray-800 rounded p-4 flex-grow flex flex-col">
                                                 <h4 className="text-xs font-bold text-gray-400 mb-4 border-b border-gray-800 pb-2">LIVE EXECUTION FEED</h4>
                                                 
@@ -693,23 +746,23 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                                                     <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-[#111] to-transparent z-10 pointer-events-none"></div>
                                                     
                                                     <div className="flex-grow overflow-hidden relative">
-                                                        {sys.metrics.sort((a,b) => b.lastCalled - a.lastCalled).slice(0, 5).map((m, i) => (
+                                                        {systemLogs.map((log, i) => (
                                                             <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-800/50 animate-fade-in-up" style={{ animationDelay: `${i*100}ms` }}>
                                                                 <div className="text-xl bg-black rounded p-1 w-8 h-8 flex items-center justify-center border border-gray-800">
-                                                                    {getFunctionIcon(m.name, sys.id === 'NEURAL' ? 'API_LATENCY' : sys.id === 'RENDER' ? 'RENDER_TIME' : sys.id === 'MEMORY' ? 'STORAGE_USAGE' : 'INTERACTION')}
+                                                                    {getFunctionIcon(log.label, log.type)}
                                                                 </div>
                                                                 <div className="flex-grow min-w-0">
                                                                     <div className={`text-[10px] font-bold truncate ${i === 0 ? 'text-white animate-pulse' : 'text-gray-500'}`}>
-                                                                        {m.name}
+                                                                        {log.label}
                                                                     </div>
                                                                     <div className="text-[9px] text-gray-600 font-mono">
-                                                                        {new Date(m.lastCalled).toLocaleTimeString()} • {m.calls} ops
+                                                                        {new Date(log.timestamp).toLocaleTimeString()}
                                                                     </div>
                                                                 </div>
                                                                 {i === 0 && <div className="w-2 h-2 bg-terminal-green rounded-full shadow-[0_0_5px_var(--color-term-green)] animate-ping"></div>}
                                                             </div>
                                                         ))}
-                                                        {sys.metrics.length === 0 && <div className="text-center text-gray-600 text-[10px] italic pt-10">No active processes</div>}
+                                                        {systemLogs.length === 0 && <div className="text-center text-gray-600 text-[10px] italic pt-10">No active processes for {sys.label}</div>}
                                                     </div>
                                                 </div>
                                             </div>
@@ -717,40 +770,73 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                                     </div>
                                 );
                             })() : (
-                                // New: Global Execution Stream when no system selected
-                                <div className="bg-[#0a0a0a] border border-gray-800 rounded p-4 animate-fade-in-up">
-                                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-800">
-                                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                                            GLOBAL KERNEL MONITOR
+                                // GLOBAL VIEW (Not Expanded)
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {/* Left: Detailed Process Stream */}
+                                    <div className="bg-[#0a0a0a] border border-gray-800 rounded p-4 flex flex-col">
+                                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">
+                                            LIVE KERNEL EXECUTION
                                         </h4>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 bg-terminal-green rounded-full animate-pulse"></div>
-                                            <span className="text-[10px] text-terminal-green font-bold">LIVE</span>
+                                        <div className="flex-grow flex flex-col gap-2 relative min-h-[200px]">
+                                            {globalLiveOperations.map((log, i) => (
+                                                <div key={i} className="flex items-center gap-4 py-2 border-b border-gray-800/30 animate-fade-in-up" style={{ animationDelay: `${i*50}ms` }}>
+                                                    <div className="text-2xl bg-[#111] w-10 h-10 flex items-center justify-center rounded border border-gray-800 shadow-sm relative">
+                                                        {getFunctionIcon(log.label, log.type)}
+                                                        {i === 0 && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-terminal-green opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-terminal-green"></span></span>}
+                                                    </div>
+                                                    <div className="flex-grow min-w-0">
+                                                        <div className="flex justify-between items-baseline mb-1">
+                                                            <span className={`text-xs font-bold font-mono truncate ${i===0 ? 'text-white' : 'text-gray-500'}`}>
+                                                                {log.label.toUpperCase()}
+                                                            </span>
+                                                            <span className="text-[9px] text-gray-600 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                                        </div>
+                                                        <div className="w-full h-1.5 bg-gray-900 rounded-full overflow-hidden">
+                                                            <div className={`h-full ${i === 0 ? 'bg-terminal-green animate-progress' : 'bg-gray-700'}`} style={{ width: i === 0 ? '100%' : '100%' }}></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {globalLiveOperations.length === 0 && <div className="text-center text-gray-700 italic mt-10">System Idle. Awaiting Instructions.</div>}
                                         </div>
                                     </div>
-                                    <div className="h-64 flex flex-col justify-center items-center gap-6 relative overflow-hidden">
-                                        {/* Matrix Background Effect */}
-                                        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(0, 255, 65, .3) 25%, rgba(0, 255, 65, .3) 26%, transparent 27%, transparent 74%, rgba(0, 255, 65, .3) 75%, rgba(0, 255, 65, .3) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 255, 65, .3) 25%, rgba(0, 255, 65, .3) 26%, transparent 27%, transparent 74%, rgba(0, 255, 65, .3) 75%, rgba(0, 255, 65, .3) 76%, transparent 77%, transparent)', backgroundSize: '50px 50px' }}></div>
-                                        
-                                        {latestLog ? (
-                                            <div className="z-10 text-center animate-bounce-in">
-                                                <div className="text-6xl mb-4 filter drop-shadow-[0_0_15px_rgba(0,255,65,0.5)]">
-                                                    {getFunctionIcon(latestLog.label, latestLog.type)}
+
+                                    {/* Right: Detailed Metrics */}
+                                    <div className="bg-[#0a0a0a] border border-gray-800 rounded p-4">
+                                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">
+                                            RESOURCE CONSUMPTION
+                                        </h4>
+                                        <div className="space-y-4">
+                                            <StatusBar 
+                                                label={`Memory Heap (${formatBytes(mem?.usedJSHeapSize || 0)})`} 
+                                                current={mem?.usedJSHeapSize || 0} 
+                                                max={mem?.jsHeapSizeLimit || 1} 
+                                                colorClass="bg-purple-500" 
+                                            />
+                                            <StatusBar 
+                                                label={`Local Storage (${report.storage.percentage.toFixed(1)}%)`} 
+                                                current={report.storage.used} 
+                                                max={report.storage.total} 
+                                                colorClass="bg-yellow-500" 
+                                            />
+                                            <StatusBar 
+                                                label={`API Success Rate (${((api.success/(api.total||1))*100).toFixed(0)}%)`} 
+                                                current={api.success} 
+                                                max={api.total || 1} 
+                                                colorClass="bg-blue-500" 
+                                            />
+                                            
+                                            <div className="grid grid-cols-2 gap-4 mt-6">
+                                                <div className="bg-[#111] p-3 rounded border border-gray-800 text-center">
+                                                    <div className="text-2xl font-bold text-white">{monitor.getInteractionCount()}</div>
+                                                    <div className="text-[9px] text-gray-500 uppercase">User Interactions</div>
                                                 </div>
-                                                <div className="text-xl font-bold font-mono text-white mb-1 tracking-wider">
-                                                    {latestLog.label.toUpperCase()}
-                                                </div>
-                                                <div className="text-xs font-mono text-terminal-green bg-terminal-green/10 px-3 py-1 rounded-full inline-block border border-terminal-green/30">
-                                                    PROCESS_ID: {latestLog.timestamp.toString().slice(-6)}
-                                                </div>
-                                                <div className="mt-4 text-[10px] text-gray-500 max-w-md mx-auto">
-                                                    EXECUTING THREAD: {latestLog.type} <br/>
-                                                    PAYLOAD: {latestLog.value ? `${latestLog.value} units` : 'N/A'}
+                                                <div className="bg-[#111] p-3 rounded border border-gray-800 text-center">
+                                                    <div className="text-2xl font-bold text-blue-400">{api.total}</div>
+                                                    <div className="text-[9px] text-gray-500 uppercase">Neural Calls</div>
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <div className="text-gray-600 font-mono text-sm animate-pulse">AWAITING SYSTEM EVENTS...</div>
-                                        )}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -865,9 +951,12 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ onCl
                     </div>
                 </div>
             </div>
+            <style>{`
+                @keyframes progress { from { width: 0%; } to { width: 100%; } }
+                .animate-progress { animation: progress 1s ease-out forwards; }
+            `}</style>
         </div>
     );
 
-    // Using Portal to break out of any stacking context (e.g. SettingsView animation containers)
     return createPortal(dashboardContent, document.body);
 };

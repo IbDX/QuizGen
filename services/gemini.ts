@@ -316,6 +316,7 @@ export const generateExam = async (
 // Grading functions
 export const gradeCodingAnswer = async (q: Question, answer: string, lang: string) => {
     const startTime = performance.now();
+    monitor.log('API_LATENCY', 'gradeCoding - Start', 0);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const apiCall = () => ai.models.generateContent({
@@ -330,7 +331,9 @@ export const gradeCodingAnswer = async (q: Question, answer: string, lang: strin
 
     try {
         const response = await callWithRetry<GenerateContentResponse>(apiCall);
-        return JSON.parse(cleanJson(response.text || '{"isCorrect":false,"feedback":"Error"}'));
+        const result = JSON.parse(cleanJson(response.text || '{"isCorrect":false,"feedback":"Error"}'));
+        monitor.log('API_LATENCY', 'gradeCoding - Success', performance.now() - startTime);
+        return result;
     } catch (e) {
         monitor.log('API_LATENCY', 'gradeCoding - Fail', performance.now() - startTime);
         throw e;
@@ -339,6 +342,7 @@ export const gradeCodingAnswer = async (q: Question, answer: string, lang: strin
 
 export const gradeShortAnswer = async (q: Question, answer: string, lang: string) => {
     const startTime = performance.now();
+    monitor.log('API_LATENCY', 'gradeShortAnswer - Start', 0);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const apiCall = () => ai.models.generateContent({
@@ -353,7 +357,9 @@ export const gradeShortAnswer = async (q: Question, answer: string, lang: string
 
     try {
         const response = await callWithRetry<GenerateContentResponse>(apiCall);
-        return JSON.parse(cleanJson(response.text || '{"isCorrect":false,"feedback":"Error"}'));
+        const result = JSON.parse(cleanJson(response.text || '{"isCorrect":false,"feedback":"Error"}'));
+        monitor.log('API_LATENCY', 'gradeShortAnswer - Success', performance.now() - startTime);
+        return result;
     } catch (e) {
         monitor.log('API_LATENCY', 'gradeShortAnswer - Fail', performance.now() - startTime);
         throw e;
@@ -363,6 +369,7 @@ export const gradeShortAnswer = async (q: Question, answer: string, lang: string
 // Remediation
 export const generateExamFromWrongAnswers = async (questions: Question[], wrongIds: string[]) => {
     const startTime = performance.now();
+    monitor.log('API_LATENCY', 'remediation - Start', 0);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const targets = questions.filter(q => wrongIds.includes(q.id));
     
@@ -378,7 +385,9 @@ export const generateExamFromWrongAnswers = async (questions: Question[], wrongI
 
     try {
         const response = await callWithRetry<GenerateContentResponse>(apiCall);
-        return JSON.parse(cleanJson(response.text || '[]'));
+        const result = JSON.parse(cleanJson(response.text || '[]'));
+        monitor.log('API_LATENCY', 'remediation - Success', performance.now() - startTime);
+        return result;
     } catch (e) {
         monitor.log('API_LATENCY', 'remediation - Fail', performance.now() - startTime);
         throw e;
@@ -399,7 +408,7 @@ export const generateLoadingTips = async (files: {base64: string, mimeType: stri
                 responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
             }
         })) as GenerateContentResponse;
-        monitor.log('API_LATENCY', 'tips', performance.now() - startTime);
+        monitor.log('API_LATENCY', 'tips - Success', performance.now() - startTime);
         return JSON.parse(cleanJson(response.text || '[]'));
     } catch (e) { return []; }
 };
@@ -414,7 +423,7 @@ export const getAiHelperResponse = async (input: string, lang: UILanguage) => {
             contents: input,
             config: { systemInstruction: `System Support. Lang: ${lang}. Short helpful answers.` }
         })) as GenerateContentResponse;
-        monitor.log('API_LATENCY', 'helper', performance.now() - startTime);
+        monitor.log('API_LATENCY', 'helper - Success', performance.now() - startTime);
         return response.text || "";
     } catch (e) { return "Error contacting support."; }
 };
@@ -435,7 +444,7 @@ export const sendExamBuilderMessage = async (messages: ChatMessage[], input: str
 
     try {
         const response = await callWithRetry<GenerateContentResponse>(apiCall, 1);
-        monitor.log('API_LATENCY', 'builderChat', performance.now() - startTime);
+        monitor.log('API_LATENCY', 'builderChat - Success', performance.now() - startTime);
         return response.text || "";
     } catch (e) {
         monitor.log('API_LATENCY', 'builderChat - Fail', performance.now() - startTime);
@@ -446,6 +455,7 @@ export const sendExamBuilderMessage = async (messages: ChatMessage[], input: str
 // Final Build from Chat
 export const generateExamFromBuilderChat = async (messages: ChatMessage[]) => {
     const startTime = performance.now();
+    monitor.log('API_LATENCY', 'builderCompile - Start', 0);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const apiCall = () => ai.models.generateContent({
@@ -475,7 +485,7 @@ export const generateExamFromBuilderChat = async (messages: ChatMessage[]) => {
     try {
         const response = await callWithRetry<GenerateContentResponse>(apiCall);
         const duration = performance.now() - startTime;
-        monitor.log('API_LATENCY', 'builderCompile', duration);
+        monitor.log('API_LATENCY', 'builderCompile - Success', duration);
         const data = JSON.parse(cleanJson(response.text || '{"title":"Error","questions":[]}'));
         return {
             questions: data.questions,

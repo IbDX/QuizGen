@@ -8,6 +8,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { GraphRenderer } from './GraphRenderer'; 
 import { DiagramRenderer } from './DiagramRenderer'; 
 import { validateCodeInput, sanitizeInput } from '../utils/security';
+import { monitor } from '../services/monitor'; // Import monitor
 import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-clike';
@@ -65,6 +66,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const [isGrading, setIsGrading] = useState(false);
   const [savedState, setSavedState] = useState<boolean>(false);
   const [inputError, setInputError] = useState<string | null>(null);
+  const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false); // New state for submit safety
   
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   
@@ -92,6 +94,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
         setInputError(null);
         // Reset mobile tab on question change
         setMobileTab('CONTENT'); 
+        setIsConfirmingSubmit(false); // Reset submit state on nav
+        monitor.log('INTERACTION', `View Question ${currentIndex + 1}`, 0);
       }
   }, [currentQ?.id]);
 
@@ -153,13 +157,21 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
   const handleFinish = () => {
     if (inputError || isGrading) return;
-    // Fix: Use submit-specific message instead of generic exit warning
-    if (window.confirm(t('submit_confirm_msg', lang))) {
-        onComplete(Array.from(answers.values()));
+    
+    // Improved Logic: 2-Step Confirmation Button inside the UI instead of window.confirm
+    if (!isConfirmingSubmit) {
+        setIsConfirmingSubmit(true);
+        // Auto-reset confirmation if user hesitates
+        setTimeout(() => setIsConfirmingSubmit(false), 3000);
+        return;
     }
+
+    monitor.log('INTERACTION', 'User Submitted Exam', 0);
+    onComplete(Array.from(answers.values()));
   };
 
   const handleTimeout = () => {
+      monitor.log('INTERACTION', 'Exam Timeout', 0);
       onComplete(Array.from(answersRef.current.values()));
   };
 
@@ -167,9 +179,11 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
       if (savedState) {
           removeQuestion(currentQ.id);
           setSavedState(false);
+          monitor.log('STORAGE_USAGE', 'Remove Saved Question');
       } else {
           saveQuestion(currentQ);
           setSavedState(true);
+          monitor.log('STORAGE_USAGE', 'Save Question');
       }
   };
 
@@ -205,6 +219,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
   const checkAnswerTwoWay = async () => {
     if (inputError) return;
     setIsGrading(true);
+    monitor.log('API_LATENCY', 'Grading Single Answer', 0);
     const userAnswer = answers.get(currentQ.id);
     
     if (!userAnswer) {
@@ -626,10 +641,16 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
                     <button 
                         onClick={handleFinish}
                         disabled={!!inputError || isGrading}
-                        className="px-8 py-3 bg-terminal-green text-terminal-black font-bold hover:bg-terminal-dimGreen shadow text-sm tracking-wider disabled:opacity-50 uppercase rounded transition-colors whitespace-nowrap min-w-[120px]"
+                        className={`
+                            px-8 py-3 font-bold shadow text-sm tracking-wider disabled:opacity-50 uppercase rounded transition-all whitespace-nowrap min-w-[120px]
+                            ${isConfirmingSubmit 
+                                ? 'bg-terminal-alert text-white animate-pulse' 
+                                : 'bg-terminal-green text-terminal-black hover:bg-terminal-dimGreen'
+                            }
+                        `}
                         aria-label="Submit Exam"
                     >
-                        {t('submit', lang)}
+                        {isConfirmingSubmit ? "CONFIRM?" : t('submit', lang)}
                     </button>
                  )}
              </div>
