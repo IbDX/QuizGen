@@ -14,6 +14,7 @@ interface GraphRendererProps {
 
 export const GraphRenderer: React.FC<GraphRendererProps> = ({ config }) => {
     const rootEl = useRef<HTMLDivElement>(null);
+    const safeFunctions = config.functions || [];
 
     useEffect(() => {
         if (!rootEl.current || !window.functionPlot) return;
@@ -42,7 +43,7 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({ config }) => {
                 },
                 grid: true,
                 title: config.title,
-                data: config.functions.map((fn, idx) => ({
+                data: safeFunctions.map((fn, idx) => ({
                     fn: fn,
                     graphType: 'polyline',
                     color: idx === 0 ? primaryColor : (idx === 1 ? '#ff3333' : '#3b82f6'),
@@ -68,13 +69,13 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({ config }) => {
                 <span class="font-bold uppercase">Coordinate System Fault:</span><br/>${(e as any).message}
             </div>`;
         }
-    }, [config]);
+    }, [config, safeFunctions]);
 
     return (
         <div 
             className="p-2 bg-white dark:bg-[#0a0a0a] rounded-xl border-2 border-gray-300 dark:border-terminal-green/30 shadow-inner overflow-hidden"
             role="img"
-            aria-label={`Interactive Graph: ${config.title || 'Mathematical Function Plot'}. Functions: ${config.functions.join(', ')}`}
+            aria-label={`Interactive Graph: ${config.title || 'Mathematical Function Plot'}. Functions: ${safeFunctions.join(', ')}`}
         >
             <div ref={rootEl} className="w-full" />
         </div>

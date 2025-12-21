@@ -338,14 +338,52 @@ export const getAiHelperResponse = async (msg: string, lang: string) => {
     }
 };
 
+/**
+ * ADVANCED REMEDIATION ENGINE
+ * Generates 'Sister Questions' based on failed concepts.
+ */
 export const generateExamFromWrongAnswers = async (questions: Question[], wrongIds: string[]) => {
     const wrongOnes = questions.filter(q => wrongIds.includes(q.id));
+    
+    // We only send the necessary data to the context window to save tokens
+    const contextPayload = wrongOnes.map(q => ({
+        topic: q.topic,
+        type: q.type,
+        concept: q.explanation, // The explanation usually contains the core concept
+        original_text: q.text
+    }));
+
     const response = await safeGenerate(async () => {
         return await ai.models.generateContent({
             model: 'gemini-3-pro-preview',
-            contents: `Failed Concepts: ${JSON.stringify(wrongOnes)}. Generate 5 new remediation questions.`,
+            contents: `FAILED CONCEPTS DATA: ${JSON.stringify(contextPayload)}`,
             config: {
-                systemInstruction: `Remediation Expert. Use technical visuals. ${TECHNICAL_RENDERING_PROTOCOL}`,
+                systemInstruction: `
+You are a Psychometrician and Subject Matter Expert specializing in Concept Remediation.
+Your task is to generate "Sister Questions" for each failed item provided.
+
+*** PROTOCOL: SISTER QUESTION GENERATION ***
+
+1. CORE EXTRACTION:
+   - Identify the "Atomic Skill" tested in the original question.
+   - Ignore surface-level details (e.g., if the original is about "Apples", the concept is "Counting").
+
+2. TRANSFORMATION RULES (Apply at least one per question):
+   - DOMAIN SHIFT: Change the context completely (e.g., Biology -> Engineering) while keeping the math/logic identical.
+   - INVERSE LOGIC: If original asked for Output given Input, ask for Input given Output.
+   - ERROR ANALYSIS: Instead of asking the user to write code, provide broken code and ask them to find the bug.
+   - VALUE ROTATION: Change all numbers and variable names.
+
+3. ANTI-CLONING GUARDRAILS:
+   - DO NOT just swap nouns (e.g., changing "Car" to "Truck" is FORBIDDEN).
+   - DO NOT repeat the exact same code snippet with only variable names changed.
+   - The new question must feel fresh but test the exact same underlying neural pathway.
+
+4. PLATFORM COMPATIBILITY:
+   ${TECHNICAL_RENDERING_PROTOCOL}
+
+GENERATE 1 NEW SISTER QUESTION FOR EACH FAILED CONCEPT.
+`,
                 responseMimeType: "application/json",
                 responseSchema: { type: Type.ARRAY, items: getQuestionSchema() }
             }
