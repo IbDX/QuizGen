@@ -1,51 +1,47 @@
+
 # 04. Rendering System
 
-Z+ utilizes a high-fidelity rendering pipeline to transform technical data into interactive visuals.
+Z+ moves beyond static text by implementing a rich, dynamic rendering engine. This allows for interactive graphs, syntax-highlighted code, and complex technical notation.
 
-## 🧩 Visual Component Map
+## 🧩 Render Component Map
 
-| Content Type | Technology | Capability |
-| :--- | :--- | :--- |
-| **Circuit Schematics** | **Mermaid.js + Custom CSS** | Unique shapes for Logic Gates, MUX, Registers, and Passives. |
-| **Logic Architecture** | **Mermaid.js (Stepped)** | Architecture-standard "Step" wiring for Decoders/ALUs. |
-| **2D Graphs** | **Function Plot (D3)** | Interactive function plotting with high-contrast terminal styling. |
-| **Code Execution** | **PrismJS** | Syntax highlighting for 5+ technical languages. |
-
----
-
-## 🏗️ Digital Schematic Engine (v2.5)
-
-The upgraded `DiagramRenderer` detects hardware-specific keywords and applies unique styling templates via **Mermaid.js**.
-
-### 🛡️ Schematic Hardening & Auto-Repair
-To prevent **Mermaid Syntax Errors** (using version 10.9.0), the system performs:
-1.  **Label Escaping:** AI is forced to quote all labels.
-2.  **Client-Side Patching:** The renderer scans Mermaid strings and wraps unquoted text containing symbols (`=`, `:`, `-`) in double quotes before execution.
-3.  **Theme Adaptation:** Detects the current application theme (Dark/Light) and adjusts the Mermaid theme config (`neutral` vs `dark`) and CSS variables (`stroke`, `fill`) accordingly.
-
-### Shape Mapping Protocol:
-*   **Multiplexers (MUX):** Rendered as trapezoids (`[\MUX\]`).
-*   **Registers/RAM:** Rendered as database-style cylinders (`[(REG)]`).
-*   **Logic Gates:** Hexagonal nodes (`{{AND}}`) with color-coded signal states.
-*   **Analog Components:** Resistors, Capacitors, and Batteries use standardized schematic colors (Gray/Red).
+| Content Type | Data Source | Component | Library |
+| :--- | :--- | :--- | :--- |
+| **Rich Text** | `question.text` | `MarkdownRenderer.tsx` | Custom Parsing |
+| **Math / LaTeX** | `$E=mc^2$` | `MarkdownRenderer.tsx` | **MathJax 3** |
+| **Schematics** | `question.diagramConfig`| `DiagramRenderer.tsx` | **Mermaid.js** (Circuit Theme) |
+| **Code Block** | `question.codeSnippet` | `CodeWindow.tsx` | **PrismJS** |
+| **Graphs** | `question.graphConfig` | `GraphRenderer.tsx` | **Function Plot** (D3) |
 
 ---
 
-## 📈 Interactive Math Graphs
+## 1. Markdown & Math (`MarkdownRenderer.tsx`)
 
-For mathematical physics, Z+ generates dynamic D3-based graphs using `function-plot`.
-
--   **Dynamic Domain:** X and Y axis domains are configured via the JSON from the AI, defaulting to `[-10, 10]`.
--   **Terminal Contrast:** Graphs use specific colors (`#00ff41` for primary functions) to ensure readability against the dark terminal background.
--   **Stroke Thickness:** All plot lines use a 3px stroke to remain legible on mobile devices.
--   **Grid Snap:** Provides a visual aid for "Solve via Graph" questions.
--   **Theme Response:** The `GraphRenderer` listens for theme changes to invert grid lines and background colors (White vs Black) instantly.
+### Physics Formatting Protocol
+To ensure units like $V$ (Volts), $\Omega$ (Ohms), and $A$ (Amperes) render correctly:
+1.  **AI Delimiters:** The generation engine is instructed to wrap every unit and technical value in single dollar signs (`$`).
+2.  **RTL Math Fix:** For Arabic UI, math is wrapped in a `<span dir="ltr">` with `unicode-bidi: isolate`. This prevents the "order reversal" bug where $4\,V$ might display as $V\,4$.
 
 ---
 
-## 📝 Markdown & Math
+## 2. Digital Schematic Viewer (`DiagramRenderer.tsx`)
 
-All text content is passed through `MarkdownRenderer.tsx`.
+For Physics and Electronics exams, the system identifies circuit-related keywords and triggers a specialized visual layer.
 
-*   **MathJax 3:** Used for rendering LaTeX.
-*   **RTL Protection:** Arabic text with embedded math formulas often breaks layout engines. We wrap all LaTeX content in `<span dir="ltr" style="unicode-bidi: isolate;">` to ensure formulas read correctly (Left-to-Right) even when the surrounding text is Right-to-Left (Arabic).
+### Schematic Interpretation
+When `DiagramRenderer` detects circuit components in the Mermaid code, it injects custom CSS classes:
+*   **Resistors:** Styled as distinct blocks with bold borders and high contrast.
+*   **Sources:** Circular nodes with color coding for voltage/current sources.
+*   **Ground:** Specialized "symbol" node.
+*   **Logic Gates:** Logic gate labels (AND, OR, NOT) are highlighted in blue tones to distinguish them from wiring.
+
+### User Interaction
+*   **Dynamic Zoom:** Use the mouse wheel while holding `Ctrl` to zoom into complex circuit wiring.
+*   **Tactical Pan:** Click and drag to navigate large schematic diagrams.
+
+---
+
+## 3. Interactive Graphs (`GraphRenderer.tsx`)
+
+Instead of static images, Z+ renders interactive graphs for mathematical physics.
+*   **interactivity:** Users can hover to see $(x,y)$ coordinates, which is essential for "Find the slope" or "Identify the intercept" questions.

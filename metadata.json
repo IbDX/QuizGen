@@ -1,6 +1,6 @@
 {
-  "name": "Q&A AI Generator",
-  "description": "Extract and generate questions from files (PDF/Images < 15MB) using AI.",
+  "name": "Copy of Terminal Exam Gen",
+  "description": "A terminal-themed AI exam generator that parses documents to create multi-format technical assessments with intelligent grading.",
   "requestFramePermissions": [
     "clipboard-read"
   ]

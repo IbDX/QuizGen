@@ -16,116 +16,61 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
     const [svg, setSvg] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     
+    // State for zoom and pan
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
-    const dragStartRef = useRef({ startX: 0, startY: 0, posX: position.x, posY: position.y });
+    const dragStartRef = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
     const viewportRef = useRef<HTMLDivElement>(null);
 
-    /**
-     * Advanced Mermaid Syntax Repair Engine
-     * Fixes common AI hallucinations without requiring a re-generation call.
-     */
-    const repairMermaidSyntax = (raw: string): string => {
+    // Heuristic function to clean common LLM Mermaid mistakes
+    const cleanMermaidCode = (raw: string): string => {
         if (!raw) return "";
-        let lines = raw
-            .replace(/```mermaid/gi, '')
-            .replace(/```/g, '')
-            .split('\n')
-            .map(l => l.trim())
-            .filter(l => l.length > 0);
+        let cleaned = raw.trim();
 
-        // 1. Detect Diagram Type (Default to graph LR if missing)
-        const isFlowchart = lines.some(l => /^(graph|flowchart)/i.test(l));
-        const isSequence = lines.some(l => /^sequenceDiagram/i.test(l));
-        const isClass = lines.some(l => /^classDiagram/i.test(l));
-        const isKnownType = isFlowchart || isSequence || isClass || lines.some(l => /^(erDiagram|stateDiagram|gantt|pie|mindmap)/i.test(l));
+        // 1. Remove markdown code blocks
+        cleaned = cleaned.replace(/^```\s*mermaid\s*$/gim, '').replace(/^```\s*$/gim, '').trim(); 
+        cleaned = cleaned.replace(/```mermaid/gi, '').replace(/```/g, '').trim();
 
-        if (!isKnownType) {
-            // Heuristic: If it looks like nodes/edges, treat as flowchart
-            if (lines.some(l => l.includes('-->') || l.includes('->'))) {
-                lines.unshift('graph LR');
+        // 2. Locate start of diagram
+        const diagramTypes = ['classDiagram', 'graph', 'sequenceDiagram', 'erDiagram', 'stateDiagram', 'gantt', 'pie', 'flowchart', 'mindmap', 'logicDiagram'];
+        let startIndex = -1;
+        
+        for (const type of diagramTypes) {
+            const match = new RegExp(`(^|\\n)\\s*${type}\\b`, 'i').exec(cleaned);
+            if (match) {
+                const keywordIndex = match.index + match[1].length;
+                if (startIndex === -1 || keywordIndex < startIndex) {
+                    startIndex = keywordIndex;
+                }
             }
         }
 
-        // Processing Logic varies by diagram type
-        const processedLines = lines.map(line => {
-            let cleanLine = line;
-
-            if (isFlowchart || !isKnownType) {
-                // A. Fix Invalid Node IDs with spaces: "Node One[Label]" -> "Node_One[Label]"
-                // Only matches if it looks like a definition line
-                if (/^[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s*[\[\(\{\<]/.test(cleanLine)) {
-                    cleanLine = cleanLine.replace(/^([a-zA-Z0-9]+)\s+([a-zA-Z0-9]+)(\s*[\[\(\{\<])/, '$1_$2$3');
-                }
-
-                // B. Auto-Quote Unquoted Labels (Crucial for AI output)
-                // Fixes: A[User: Login] -> A["User: Login"]
-                // Matches ID followed by bracket, capture content, ensure it's not already quoted
-                const shapeRegex = /^([a-zA-Z0-9_]+)(\s*)([\[\(\{\<]+)(?!")(.+?)(?!")([\]\)\}\>]+)(\s*.*)$/;
-                const match = cleanLine.match(shapeRegex);
-                
-                if (match) {
-                    const [full, id, space, open, content, close, rest] = match;
-                    
-                    // Check if content needs quoting (has spaces or special chars)
-                    // and isn't a subgraph or specific keyword
-                    if (/[:,\-\(\)\{\}\[\]]/.test(content) || (content.includes(' ') && !content.startsWith('"'))) {
-                        // Correct bracket mismatches if necessary (e.g. A[Text) -> A[Text])
-                        let safeClose = close;
-                        if(open.includes('[') && !close.includes(']')) safeClose = ']';
-                        if(open.includes('(') && !close.includes(')')) safeClose = ')';
-                        if(open.includes('{') && !close.includes('}')) safeClose = '}';
-                        
-                        cleanLine = `${id}${space}${open}"${content.replace(/"/g, "'")}"${safeClose}${rest}`;
-                    }
-                }
-
-                // C. Fix Broken Edge Labels
-                // Fixes: -->|Text with : chars| -> -->|"Text with : chars"|
-                if (cleanLine.includes('|')) {
-                    cleanLine = cleanLine.replace(/(--+|==+)\|([^"\|]+)\|/g, (m, arrow, label) => {
-                        return `${arrow}|"${label.replace(/"/g, "'")}"|`;
-                    });
-                }
-            }
-
-            return cleanLine;
-        });
-
-        // 3. Append Styling Classes safely
-        if (isFlowchart || !isKnownType) {
-            const classDefs = `
-classDef logic fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
-classDef power fill:#ffebee,stroke:#c62828,stroke-width:3px,color:#b71c1c;
-classDef memory fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#1b5e20;
-classDef mux fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
-classDef passive fill:#fafafa,stroke:#424242,stroke-width:1px,color:#212121;
-            `.trim();
-
-            const fullText = processedLines.join('\n');
-            const nodeIds = Array.from(new Set(fullText.match(/^\s*([a-zA-Z0-9_]+)[\[\(\{\<]/gm)?.map(s => s.split(/[\[\(\{\<]/)[0].trim()) || []));
-            const classAssignments: string[] = [];
-
-            nodeIds.forEach(id => {
-                // Determine class based on ID conventions or Label content
-                // We grep the line defining this ID to check its label content
-                const defLine = processedLines.find(l => l.startsWith(id));
-                const content = defLine ? defLine.toLowerCase() : id.toLowerCase();
-
-                if (/battery|vcc|gnd|source|power/.test(content)) classAssignments.push(`class ${id} power`);
-                else if (/reg|ram|rom|memory|cache/.test(content)) classAssignments.push(`class ${id} memory`);
-                else if (/and|or|xor|not|nand|gate/.test(content)) classAssignments.push(`class ${id} logic`);
-                else if (/mux|demux/.test(content)) classAssignments.push(`class ${id} mux`);
-                else if (/resistor|capacitor|inductor/.test(content)) classAssignments.push(`class ${id} passive`);
-            });
-
-            if (classAssignments.length > 0) {
-                return processedLines.join('\n') + '\n' + classAssignments.join('\n') + '\n' + classDefs;
-            }
+        if (startIndex !== -1) {
+            cleaned = cleaned.substring(startIndex).trim();
         }
 
-        return processedLines.join('\n');
+        // Fix invalid diagram types
+        cleaned = cleaned.replace(/^\s*logicDiagram/i, 'graph TD');
+
+        // CIRCUIT SCHEMATIC THEMING (Custom CSS Injection for Mermaid)
+        const isCircuit = /Resistor|Capacitor|Inductor|Voltage|Current|Ohm|Gate/i.test(cleaned);
+        
+        if (isCircuit && /graph/i.test(cleaned)) {
+            // Apply schematic styling to specific node types
+            cleaned += '\n  classDef resistor fill:#fff,stroke:#000,stroke-width:2px,rx:2,ry:2;';
+            cleaned += '\n  classDef source fill:#fef,stroke:#909,stroke-width:2px;';
+            cleaned += '\n  classDef gate fill:#eef,stroke:#00a,stroke-width:2px;';
+            cleaned += '\n  classDef ground fill:#333,stroke:#333,stroke-width:4px;';
+            
+            // Assign classes based on labels
+            cleaned = cleaned.replace(/(\w+)\[Resistor:[^\]]+\]/gi, '$1["$1<br/>Resistor"]:::resistor');
+            cleaned = cleaned.replace(/(\w+)\[Voltage:[^\]]+\]/gi, '$1["$1<br/>Source"]:::source');
+            cleaned = cleaned.replace(/(\w+)\[Gate:[^\]]+\]/gi, '$1["$1<br/>Gate"]:::gate');
+            cleaned = cleaned.replace(/(\w+)\[Ground\]/gi, '$1["⏚ Ground"]:::ground');
+        }
+
+        return cleaned;
     };
 
     useEffect(() => {
@@ -134,127 +79,151 @@ classDef passive fill:#fafafa,stroke:#424242,stroke-width:1px,color:#212121;
         const renderDiagram = async () => {
             try {
                 const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                const isDark = document.documentElement.classList.contains('dark');
                 
                 window.mermaid.initialize({ 
                     startOnLoad: false, 
-                    theme: isDark ? 'dark' : 'neutral',
+                    theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default',
                     securityLevel: 'loose',
-                    fontFamily: 'Fira Code, monospace',
+                    logLevel: 'error',
                     flowchart: {
-                        curve: 'stepBefore',
-                        padding: 20,
-                        useMaxWidth: false,
-                        htmlLabels: true
+                        curve: 'basis',
+                        padding: 20
                     }
                 });
 
-                const safeCode = repairMermaidSyntax(code);
+                const safeCode = cleanMermaidCode(code);
                 
-                // Attempt Render
-                const { svg: renderedSvg } = await window.mermaid.render(id, safeCode);
-                
-                // Post-Process SVG for Theme Consistency
-                const styledSvg = renderedSvg.replace('<style>', `
-                    <style>
-                        .node rect, .node polygon, .node circle, .node ellipse, .node path {
-                            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.1));
-                        }
-                        svg { 
-                           background-image: radial-gradient(#888 0.3px, transparent 0.3px);
-                           background-size: 20px 20px;
-                        }
-                        /* Hardware Schematic Colors */
-                        .dark .edgePath path { stroke: #00ff41 !important; }
-                        .dark .node rect, .dark .node polygon { fill: #0a0a0a !important; stroke: #00ff41 !important; }
-                        .dark .node .label { color: #00ff41 !important; fill: #00ff41 !important; }
-                        .dark .label foreignObject { color: #00ff41 !important; }
-                        .dark .marker { fill: #00ff41 !important; stroke: #00ff41 !important; }
-                `);
+                if (!safeCode) {
+                    throw new Error("Empty diagram code after cleanup.");
+                }
 
-                setSvg(styledSvg);
+                const { svg } = await window.mermaid.render(id, safeCode);
+                setSvg(svg);
                 setError(null);
+                handleReset(); // Reset view when code changes
             } catch (err: any) {
-                console.error("Mermaid Render Error:", err);
-                console.debug("Failed Code:", code);
-                setError(err.message || "Logic Rendering Violation.");
+                console.warn("Mermaid Render Warning:", err);
+                setError(err.message || "Syntax error in diagram definition.");
             }
         };
 
         renderDiagram();
     }, [code]);
 
-    const handleZoomIn = () => setScale(s => Math.min(s * 1.2, 5));
-    const handleZoomOut = () => setScale(s => Math.max(s / 1.2, 0.2));
-    const handleReset = () => { setScale(1); setPosition({ x: 0, y: 0 }); };
+    // Zoom and Pan handlers
+    const handleZoomIn = () => setScale(s => Math.min(s * 1.25, 4));
+    const handleZoomOut = () => setScale(s => Math.max(s / 1.25, 0.2));
+    const handleReset = () => {
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
+    };
 
     const handleMouseDown = (e: React.MouseEvent) => {
+        e.preventDefault();
         setIsDragging(true);
-        dragStartRef.current = { startX: e.clientX, startY: e.clientY, posX: position.x, posY: position.y };
+        dragStartRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            posX: position.x,
+            posY: position.y,
+        };
+        if(viewportRef.current) viewportRef.current.style.cursor = 'grabbing';
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!isDragging) return;
+        e.preventDefault();
         const dx = e.clientX - dragStartRef.current.startX;
         const dy = e.clientY - dragStartRef.current.startY;
-        setPosition({ x: dragStartRef.current.posX + dx, y: dragStartRef.current.posY + dy });
+        setPosition({
+            x: dragStartRef.current.posX + dx,
+            y: dragStartRef.current.posY + dy,
+        });
+    };
+
+    const handleMouseUpOrLeave = () => {
+        setIsDragging(false);
+        if(viewportRef.current) viewportRef.current.style.cursor = 'grab';
+    };
+    
+    const handleWheel = (e: React.WheelEvent) => {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            if (e.deltaY < 0) handleZoomIn();
+            else handleZoomOut();
+        }
     };
 
     if (error) {
         return (
-            <div className={`p-4 border border-red-500 bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 text-[10px] font-mono rounded-lg ${className}`}>
-                <div className="font-bold mb-2 flex items-center gap-2 uppercase tracking-tighter">
-                    <span>⚠️</span> Diagram Protocol Fault
+            <div className={`p-4 border border-red-500 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs font-mono rounded ${className}`}>
+                <div className="font-bold mb-2 flex items-center gap-2">
+                    <span>⚠️</span> SCHEMATIC RENDER ERROR
                 </div>
-                <div className="mb-2 opacity-80">The generated schematic contained syntax errors. Raw output displayed:</div>
-                <pre className="bg-black/10 dark:bg-black/50 p-2 rounded mb-2 overflow-x-auto whitespace-pre text-[8px] max-h-32 border border-red-500/30">
-                    {code}
-                </pre>
-                <div className="opacity-70 italic text-[8px] border-t border-red-500/20 pt-1 mt-1">{error}</div>
+                <div className="mb-2 opacity-80">{error}</div>
+                <details>
+                    <summary className="cursor-pointer font-bold opacity-70 hover:opacity-100">View Diagram Source</summary>
+                    <pre className="whitespace-pre-wrap mt-2 p-2 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/10 opacity-80">{code}</pre>
+                </details>
+            </div>
+        );
+    }
+
+    if (!svg) {
+        return (
+            <div className={`w-full h-48 flex items-center justify-center bg-gray-50 dark:bg-[#1a1a1a] rounded border border-dashed border-gray-300 dark:border-gray-700 ${className}`}>
+                <div className="text-xs text-gray-400 animate-pulse flex flex-col items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    Initializing Viewer...
+                </div>
             </div>
         );
     }
 
     return (
-        <div className={`relative w-full border-2 border-gray-300 dark:border-terminal-green/40 rounded-xl overflow-hidden bg-gray-50 dark:bg-[#080808] shadow-lg ${className}`} style={{ minHeight: '350px' }}>
-            <div className="absolute top-0 left-0 w-full h-8 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b dark:border-terminal-green/20 flex items-center justify-between px-3 z-10">
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-terminal-green shadow-[0_0_5px_#00ff41]"></div>
-                    <span className="text-[9px] font-bold font-mono text-gray-500 dark:text-terminal-green tracking-widest uppercase">Schematic Core</span>
-                </div>
-                <div className="flex gap-2">
-                    <button onClick={handleZoomIn} className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-terminal-green/10 rounded-full text-gray-500 dark:text-terminal-green">+</button>
-                    <button onClick={handleZoomOut} className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-terminal-green/10 rounded-full text-gray-500 dark:text-terminal-green">-</button>
-                    <button onClick={handleReset} className="px-2 h-6 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-terminal-green/10 rounded text-gray-500 dark:text-terminal-green text-[8px] font-bold uppercase">Reset</button>
+        <div 
+            className={`relative w-full overflow-hidden bg-white dark:bg-[#111] p-0 rounded-lg border border-gray-300 dark:border-terminal-green/30 flex justify-center items-center shadow-inner ${className}`}
+            style={{ minHeight: '300px' }}
+        >
+            <div className="absolute top-0 left-0 w-full h-6 bg-gray-100 dark:bg-black/40 border-b dark:border-terminal-green/20 flex items-center px-3 z-10">
+                <span className="text-[9px] font-bold font-mono text-gray-500 uppercase tracking-widest">Digital Schematic Viewer</span>
+            </div>
+
+            {/* Controls */}
+            <div className="absolute top-8 right-2 z-10 flex flex-col items-end gap-1 pointer-events-none">
+                <div className="flex items-center gap-1 bg-white/90 dark:bg-black/90 border border-gray-300 dark:border-terminal-green/40 rounded-md p-1 backdrop-blur-sm shadow-md pointer-events-auto">
+                    <button onClick={handleZoomIn} title="Zoom In" className="w-7 h-7 flex items-center justify-center text-lg font-bold text-gray-600 dark:text-terminal-green hover:bg-gray-100 dark:hover:bg-terminal-green/10 rounded transition-colors">+</button>
+                    <button onClick={handleZoomOut} title="Zoom Out" className="w-7 h-7 flex items-center justify-center text-lg font-bold text-gray-600 dark:text-terminal-green hover:bg-gray-100 dark:hover:bg-terminal-green/10 rounded transition-colors">-</button>
+                    <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+                    <button onClick={handleReset} title="Reset View" className="w-7 h-7 flex items-center justify-center text-gray-600 dark:text-terminal-green hover:bg-gray-100 dark:hover:bg-terminal-green/10 rounded transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5M4 4l16 16" /></svg>
+                    </button>
                 </div>
             </div>
 
+            {/* Viewport */}
             <div
                 ref={viewportRef}
-                className="w-full h-full cursor-grab active:cursor-grabbing"
+                className="w-full h-full cursor-grab pt-6"
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
-                onMouseUp={() => setIsDragging(false)}
-                onMouseLeave={() => setIsDragging(false)}
+                onMouseUp={handleMouseUpOrLeave}
+                onMouseLeave={handleMouseUpOrLeave}
+                onWheel={handleWheel}
             >
                 <div
                     style={{
                         transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                        transition: isDragging ? 'none' : 'transform 0.2s cubic-bezier(0,0,0.2,1)',
+                        transition: isDragging ? 'none' : 'transform 0.1s ease-out',
                         transformOrigin: 'center center',
                         width: '100%',
                         height: '100%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        paddingTop: '30px'
                     }}
                     dangerouslySetInnerHTML={{ __html: svg }}
                 />
-            </div>
-            
-            <div className="absolute bottom-2 right-3 text-[8px] font-bold font-mono text-gray-400 dark:text-terminal-green/30 pointer-events-none uppercase">
-                Render V2.8 // Hardened
             </div>
         </div>
     );

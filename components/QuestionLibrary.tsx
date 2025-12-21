@@ -23,6 +23,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
     const [activeTab, setActiveTab] = useState<'QUESTIONS' | 'EXAMS' | 'HISTORY'>('QUESTIONS');
     const [isImporting, setIsImporting] = useState(false);
     
+    // New states for error handling and conflicts
     const [conflictExam, setConflictExam] = useState<SavedExam | null>(null);
     const [importError, setImportError] = useState<string | null>(null);
     
@@ -54,6 +55,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
         const file = event.target.files?.[0];
         if (!file) return;
 
+        // Limit file size to 10MB
         if (file.size > 10 * 1024 * 1024) {
             setImportError(lang === 'ar' ? 'حجم الملف كبير جداً. الحد الأقصى 10 ميجابايت.' : 'File too large. Maximum size is 10MB.');
             return;
@@ -64,13 +66,16 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
         setImportError(null);
 
         try {
+            // 1. VirusTotal Security Scan
             const scanResult = await scanFileWithVirusTotal(file);
             if (!scanResult.safe) {
                 throw new Error(`Security Block: ${scanResult.message}`);
             }
 
+            // 2. Read Content
             const content = await file.text();
             
+            // 3. Import with Logic Checks
             const result = await importSavedExam(content);
             
             if (result.success) {
@@ -102,9 +107,7 @@ export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, o
         return ['ALL', ...typeList];
     }, [questions]);
 
-    const filteredQuestions = useMemo(() => {
-        return filter === 'ALL' ? questions : questions.filter(q => q.type === filter);
-    }, [filter, questions]);
+    const filteredQuestions = filter === 'ALL' ? questions : questions.filter(q => q.type === filter);
 
     return (
         <div className={`mx-auto transition-all duration-300 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>

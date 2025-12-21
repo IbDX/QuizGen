@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from 'react';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-javascript';
@@ -68,7 +67,7 @@ export const CodeWindow: React.FC<CodeWindowProps> = ({ code, title = "code" }) 
     <div className="rounded-lg overflow-hidden shadow-2xl my-6 border border-gray-700 bg-[#1e1e1e] group relative" dir="ltr">
       {/* Window Header */}
       <div className="bg-[#252526] px-4 py-2 flex items-center justify-between border-b border-black">
-        <div className="flex gap-2" aria-hidden="true">
+        <div className="flex gap-2">
           <div className="w-3 h-3 rounded-full bg-[#ff5f56] hover:bg-[#ff5f56]/80 transition-colors shadow-inner"></div>
           <div className="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#ffbd2e]/80 transition-colors shadow-inner"></div>
           <div className="w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#27c93f]/80 transition-colors shadow-inner"></div>
@@ -89,7 +88,6 @@ export const CodeWindow: React.FC<CodeWindowProps> = ({ code, title = "code" }) 
                 }
             `}
             title="Copy to Clipboard"
-            aria-label={copied ? "Code Copied" : "Copy Code"}
         >
             {copied ? (
                 <>
@@ -113,18 +111,14 @@ export const CodeWindow: React.FC<CodeWindowProps> = ({ code, title = "code" }) 
       <div className="relative">
         {/* whitespace-pre-wrap ensures that if a line is still too long, it wraps instead of hiding, 
             but we prefer the pre format if newlines exist. */}
-        <pre 
-            className="!m-0 !p-4 !bg-[#1e1e1e] !text-sm overflow-x-auto custom-scrollbar focus:outline-none focus:ring-2 focus:ring-terminal-green"
-            tabIndex={0}
-            aria-label={`${title} code block`}
-        >
+        <pre className="!m-0 !p-4 !bg-[#1e1e1e] !text-sm overflow-x-auto custom-scrollbar">
           <code className="language-javascript text-gray-200 font-mono leading-relaxed whitespace-pre-wrap">
             {normalizedCode}
           </code>
         </pre>
         
         {/* Line numbers deco (simulated) */}
-        <div className="absolute top-0 left-0 h-full w-0 border-r border-gray-800 hidden md:block" aria-hidden="true"></div>
+        <div className="absolute top-0 left-0 h-full w-0 border-r border-gray-800 hidden md:block"></div>
       </div>
       
       <style>{`

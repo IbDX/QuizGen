@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, MobileAction, SystemStatus } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
 import { ExamConfig } from './components/ExamConfig';
@@ -12,7 +12,7 @@ import { QuestionLibrary } from './components/QuestionLibrary';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ConfirmModal } from './components/ConfirmModal'; 
 import { SettingsView } from './components/SettingsView';
-import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference, UILanguage, SavedExam, ThemeOption, AppError, ErrorCode } from './types';
+import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference, UILanguage, SavedExam, ThemeOption } from './types';
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 import { generateExamPDF } from './utils/pdfGenerator';
 import { t } from './utils/translations';
@@ -89,7 +89,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [appState, uiLanguage]);
 
-  const confirmAndNavigate = useCallback((navigationAction: () => void) => {
+  const confirmAndNavigate = (navigationAction: () => void) => {
     if (appState === 'EXAM' || appState === 'BUILDER') {
       setConfirmModalState({
         isOpen: true,
@@ -97,23 +97,23 @@ const App: React.FC = () => {
         message: t('exit_exam_warning_body', uiLanguage),
         onConfirm: () => {
           navigationAction();
-          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+          setConfirmModalState({ ...confirmModalState, isOpen: false });
         },
       });
     } else {
       navigationAction();
     }
-  }, [appState, uiLanguage]);
+  };
   
-  const handleCancelExit = useCallback(() => {
-      setConfirmModalState(prev => ({ ...prev, isOpen: false }));
-  }, []);
+  const handleCancelExit = () => {
+      setConfirmModalState({ ...confirmModalState, isOpen: false });
+  };
 
-  const handleQuotaError = useCallback(() => {
+  const handleQuotaError = () => {
       setSystemStatus('QUOTA_LIMIT');
-  }, []);
+  };
 
-  const handleFilesAccepted = useCallback((files: Array<{base64: string; mime: string; name: string; hash: string}>) => {
+  const handleFilesAccepted = (files: Array<{base64: string; mime: string; name: string; hash: string}>) => {
     const uniqueBatch: typeof files = [];
     const seenHashes = new Set<string>();
     const duplicates: string[] = [];
@@ -134,9 +134,9 @@ const App: React.FC = () => {
     setUploadedFiles(uniqueBatch);
     setPreloadedExamTitle(undefined);
     setAppState('CONFIG');
-  }, []);
+  };
 
-  const handleAppendFiles = useCallback((newFiles: Array<{base64: string; mime: string; name: string; hash: string}>) => {
+  const handleAppendFiles = (newFiles: Array<{base64: string; mime: string; name: string; hash: string}>) => {
     setUploadedFiles(prev => {
       const existingHashes = new Set(prev.map(f => f.hash));
       const duplicateNames: string[] = [];
@@ -155,9 +155,9 @@ const App: React.FC = () => {
 
       return [...prev, ...uniqueNewFiles];
     });
-  }, []);
+  };
 
-  const handleRemoveFile = useCallback((indexToRemove: number) => {
+  const handleRemoveFile = (indexToRemove: number) => {
     setUploadedFiles(prev => {
       const updated = prev.filter((_, index) => index !== indexToRemove);
       if (updated.length === 0) {
@@ -165,30 +165,70 @@ const App: React.FC = () => {
       }
       return updated;
     });
-  }, []);
+  };
 
-  const handleDemoLoad = useCallback(() => {
+  const handleDemoLoad = () => {
       const content = `
-# Z+ MASTER STRESS TEST PROTOCOL (30 QUESTIONS)
-# TARGET: FULL SYSTEM DIAGNOSTIC (AR/EN BILINGUAL)
-... (content truncated for brevity)
+# Z+ SYSTEM DIAGNOSTIC EVALUATION
+# TARGET: MULTI-DISCIPLINARY ANALYSIS
+
+## SECTION 1: C++ (TRACING)
+Q1. Determine the exact output of the following pointer arithmetic code.
+\`\`\`cpp
+#include <iostream>
+using namespace std;
+int main() {
+    int arr[] = {10, 20, 30};
+    int *p = arr;
+    p++;
+    cout << *p << " " << p[-1];
+    return 0;
+}
+\`\`\`
+
+## SECTION 2: JAVASCRIPT (MCQ)
+Q2. What is the result of the following loose equality check?
+\`\`\`javascript
+console.log(0 == '0');
+\`\`\`
+A. true
+B. false
+C. undefined
+D. NaN
+
+## SECTION 3: PYTHON (CODING)
+Q3. Write a Python function \`merge_dicts(d1, d2)\` that merges two dictionaries. If a key appears in both, sum their values.
+Example: d1={'a':10}, d2={'a':5, 'b':2} -> result={'a':15, 'b':2}
+
+## SECTION 4: MATHEMATICS (GRAPH VISUALIZATION)
+Q4. Visualize the intersection of a parabola and a line.
+Plot the functions:
+1. $f(x) = x^2 - 2$
+2. $g(x) = x + 1$
+Determine the visual intersection points in the domain [-3, 3].
+
+## SECTION 5: SOFTWARE ENGINEERING (ARCHITECTURE DIAGRAM)
+Q5. Design a "Authentication System" flow using a Sequence Diagram.
+- User sends credentials to LoginController.
+- LoginController validates with AuthService.
+- AuthService checks Database.
+- Database returns Result.
       `;
-      // ... same logic
-      const base64 = btoa(unescape(encodeURIComponent(content))); 
+      const base64 = btoa(content);
       const demoFile = {
           base64: base64,
           mime: 'text/plain',
-          name: 'master_diagnostic_v3.txt',
-          hash: 'DEMO_STRESS_TEST_30Q'
+          name: 'diagnostic_demo.txt',
+          hash: 'DEMO_HASH_V2_MULTI'
       };
       handleFilesAccepted([demoFile]);
-  }, [handleFilesAccepted]);
+  };
   
-  const handleStartBuilder = useCallback(() => {
+  const handleStartBuilder = () => {
       setAppState('BUILDER');
-  }, []);
+  };
   
-  const handleBuilderExamGenerated = useCallback((generatedQuestions: Question[], builderSettings: Partial<ExamSettings>, title?: string) => {
+  const handleBuilderExamGenerated = (generatedQuestions: Question[], builderSettings: Partial<ExamSettings>, title?: string) => {
       setQuestions(generatedQuestions);
       setSettings({
           timeLimitMinutes: builderSettings.timeLimitMinutes || 0,
@@ -198,9 +238,9 @@ const App: React.FC = () => {
       });
       if (title) setPreloadedExamTitle(title);
       setAppState('EXAM');
-  }, []);
+  };
 
-  const handleStartExam = useCallback(async (examSettings: ExamSettings) => {
+  const handleStartExam = async (examSettings: ExamSettings) => {
     setSettings(examSettings);
     setSystemStatus('ONLINE'); 
 
@@ -232,37 +272,41 @@ const App: React.FC = () => {
           generationPromise
       ]);
       
+      if (generatedQuestions.length === 0) throw new Error("No questions generated");
+      
       setQuestions(generatedQuestions);
       setAppState('EXAM_READY');
 
     } catch (e: any) {
       console.error(e);
-      
-      const appError = e instanceof AppError ? e : new AppError(e.message, ErrorCode.UNKNOWN);
-      
-      // Handle Quota Limit Specifically
-      if (appError.code === ErrorCode.RATE_LIMIT) {
+      const isQuota = 
+          e.message === "429_RATE_LIMIT" || 
+          e.message?.includes('429') || 
+          e.message?.toLowerCase().includes('quota') ||
+          e.message?.toLowerCase().includes('resource_exhausted') ||
+          e.status === 429 ||
+          e.code === 429;
+
+      if (isQuota) {
           handleQuotaError();
-          const errText = t(ErrorCode.RATE_LIMIT, uiLanguage);
-          alert(`⚠️ ${errText.title}: ${errText.msg}`);
+          alert(uiLanguage === 'ar' 
+              ? "⚠️ النظام مشغول جداً (تجاوز الحصة). يرجى الانتظار دقيقة والمحاولة لاحقاً." 
+              : "⚠️ HIGH TRAFFIC: System quota exceeded. Please wait 1 minute and try again.");
       } else {
-          // Handle other errors (Timeout, Malformed, Unknown)
-          const errText = t(appError.code, uiLanguage);
-          alert(`✕ ${errText.title}: ${errText.msg}`);
+          alert('Failed to generate exam. Please try different files or simpler instructions.');
       }
-      
       setAppState('CONFIG');
     }
-  }, [preloadedExamTitle, uploadedFiles, uiLanguage, handleQuotaError]);
+  };
 
-  const handleExamComplete = useCallback((answers: UserAnswer[]) => {
+  const handleExamComplete = (answers: UserAnswer[]) => {
     setUserAnswers(answers);
     const title = preloadedExamTitle || `Auto-Saved Exam ${new Date().toLocaleTimeString()}`;
     saveToHistory(questions, title);
     setAppState('RESULTS');
-  }, [preloadedExamTitle, questions]);
+  };
 
-  const handleRestart = useCallback(() => {
+  const handleRestart = () => {
     setAppState('UPLOAD');
     setUploadedFiles([]);
     setQuestions([]);
@@ -272,23 +316,23 @@ const App: React.FC = () => {
     setIsSettingsOpen(false);
     setPreloadedExamTitle(undefined);
     setSystemStatus('ONLINE');
-  }, []);
+  };
 
-  const handleRetake = useCallback(() => {
+  const handleRetake = () => {
     setUserAnswers([]);
     setAppState('EXAM');
-  }, []);
+  };
   
-  const handleLoadSavedExam = useCallback((exam: SavedExam) => {
+  const handleLoadSavedExam = (exam: SavedExam) => {
       setQuestions(exam.questions);
       setPreloadedExamTitle(exam.title);
       setUploadedFiles([]);
       setUserAnswers([]);
       setIsLibraryOpen(false);
       setAppState('CONFIG');
-  }, []);
+  };
 
-  const handleRemediation = useCallback(async (wrongIds: string[]) => {
+  const handleRemediation = async (wrongIds: string[]) => {
     setAppState('GENERATING');
     setSystemStatus('ONLINE');
     setLoadingMsg(uiLanguage === 'ar' ? 'تحليل نقاط الضعف...' : 'ANALYZING FAILURE POINTS... GENERATING TACTICAL REMEDIATION EXAM...');
@@ -300,21 +344,21 @@ const App: React.FC = () => {
       setAppState('EXAM');
     } catch (e: any) {
        console.error(e);
-       const appError = e instanceof AppError ? e : new AppError(e.message, ErrorCode.UNKNOWN);
+       const isQuota = 
+            e.message?.includes('429') || 
+            e.message?.toLowerCase().includes('quota') ||
+            e.message?.toLowerCase().includes('resource_exhausted') ||
+            e.status === 429;
 
-       if (appError.code === ErrorCode.RATE_LIMIT) {
+       if (isQuota) {
            handleQuotaError();
-           const errText = t(ErrorCode.RATE_LIMIT, uiLanguage);
-           alert(`⚠️ ${errText.title}: ${errText.msg}`);
-       } else {
-           const errText = t(appError.code, uiLanguage);
-           alert(`✕ ${errText.title}: ${errText.msg}`);
        }
+       alert('Failed to generate remediation exam.');
        setAppState('RESULTS');
     }
-  }, [questions, uiLanguage, handleQuotaError]);
+  };
 
-  const handleDownloadPDF = useCallback(() => {
+  const handleDownloadPDF = () => {
      let correctCount = 0;
      const calculatedAnswers = questions.map(q => {
         const ua = userAnswers.find(a => a.questionId === q.id);
@@ -344,19 +388,19 @@ const App: React.FC = () => {
         return 'F';
      };
      generateExamPDF(questions, score, getGrade(score), "User");
-  }, [questions, userAnswers]);
+  };
   
-  const handleToggleLibrary = useCallback(() => {
+  const handleToggleLibrary = () => {
       if (!isLibraryOpen) setIsSettingsOpen(false); // Close settings if opening lib
       setIsLibraryOpen(prev => !prev);
-  }, [isLibraryOpen]);
+  };
 
-  const handleToggleSettings = useCallback(() => {
+  const handleToggleSettings = () => {
       if (!isSettingsOpen) setIsLibraryOpen(false); // Close lib if opening settings
       setIsSettingsOpen(prev => !prev);
-  }, [isSettingsOpen]);
+  };
 
-  const getMobileActions = useCallback((): MobileAction[] => {
+  const getMobileActions = (): MobileAction[] => {
       if (appState === 'UPLOAD') {
           return [
               { label: "AI EXAM BUILDER", onClick: handleStartBuilder, variant: 'primary' },
@@ -394,7 +438,7 @@ const App: React.FC = () => {
           return actions;
       }
       return [];
-  }, [appState, uiLanguage, handleStartBuilder, handleDemoLoad, confirmAndNavigate, handleRestart, questions, userAnswers, handleDownloadPDF, handleRetake, handleRemediation]);
+  };
 
   return (
     <Layout 
@@ -412,6 +456,7 @@ const App: React.FC = () => {
       onSetUiLanguage={setUiLanguage}
       forceStaticHeader={appState === 'UPLOAD'}
       systemStatus={systemStatus}
+      // Pass Visual Props
       theme={theme}
       autoHideHeader={autoHideHeader}
       enableBackgroundAnim={enableBackgroundAnim}
@@ -426,7 +471,6 @@ const App: React.FC = () => {
         lang={uiLanguage}
       />
 
-      {/* Duplicate Files Modal ... */}
       {duplicateFiles.length > 0 && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
               <div className="bg-white dark:bg-gray-900 border-2 border-red-500 p-6 max-w-md w-full shadow-[0_0_30px_rgba(239,68,68,0.4)] relative">
@@ -547,7 +591,7 @@ const App: React.FC = () => {
               questions={questions} 
               settings={settings} 
               onComplete={handleExamComplete} 
-              isFullWidth={isFullWidth} 
+              isFullWidth={isFullWidth}
               lang={uiLanguage}
             />
           )}

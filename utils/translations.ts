@@ -1,6 +1,4 @@
 
-import { ErrorCode } from '../types';
-
 export const translations = {
     en: {
         // Layout & Settings
@@ -24,7 +22,7 @@ export const translations = {
         "terminal_cursor": "TERMINAL CURSOR",
         "save_close": "SAVE & CLOSE",
         "status_online": "STATUS: ONLINE | SYSTEM: READY",
-        "exit_exam_warning_title": "Exit Q&A Session?",
+        "exit_exam_warning_title": "Exit Exam?",
         "exit_exam_warning_body": "Are you sure you want to exit? All progress will be lost.",
         "confirm_action": "CONFIRM EXIT",
         "cancel_action": "CANCEL",
@@ -32,10 +30,10 @@ export const translations = {
         "report_issue": "REPORT BUG / ISSUE",
 
         // Upload
-        "secure_upload": "UPLOAD SOURCE FILE",
-        "analyzing_batch": "EXTRACTING...",
-        "executing_protocols": "Processing files for question extraction...",
-        "tap_to_select": "Tap to Select or Drag & Drop (Max 15MB)",
+        "secure_upload": "SECURE FILE UPLOAD",
+        "analyzing_batch": "ANALYZING BATCH...",
+        "executing_protocols": "Executing Security Protocols on individual files...",
+        "tap_to_select": "Tap to Select or Drag & Drop Multiple PDFs/Images",
         "or_via_network": "OR VIA NETWORK",
         "fetch": "FETCH",
         "quick_test": "QUICK DIAGNOSTIC TEST",
@@ -47,22 +45,22 @@ export const translations = {
         "clipboard_denied": "Permission Denied. Tap input box below to paste manually.",
 
         // AI Builder Card & Interface
-        "builder_card_title": "AI Q&A BUILDER",
-        "builder_card_desc": "Chat with AI to design custom Q&A sets.",
+        "builder_card_title": "AI EXAM BUILDER",
+        "builder_card_desc": "Chat with AI to design a custom exam.",
         "start_builder": "START BUILDER",
-        "builder_title": "AI Q&A BUILDER",
+        "builder_title": "AI EXAM BUILDER",
         "builder_mode": "[INTERACTIVE MODE]",
         "abort": "[ESC] ABORT",
         "init_system": "INITIALIZE SYSTEM",
         "select_lang_msg": "Select conversation language to begin.",
         "user_role": "USER",
         "agent_role": "SYSTEM AGENT",
-        "compiling": "COMPILING Q&A DATA...",
+        "compiling": "COMPILING EXAM DATA...",
         "connection_error": "Connection interrupted. Please try again.",
-        "builder_generate": "GENERATE FINAL Q&A",
-        "builder_negotiate_hint": "Negotiate content above. Click 'GENERATE' when ready.",
-        "exam_ready": "Q&A SET GENERATED",
-        "exam_ready_desc": "Your custom Q&A set is ready. You can start it immediately, save it to your library, or download it.",
+        "builder_generate": "GENERATE FINAL EXAM",
+        "builder_negotiate_hint": "Negotiate exam content above. Click 'GENERATE EXAM' when ready.",
+        "exam_ready": "EXAM GENERATED SUCCESSFULLY",
+        "exam_ready_desc": "Your custom exam is ready. You can start it immediately, save it to your library, or download it.",
         "download_zplus": "DOWNLOAD .ZPLUS",
         "save_library": "SAVE TO LIBRARY",
         "start_now": "START NOW",
@@ -81,12 +79,12 @@ export const translations = {
         "mode_select": "MODE_SELECT",
         "time_alloc": "TIME_ALLOCATION",
         "enable_timer": "ENABLE TIMER",
-        "initiate_exam": "EXTRACT / GENERATE",
+        "initiate_exam": "INITIATE_EXAM",
         "scanning": "SCANNING...",
         "original_lang": "ORIGINAL (Auto)",
         "lang_desc_auto": "Preserves the language of the source document(s).",
-        "lang_desc_en": "Questions generated entirely in English.",
-        "lang_desc_ar": "Questions in Arabic, code in English.",
+        "lang_desc_en": "Exam generated entirely in English.",
+        "lang_desc_ar": "Exam questions in Arabic, code in English.",
         
         // Exam Runner
         "question": "QUESTION",
@@ -105,7 +103,7 @@ export const translations = {
         "no_answer_provided": "No answer provided.",
 
         // Results
-        "assessment_complete": "SESSION COMPLETE",
+        "assessment_complete": "ASSESSMENT COMPLETE",
         "critical_failure": "CRITICAL SYSTEM FAILURE",
         "perfection": "PERFECTION ACHIEVED",
         "final_score": "FINAL SCORE",
@@ -114,7 +112,7 @@ export const translations = {
         "enter_agent_name": "ENTER_AGENT_NAME",
         "publish": "PUBLISH",
         "save": "SAVE",
-        "save_full_exam": "SAVE FULL SET",
+        "save_full_exam": "SAVE FULL EXAM",
         "saved": "SAVED",
         "pdf_report": "PDF REPORT",
         "retake": "RETAKE",
@@ -122,7 +120,7 @@ export const translations = {
         "remediate": "REMEDIATE",
         "view_weak_points": "VIEW WEAK POINTS",
         "hide_analysis": "HIDE ANALYSIS",
-        "show_full_exam": "SHOW FULL SET",
+        "show_full_exam": "SHOW FULL EXAM",
         "show_errors_only": "SHOW ERRORS ONLY",
         "areas_improvement": "AREAS FOR IMPROVEMENT",
         "passed": "PASSED",
@@ -138,13 +136,13 @@ export const translations = {
 
         // Library
         "saved_questions": "SAVED QUESTIONS",
-        "saved_exams": "SAVED SETS",
-        "no_saved_exams": "NO SAVED SETS",
-        "load_retake": "LOAD & RETAKE",
+        "saved_exams": "SAVED EXAMS",
+        "no_saved_exams": "NO SAVED EXAMS",
+        "load_retake": "LOAD & RETAKE EXAM",
         "library_empty": "QUESTION LIBRARY IS EMPTY",
-        "import_exam": "IMPORT SET (.zplus)",
+        "import_exam": "IMPORT EXAM (.zplus)",
         "export_exam": "EXPORT",
-        "import_success": "Set imported successfully.",
+        "import_success": "Exam imported successfully.",
         "import_failed": "Invalid .zplus file.",
 
         // AI Helper
@@ -174,7 +172,7 @@ export const translations = {
         "terminal_cursor": "مؤشر الطرفية",
         "save_close": "حفظ وإغلاق",
         "status_online": "الحالة: متصل | النظام: جاهز",
-        "exit_exam_warning_title": "الخروج من الجلسة؟",
+        "exit_exam_warning_title": "الخروج من الاختبار؟",
         "exit_exam_warning_body": "هل أنت متأكد من رغبتك في الخروج؟ سيتم فقدان كل التقدم.",
         "confirm_action": "تأكيد الخروج",
         "cancel_action": "إلغاء",
@@ -182,10 +180,10 @@ export const translations = {
         "report_issue": "الإبلاغ عن مشكلة / خطأ",
 
         // Upload
-        "secure_upload": "رفع الملفات المصدر",
-        "analyzing_batch": "جاري الاستخراج...",
-        "executing_protocols": "معالجة الملفات لاستخراج الأسئلة...",
-        "tap_to_select": "اضغط للاختيار أو اسحب الملفات (الحد الأقصى 15MB)",
+        "secure_upload": "رفع الملفات الآمن",
+        "analyzing_batch": "جاري تحليل الحزمة...",
+        "executing_protocols": "تنفيذ بروتوكولات الأمان على الملفات...",
+        "tap_to_select": "اضغط للاختيار أو اسحب الملفات (PDF/صور)",
         "or_via_network": "أو عبر الشبكة",
         "fetch": "جلب",
         "quick_test": "اختبار تشخيصي سريع",
@@ -197,22 +195,22 @@ export const translations = {
         "clipboard_denied": "تم رفض الإذن. اضغط على مربع الإدخال للصق يدوياً.",
         
         // AI Builder Card & Interface
-        "builder_card_title": "منشئ الأسئلة الذكي",
-        "builder_card_desc": "تحدث مع الذكاء الاصطناعي لتصميم مجموعة أسئلة مخصصة.",
+        "builder_card_title": "منشئ الاختبارات الذكي",
+        "builder_card_desc": "تحدث مع الذكاء الاصطناعي لتصميم اختبار مخصص.",
         "start_builder": "ابدأ المنشئ",
-        "builder_title": "منشئ الأسئلة الذكي",
+        "builder_title": "منشئ الاختبارات الذكي",
         "builder_mode": "[الوضع التفاعلي]",
         "abort": "[ESC] خروج",
         "init_system": "تهيئة النظام",
         "select_lang_msg": "اختر لغة المحادثة للبدء.",
         "user_role": "المستخدم",
         "agent_role": "عميل النظام",
-        "compiling": "جاري تجميع البيانات...",
+        "compiling": "جاري تجميع بيانات الاختبار...",
         "connection_error": "انقطع الاتصال. يرجى المحاولة مرة أخرى.",
-        "builder_generate": "إنشاء المجموعة النهائية",
-        "builder_negotiate_hint": "اتفق على المحتوى أعلاه. اضغط 'إنشاء' عند الانتهاء.",
-        "exam_ready": "تم إنشاء الأسئلة بنجاح",
-        "exam_ready_desc": "مجموعة الأسئلة جاهزة. يمكنك البدء فوراً، حفظها في المكتبة، أو تحميلها.",
+        "builder_generate": "إنشاء الاختبار النهائي",
+        "builder_negotiate_hint": "اتفق على المحتوى أعلاه. اضغط 'إنشاء الاختبار' عند الانتهاء.",
+        "exam_ready": "تم إنشاء الاختبار بنجاح",
+        "exam_ready_desc": "اختبارك المخصص جاهز. يمكنك البدء فوراً، حفظه في المكتبة، أو تحميله.",
         "download_zplus": "تحميل ملف .ZPLUS",
         "save_library": "حفظ في المكتبة",
         "start_now": "ابدأ الآن",
@@ -223,19 +221,19 @@ export const translations = {
         "minutes": "دقيقة",
 
         // Config
-        "configuration": "إعداد الاستخراج",
+        "configuration": "إعداد الاختبار",
         "target_sources": "المصادر المستهدفة",
         "add_more": "إضافة ملفات",
-        "output_lang": "لغة الأسئلة",
+        "output_lang": "لغة الاختبار",
         "output_format": "تنسيق المخرجات",
-        "mode_select": "وضع الأسئلة",
+        "mode_select": "وضع الاختبار",
         "time_alloc": "تخصيص الوقت",
         "enable_timer": "تفعيل المؤقت",
-        "initiate_exam": "استخراج / إنشاء",
+        "initiate_exam": "بدء الاختبار",
         "scanning": "جاري الفحص...",
         "original_lang": "الأصلية (تلقائي)",
         "lang_desc_auto": "يحافظ على لغة المستند الأصلي.",
-        "lang_desc_en": "الأسئلة بالكامل باللغة الإنجليزية.",
+        "lang_desc_en": "الاختبار بالكامل باللغة الإنجليزية.",
         "lang_desc_ar": "الأسئلة بالعربية، الأكواد بالإنجليزية.",
 
         // Exam Runner
@@ -255,7 +253,7 @@ export const translations = {
         "no_answer_provided": "لم يتم تقديم إجابة.",
 
         // Results
-        "assessment_complete": "اكتملت الجلسة",
+        "assessment_complete": "اكتمل التقييم",
         "critical_failure": "فشل حرج في النظام",
         "perfection": "تم تحقيق الكمال",
         "final_score": "النتيجة النهائية",
@@ -264,7 +262,7 @@ export const translations = {
         "enter_agent_name": "أدخل الاسم",
         "publish": "نشر",
         "save": "حفظ",
-        "save_full_exam": "حفظ المجموعة كاملة",
+        "save_full_exam": "حفظ الاختبار كاملاً",
         "saved": "محفوظ",
         "pdf_report": "تقرير PDF",
         "retake": "إعادة",
@@ -272,7 +270,7 @@ export const translations = {
         "remediate": "معالجة الضعف",
         "view_weak_points": "عرض نقاط الضعف",
         "hide_analysis": "إخفاء التحليل",
-        "show_full_exam": "عرض الأسئلة بالكامل",
+        "show_full_exam": "عرض الاختبار بالكامل",
         "show_errors_only": "عرض الأخطاء فقط",
         "areas_improvement": "مجالات للتحسين",
         "passed": "ناجح",
@@ -288,85 +286,26 @@ export const translations = {
 
         // Library
         "saved_questions": "الأسئلة المحفوظة",
-        "saved_exams": "المجموعات المحفوظة",
-        "no_saved_exams": "لا توجد مجموعات محفوظة",
-        "load_retake": "تحميل وإعادة",
+        "saved_exams": "الاختبارات المحفوظة",
+        "no_saved_exams": "لا توجد اختبارات محفوظة",
+        "load_retake": "تحميل وإعادة الاختبار",
         "library_empty": "مكتبة الأسئلة فارغة",
-        "import_exam": "استيراد ملف (.zplus)",
+        "import_exam": "استيراد اختبار (.zplus)",
         "export_exam": "تصدير",
-        "import_success": "تم الاستيراد بنجاح.",
+        "import_success": "تم استيراد الاختبار بنجاح.",
         "import_failed": "ملف .zplus غير صالح.",
 
         // AI Helper
         "ai_helper_title": "دعم النظام",
         "ai_helper_placeholder": "اسأل عن كيفية استخدام Z+...",
-        "ai_helper_welcome": "تحياتي أيها العميل. أنا وحدة دعم نظام Z+. يمكنني المساعدة في حل المشكلات، شرح الميزات، أو إرشادك خلال عملية الرفع. كيف يمكنني المساعدة؟"
+        "ai_helper_welcome": "تحياتي أيها العميل. أنا وحدة دعم نظام Z+. يمكنني المساعدة في حل المشكلات، شرح الميزات (مثل الأوضاع أو الشارات)، أو إرشادك خلال عملية الرفع. كيف يمكنني المساعدة؟"
     }
-};
-
-export const errorTranslations = {
-  en: {
-    [ErrorCode.NETWORK_TIMEOUT]: {
-      title: "Connection Timed Out",
-      msg: "The AI is taking too long to respond. Please check your connection and try again."
-    },
-    [ErrorCode.RATE_LIMIT]: {
-      title: "System Busy",
-      msg: "We are experiencing high traffic (Quota Exceeded). Please wait 30 seconds before retrying."
-    },
-    [ErrorCode.MALFORMED_RESPONSE]: {
-      title: "Data Processing Error",
-      msg: "The AI generated an invalid format. We are automatically retrying..."
-    },
-    [ErrorCode.PARTIAL_DATA]: {
-      title: "Partial Success",
-      msg: "Some content was unreadable and has been filtered out to ensure stability."
-    },
-    [ErrorCode.API_ERROR]: {
-      title: "Server Error",
-      msg: "Unable to contact Gemini servers."
-    },
-    [ErrorCode.UNKNOWN]: {
-      title: "Unexpected Error",
-      msg: "An unknown error occurred. Please refresh."
-    }
-  },
-  ar: {
-    [ErrorCode.NETWORK_TIMEOUT]: {
-      title: "انتهت مهلة الاتصال",
-      msg: "استغرق الذكاء الاصطناعي وقتاً طويلاً. يرجى التحقق من الإنترنت والمحاولة مجدداً."
-    },
-    [ErrorCode.RATE_LIMIT]: {
-      title: "النظام مشغول جداً",
-      msg: "حركة المرور عالية حالياً (تجاوز الحصة). يرجى الانتظار 30 ثانية."
-    },
-    [ErrorCode.MALFORMED_RESPONSE]: {
-      title: "خطأ في معالجة البيانات",
-      msg: "أنتج النظام تنسيقاً غير صالح. جاري إعادة المحاولة..."
-    },
-    [ErrorCode.PARTIAL_DATA]: {
-      title: "نجاح جزئي",
-      msg: "تم استبعاد بعض البيانات غير الصالحة لضمان استقرار النظام."
-    },
-    [ErrorCode.API_ERROR]: {
-      title: "خطأ في الخادم",
-      msg: "تعذر الاتصال بخوادم Gemini."
-    },
-    [ErrorCode.UNKNOWN]: {
-      title: "خطأ غير متوقع",
-      msg: "حدث خطأ غير معروف. يرجى تحديث الصفحة."
-    }
-  }
 };
 
 export type TranslationKey = keyof typeof translations['en'];
 
-export const t = (key: TranslationKey | ErrorCode, lang: string): any => {
-    // Check if it's an error code first for object return
-    if (Object.values(ErrorCode).includes(key as ErrorCode)) {
-        return errorTranslations[lang === 'ar' ? 'ar' : 'en'][key as ErrorCode];
-    }
-    return translations[lang === 'ar' ? 'ar' : 'en'][key as TranslationKey] || translations['en'][key as TranslationKey] || key;
+export const t = (key: TranslationKey, lang: string): string => {
+    return translations[lang === 'ar' ? 'ar' : 'en'][key] || translations['en'][key] || key;
 };
 
 const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];

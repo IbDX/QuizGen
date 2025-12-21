@@ -1,3 +1,4 @@
+
 # 03. Security & Validation Protocols
 
 Z+ implements a "Defense in Depth" strategy. Since the application runs client-side, we must ensure that no malicious files are processed and no malicious outputs are rendered.
@@ -21,11 +22,6 @@ flowchart LR
 ## 1. File Validation (`utils/fileValidation.ts`)
 
 We do not trust file extensions. A user can rename `malware.exe` to `document.pdf`. We verify the **Magic Bytes** (File Signature) of the binary buffer.
-
-### Constraints
-*   **Single File Limit:** **15 MB** (Strictly enforced).
-*   **Batch Total Limit:** **50 MB**.
-*   **Formats:** PDF, PNG, JPG/JPEG.
 
 ### Supported Signatures
 | Format | Hex Signature (Header) | Offset |
@@ -69,7 +65,7 @@ Users often try to "jailbreak" AI exam tools (e.g., "Ignore previous instruction
 *   **Regex Guardrails:** The `validateCodeInput` function scans for patterns like:
     *   `/ignore previous instructions/i`
     *   `/system prompt/i`
-*   **Encapsulation:** When sending user content to Gemini, we wrap it in XML-like tags and instruct the system prompt to treat content inside these tags purely as data, not instructions.
+*   **Encapsulation:** When sending user content to Gemini, we wrap it in XML-like tags (e.g., `<USER_CODE_SUBMISSION>`) and instruct the system prompt to treat content inside these tags purely as data, not instructions.
 
 ---
 

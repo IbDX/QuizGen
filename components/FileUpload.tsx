@@ -288,7 +288,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
 
           <div className="flex flex-col gap-1">
               <h3 className="text-2xl font-bold uppercase tracking-widest text-gray-800 dark:text-terminal-light group-hover:text-blue-600 dark:group-hover:text-terminal-green transition-colors">
-                {globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : "UPLOAD SOURCE FILE"}
+                {globalStatus === 'PROCESSING' ? t('analyzing_batch', lang) : t('secure_upload', lang)}
               </h3>
               <div className="h-0.5 w-1/3 bg-gray-300 dark:bg-terminal-green/30 mx-auto rounded-full"></div>
           </div>
@@ -296,7 +296,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadD
           <p className="text-sm opacity-80 font-mono text-gray-600 dark:text-gray-400 max-w-sm mx-auto">
             {globalStatus === 'PROCESSING' 
              ? t('executing_protocols', lang)
-             : "Drag & Drop PDF, PNG, JPG here to Extract Questions"}
+             : "Drag & Drop PDF, PNG, JPG here or Click to Browse"}
           </p>
           <p className="text-[10px] text-gray-400 dark:text-terminal-dimGreen font-bold uppercase tracking-[0.2em] mt-2 border border-gray-200 dark:border-terminal-border px-3 py-1 rounded-full bg-white dark:bg-[#1a1a1a]">
             Max 15MB per file / 50MB Total

@@ -1,190 +1,123 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { CodeWindow } from './CodeWindow';
-import { mathCache } from '../services/mathCache';
+
+declare global {
+  interface Window {
+    MathJax: any;
+  }
+}
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
 }
 
-// Regex to identify math blocks
-const MATH_REGEX = /(\$\$[\s\S]+?\$\$)|(\$[^$\n]+?\$)|(\\\[[\s\S]+?\\\])|(\\\([^)\n]+?\\\))/g;
-
+// Wrapped in React.memo to prevent MathJax flashing on parent re-renders (like timer ticks)
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content, className = "" }) => {
-  const [processedContent, setProcessedContent] = useState<string>("");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const renderAsync = async () => {
-      if (!content) {
-          if (isMounted) setProcessedContent("");
-          return;
-      }
-
-      // 1. Split code blocks to avoid processing math inside code
-      const parts = content.split(/```(\w*)\n?([\s\S]*?)```/g);
-      const renderedParts: string[] = [];
-
-      for (let i = 0; i < parts.length; i++) {
-        const mod = i % 3;
-        
-        // Text Content (Process Markdown & Math)
-        if (mod === 0) {
-            let text = parts[i];
-            if (!text.trim()) continue;
-
-            // Replace Math Delimiters with Cached SVG
-            const mathMatches = text.match(MATH_REGEX);
-            if (mathMatches) {
-                // We split by regex to preserve order
-                const fragments = text.split(MATH_REGEX).filter(f => f !== undefined);
-                let reconstructed = "";
-                
-                // Note: .split with capture groups returns the captures in the array too.
-                // We iterate and check if a fragment matches math pattern.
-                for (const frag of fragments) {
-                    if (!frag) continue; // Skip empty matches
-
-                    if (frag.match(MATH_REGEX)) {
-                        // Determine type and clean latex
-                        const isDisplay = frag.startsWith('$$') || frag.startsWith('\\[');
-                        let cleanLatex = frag
-                            .replace(/^\$\$|\$\$$/g, '')
-                            .replace(/^\$|\$$/g, '')
-                            .replace(/^\\\[|\\\]$/g, '')
-                            .replace(/^\\\(|\\\)$/g, '');
-                        
-                        // Get SVG from Cache
-                        const svg = await mathCache.getSVG(cleanLatex, isDisplay);
-                        
-                        // Wrap in RTL isolation span
-                        reconstructed += `<span dir="ltr" style="unicode-bidi: isolate; display: inline-block; vertical-align: middle; margin: 2px;">${svg}</span>`;
-                    } else {
-                        // Standard Inline Markdown Processing
-                        reconstructed += processInlineMarkdown(frag);
-                    }
-                }
-                text = reconstructed;
-            } else {
-                text = processInlineMarkdown(text);
-            }
-            renderedParts.push(text);
-        }
-        // Language Tag (Skip)
-        else if (mod === 1) { 
-            continue; 
-        }
-        // Code Content (Render Component Placeholder)
-        else if (mod === 2) {
-            const lang = parts[i - 1] || 'snippet';
-            const code = parts[i];
-            // We use a special marker to inject the React component later
-            // But since this is a dangerouslySetInnerHTML approach for the text parts,
-            // we have to handle the code block separation at the parent JSX level.
-            // NOTE: The current structure renders text blocks as HTML and Code as React Components.
-            // We need to return the array structure to the JSX.
-        }
-      }
-    };
-
-    // New Hybrid Approach:
-    // We can't put React Components (CodeWindow) inside dangerouslySetInnerHTML.
-    // So we iterate and process math asynchronously, then update state.
-    
-    const processContent = async () => {
-        const segments = content.split(/```(\w*)\n?([\s\S]*?)```/g);
-        const finalJsx: React.ReactNode[] = [];
-
-        for (let i = 0; i < segments.length; i++) {
-            const mod = i % 3;
-            
-            // Text Block
-            if (mod === 0) {
-                const text = segments[i];
-                if (!text.trim()) continue;
-
-                // Process math occurrences asynchronously
-                const fragments = text.split(MATH_REGEX);
-                const htmlFragments: string[] = [];
-
-                for (let j = 0; j < fragments.length; j++) {
-                    const frag = fragments[j];
-                    if (!frag && frag !== '') continue; // Strict undefined check, allow empty string from split edge cases? No, skip empty.
-                    if (!frag) continue;
-
-                    if (frag.match(MATH_REGEX)) {
-                        const isDisplay = frag.startsWith('$$') || frag.startsWith('\\[');
-                        const cleanLatex = frag
-                            .replace(/^\$\$|\$\$$/g, '')
-                            .replace(/^\$|\$$/g, '')
-                            .replace(/^\\\[|\\\]$/g, '')
-                            .replace(/^\\\(|\\\)$/g, '');
-                        
-                        const svg = await mathCache.getSVG(cleanLatex, isDisplay);
-                        htmlFragments.push(`<span dir="ltr" style="unicode-bidi: isolate; display: inline-block; vertical-align: middle; margin: 0 2px;">${svg}</span>`);
-                    } else {
-                        htmlFragments.push(processInlineMarkdown(frag));
-                    }
-                }
-
-                finalJsx.push(
-                    <div 
-                        key={`text-${i}`} 
-                        dangerouslySetInnerHTML={{ __html: htmlFragments.join('') }} 
-                        className="whitespace-pre-line break-words leading-relaxed text-gray-700 dark:text-gray-300"
-                    />
-                );
-            }
-            // Language Tag (Skipped, used in next iteration)
-            else if (mod === 1) { continue; }
-            // Code Block
-            else if (mod === 2) {
-                const lang = segments[i - 1] || 'snippet';
-                finalJsx.push(<CodeWindow key={`code-${i}`} code={segments[i]} title={lang} />);
-            }
-        }
-        
-        // @ts-ignore
-        if (isMounted) setProcessedContent(finalJsx);
-    };
-
-    processContent();
-
-    return () => { isMounted = false; };
+    if (containerRef.current && window.MathJax && window.MathJax.typesetPromise) {
+      // Clear previous content handled by MathJax to avoid duplication
+      // MathJax 3 modifies the DOM in place, so typically we just need to tell it to look at the node again
+      // if the text content changed.
+      window.MathJax.typesetPromise([containerRef.current])
+        .catch((err: any) => console.warn('MathJax typeset failed: ', err));
+    }
   }, [content]);
 
-  // If we haven't processed yet, show simple loading or raw text? 
-  // Better to show nothing briefly than raw latex.
-  if (!processedContent) return <div className="animate-pulse h-4 bg-gray-200 dark:bg-gray-800 rounded w-3/4"></div>;
+  if (!content) return null;
+
+  // Split content by code blocks to avoid rendering Markdown/Math inside code
+  const parts = content.split(/```(\w*)\n?([\s\S]*?)```/g);
 
   return (
-    <div className={`space-y-4 text-sm md:text-base font-sans ${className}`}>
-      {processedContent}
+    <div className={`space-y-4 text-sm md:text-base leading-relaxed text-gray-700 dark:text-gray-300 font-sans ${className}`}>
+      {parts.map((part, index) => {
+        const mod = index % 3;
+
+        // Case 0: Regular Text (Markdown + Math)
+        if (mod === 0) {
+          if (!part.trim()) return null;
+          return (
+            <div 
+              key={index}
+              ref={containerRef}
+              // We inject the HTML with our pre-processing
+              dangerouslySetInnerHTML={{ __html: processInlineMarkdown(part) }} 
+              className="whitespace-pre-line break-words tex2jax_process" 
+            />
+          );
+        }
+
+        // Case 1: Language Identifier (skip)
+        if (mod === 1) return null;
+
+        // Case 2: Code Content
+        if (mod === 2) {
+            const lang = parts[index - 1] || 'snippet';
+            return <CodeWindow key={index} code={part} title={lang} />;
+        }
+        
+        return null;
+      })}
     </div>
   );
 }, (prevProps, nextProps) => prevProps.content === nextProps.content);
 
-// Helper for basic markdown (Bold, Italic, Inline Code)
-// Math handling is removed from here as it is handled by the Async Math Cache loop
 export const processInlineMarkdown = (text: string) => {
-    let temp = text;
+    // Pipeline Strategy:
+    // 1. Extract Inline Code -> Placeholder
+    // 2. Extract Math -> Placeholder (Crucial: to protect from markdown chars)
+    // 3. HTML Escape remaining text
+    // 4. Apply Markdown Formatting (Bold/Italic) - Unicode aware
+    // 5. Restore Placeholders
     
-    // Inline Code (High priority to prevent collision)
-    temp = temp.replace(/`([^`]+)`/g, (match, code) => {
-        const escaped = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        return `<span class="font-mono text-[0.85em] bg-gray-200/50 dark:bg-white/5 text-red-500 dark:text-terminal-green px-1.5 py-0.5 rounded border border-black/5 dark:border-white/5 break-words" dir="ltr">${escaped}</span>`;
+    const placeholders: { id: string, html: string }[] = [];
+    let temp = text;
+
+    // Helper to store safely
+    const store = (html: string) => {
+        const id = `%%PH_${placeholders.length}%%`;
+        placeholders.push({ id, html });
+        return id;
+    };
+
+    // 1. Protect Math Delimiters
+    // We store them as placeholders so HTML escaping doesn't break LaTeX like \frac
+    // and Markdown doesn't mistake * in math for italics
+    // IMPORTANT: Wrap math in a bidi-isolated LTR span so mixed Arabic/Math renders correctly
+    temp = temp.replace(/(\$\$[\s\S]+?\$\$)|(\$[^$\n]+?\$)|(\\\[[\s\S]+?\\\])|(\\\([^)\n]+?\\\))/g, (match) => {
+        // Force LTR isolation for Math blocks to prevent Arabic sentence structure scrambling
+        return store(`<span dir="ltr" style="unicode-bidi: isolate; display: inline-block;">${match}</span>`); 
     });
 
-    // Sanitize HTML chars in normal text (Simple pass)
-    // Note: complex sanitization should ideally happen before markdown processing
-    // temp = temp.replace(/</g, "&lt;").replace(/>/g, "&gt;"); 
+    // 2. Inline Code `text`
+    temp = temp.replace(/`([^`]+)`/g, (match, codeContent) => {
+        const escaped = codeContent
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        return store(`<span class="font-mono text-[0.9em] bg-gray-200 dark:bg-[#1e1e1e] text-red-600 dark:text-terminal-green px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-700 break-words box-decoration-clone" dir="ltr">${escaped}</span>`);
+    });
 
-    // Bold
+    // 3. HTML Escape (Sanitize the rest of the text)
+    temp = temp
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    // 4. Markdown Formatting
+    // Bold: **text** - Uses non-greedy match that works across lines if needed, better handling of spaces
     temp = temp.replace(/\*\*([^*]+?)\*\*/g, '<strong class="text-black dark:text-white font-bold">$1</strong>');
     
-    // Italic
+    // Italic: *text*
     temp = temp.replace(/(^|[^\\*])\*([^*]+?)\*(?!\*)/g, '$1<em class="italic">$2</em>');
+
+    // 5. Restore Placeholders (Code and Math)
+    placeholders.forEach(ph => {
+        temp = temp.split(ph.id).join(ph.html);
+    });
 
     return temp;
 };

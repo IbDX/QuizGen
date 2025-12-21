@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Question, UserAnswer, QuestionType, UILanguage, LeaderboardEntry, AppError, ErrorCode } from '../types';
+import { Question, UserAnswer, QuestionType, UILanguage, LeaderboardEntry } from '../types';
 import { t } from '../utils/translations';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
 import { GraphRenderer } from './GraphRenderer';
 import { DiagramRenderer } from './DiagramRenderer';
 import { saveFullExam, triggerExamDownload } from '../services/library';
-import { gradeQuestionBatch, GradingResult } from '../services/gemini';
+import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini';
 
 interface ResultsProps {
     questions: Question[];
@@ -21,92 +21,6 @@ interface ResultsProps {
     lang: UILanguage;
     onQuotaError: () => void;
 }
-
-// --- OPTIMIZATION: Memoized Result Row ---
-const ResultItem = React.memo(({ q, ua, realIndex, lang, viewMode }: { q: Question, ua?: UserAnswer, realIndex: number, lang: UILanguage, viewMode: string }) => {
-    let isCorrect = false;
-    let userAnswerDisplay = t('no_answer_provided', lang);
-    let statusClass = 'border-gray-300 dark:border-gray-700 opacity-50';
-
-    if (ua) {
-        userAnswerDisplay = String(ua.answer);
-        if (q.type === QuestionType.MCQ && typeof ua.answer === 'number' && q.options && q.options.length > 0) {
-            userAnswerDisplay = q.options[ua.answer] || String(ua.answer);
-        }
-
-        if(ua.isCorrect !== undefined) {
-            isCorrect = ua.isCorrect;
-        } else if (q.type === QuestionType.MCQ && typeof ua.answer === 'number') {
-            if(ua.answer === q.correctOptionIndex) isCorrect = true;
-        } else if (q.type === QuestionType.TRACING) {
-            if(String(ua.answer).trim().toLowerCase() === String(q.tracingOutput||"").trim().toLowerCase()) isCorrect = true;
-        }
-        
-        statusClass = isCorrect 
-            ? 'border-green-500 bg-green-50 dark:bg-green-900/10' 
-            : 'border-red-500 bg-red-50 dark:bg-red-900/10';
-    } else {
-        statusClass = 'border-red-500 bg-red-50 dark:bg-red-900/10';
-    }
-
-    // Skip rendering if not supposed to show (extra check for safety)
-    if (viewMode === 'ERRORS_ONLY' && isCorrect) return null;
-
-    return (
-        <div className={`border-l-4 p-6 bg-white dark:bg-terminal-black shadow-md ${statusClass} transition-all`}>
-            <div className="flex justify-between items-start mb-4">
-                <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${isCorrect ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}`}>
-                    {isCorrect ? t('passed', lang) : t('failed', lang)}
-                </span>
-                <span className="text-xs font-mono text-gray-500">#{realIndex + 1} [{q.type}] {q.topic && `• ${q.topic}`}</span>
-            </div>
-
-            <div className="mb-4 text-gray-800 dark:text-gray-200">
-                <MarkdownRenderer content={q.text} />
-            </div>
-
-            {q.graphConfig && <div className="mb-4 opacity-80 pointer-events-none scale-90 origin-left"><GraphRenderer config={q.graphConfig} /></div>}
-            {q.diagramConfig && <div className="mb-4 opacity-80 pointer-events-none scale-90 origin-left"><DiagramRenderer code={q.diagramConfig.code} /></div>}
-            {q.visual && <img src={`data:image/png;base64,${q.visual}`} className="max-h-32 border rounded mb-4" alt="Visual" />}
-            {q.codeSnippet && <div className="mb-4 opacity-80 text-xs"><CodeWindow code={q.codeSnippet} /></div>}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                <div>
-                    <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('your_input', lang)}:</h4>
-                    <div className={`font-mono p-2 rounded border bg-white dark:bg-black ${isCorrect ? 'border-green-200' : 'border-red-200'}`}>
-                        <MarkdownRenderer content={userAnswerDisplay} />
-                    </div>
-                </div>
-                
-                {(!isCorrect || viewMode === 'ALL') && (
-                    <div>
-                        <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('analysis', lang)}:</h4>
-                        <div className="text-gray-600 dark:text-gray-300">
-                            {q.type === QuestionType.MCQ && q.options && q.options.length > 0 && q.correctOptionIndex !== undefined && q.options[q.correctOptionIndex] && (
-                                <MarkdownRenderer 
-                                    content={`**Correct:** ${q.options[q.correctOptionIndex]}`} 
-                                    className="!text-green-700 dark:!text-green-500 mb-1"
-                                />
-                            )}
-                            {q.type === QuestionType.TRACING && (
-                                <MarkdownRenderer 
-                                    content={`**Expected:** ${q.tracingOutput}`} 
-                                    className="!text-green-700 dark:!text-green-500 mb-1"
-                                />
-                            )}
-                            <MarkdownRenderer content={q.explanation} />
-                            {ua?.feedback && (
-                                <div className="mt-2 pt-2 border-t border-dashed border-gray-300 text-xs italic opacity-80">
-                                    AI Feedback: {ua.feedback}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-});
 
 export const Results: React.FC<ResultsProps> = ({ 
     questions, answers, onRestart, onRetake, onGenerateRemediation, onDownloadPDF, isFullWidth, autoHideFooter, lang, onQuotaError 
@@ -126,126 +40,80 @@ export const Results: React.FC<ResultsProps> = ({
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
+  // Helper to determine if a question requires AI grading
   const isSubjectiveQuestion = (q: Question) => {
+      // 1. Coding is always subjective
       if (q.type === QuestionType.CODING) return true;
+      // 2. Explicit Short Answer
       if (q.type === QuestionType.SHORT_ANSWER) return true;
+      // 3. "Fake MCQ" -> Type is MCQ but has no options (Text Input)
       if (q.type === QuestionType.MCQ && (!q.options || q.options.length === 0)) return true;
+      
       return false;
   };
 
+  // 1. Post-Processing Grading Loop
   useEffect(() => {
-      const executeGradingPipeline = async () => {
-          // 1. Identify Questions that require grading
-          const pendingGradingIndices = questions.map((q, idx) => {
+      const runGrading = async () => {
+          // Identify questions needing AI grading that haven't been graded yet
+          const pendingGrading = questions.filter(q => {
               const ua = answers.find(a => a.questionId === q.id);
-              if (!ua || ua.isCorrect !== undefined) return -1; // Already graded or missing
-              if (isSubjectiveQuestion(q)) return idx;
-              return -1;
-          }).filter(i => i !== -1);
-
-          // Clone answers to mutate
-          const updatedAnswers = [...answers];
-          const aiCandidates: { id: string; question: string; context: string; userAnswer: string }[] = [];
-
-          // 2. Pre-process: Handle empty answers & exact matches immediately (Client-side optimization)
-          pendingGradingIndices.forEach(idx => {
-              const q = questions[idx];
-              const uaIndex = updatedAnswers.findIndex(a => a.questionId === q.id);
-              if(uaIndex === -1) return;
+              // Must have an answer provided to grade
+              if (!ua) return false; 
+              // Skip if already graded (e.g. Two-Way mode check)
+              if (ua.isCorrect !== undefined) return false;
               
-              const ua = updatedAnswers[uaIndex];
-              const userText = String(ua.answer).trim();
-
-              // Rule A: Empty Answer -> Fail
-              if (!userText) {
-                  updatedAnswers[uaIndex] = { ...ua, isCorrect: false, feedback: t('no_answer_provided', lang) };
-                  return;
-              }
-
-              // Rule B: Coding Question with Expected Output -> Auto-Check
-              // If the user's code output exactly matches the expected output, we can mark it correct 
-              // without AI, though we lose the "feedback" on code quality. 
-              // *DECISION: Still use AI for feedback on Code quality, but prioritizing batching.*
-              
-              aiCandidates.push({
-                  id: q.id,
-                  question: q.text,
-                  context: q.explanation,
-                  userAnswer: userText
-              });
+              // Check if it's a type that needs AI
+              return isSubjectiveQuestion(q);
           });
 
-          if (aiCandidates.length === 0) {
-              setFinalAnswers(updatedAnswers);
+          if (pendingGrading.length === 0) {
+              setFinalAnswers(answers);
               setIsGradingPhase(false);
               return;
           }
 
-          // 3. Batch Processing with Concurrency Control
-          const BATCH_SIZE = 5; // Send 5 questions per API call
-          const CONCURRENCY = 3; // Max simultaneous API calls
-          
-          setGradingProgress({ current: 0, total: aiCandidates.length });
-          let completed = 0;
+          setGradingProgress({ current: 0, total: pendingGrading.length });
+          const updatedAnswers = [...answers];
 
-          // Split into chunks
-          const chunks = [];
-          for (let i = 0; i < aiCandidates.length; i += BATCH_SIZE) {
-              chunks.push(aiCandidates.slice(i, i + BATCH_SIZE));
-          }
+          for (let i = 0; i < pendingGrading.length; i++) {
+              const q = pendingGrading[i];
+              const uaIndex = updatedAnswers.findIndex(a => a.questionId === q.id);
+              const ua = updatedAnswers[uaIndex];
 
-          // Helper to process a chunk
-          const processChunk = async (chunk: typeof aiCandidates) => {
-              try {
-                  const results = await gradeQuestionBatch(chunk, lang);
-                  results.forEach((res: GradingResult) => {
-                      const uaIndex = updatedAnswers.findIndex(a => a.questionId === res.id);
-                      if (uaIndex !== -1) {
-                          updatedAnswers[uaIndex] = { 
-                              ...updatedAnswers[uaIndex], 
-                              isCorrect: res.isCorrect, 
-                              feedback: res.feedback 
-                          };
+              // Skip empty answers locally to save API calls
+              if (!String(ua.answer).trim()) {
+                  updatedAnswers[uaIndex] = { ...ua, isCorrect: false, feedback: t('no_answer_provided', lang) };
+              } else {
+                  try {
+                      let result;
+                      if (q.type === QuestionType.CODING) {
+                          result = await gradeCodingAnswer(q, String(ua.answer), lang);
+                      } else {
+                          // Handles Short Answer AND Fake MCQs
+                          result = await gradeShortAnswer(q, String(ua.answer), lang);
                       }
-                  });
-              } catch (e: any) {
-                  const appError = e instanceof AppError ? e : new AppError(e.message, ErrorCode.UNKNOWN);
-                  console.error("Batch error", appError);
-                  
-                  if (appError.code === ErrorCode.RATE_LIMIT) {
-                      onQuotaError();
+                      updatedAnswers[uaIndex] = { ...ua, isCorrect: result.isCorrect, feedback: result.feedback };
+                  } catch (e: any) {
+                      console.error("Grading error", e);
+                      if (e.message?.includes('429') || e.message?.toLowerCase().includes('quota')) {
+                          onQuotaError();
+                      }
+                      updatedAnswers[uaIndex] = { ...ua, isCorrect: false, feedback: "System Error: Automated grading failed." };
                   }
-                  
-                  // Mark failed chunk as unverified but don't crash the whole UI
-                  chunk.forEach(item => {
-                      const uaIndex = updatedAnswers.findIndex(a => a.questionId === item.id);
-                      if(uaIndex !== -1) {
-                          updatedAnswers[uaIndex] = { 
-                              ...updatedAnswers[uaIndex], 
-                              isCorrect: false, 
-                              feedback: `${t(appError.code, lang).title}: ${t(appError.code, lang).msg}` 
-                          };
-                      }
-                  });
-              } finally {
-                  completed += chunk.length;
-                  setGradingProgress(prev => ({ ...prev, current: completed }));
               }
-          };
-
-          // Execution Pool
-          for (let i = 0; i < chunks.length; i += CONCURRENCY) {
-              const activeChunks = chunks.slice(i, i + CONCURRENCY);
-              await Promise.all(activeChunks.map(chunk => processChunk(chunk)));
+              
+              setGradingProgress({ current: i + 1, total: pendingGrading.length });
           }
 
           setFinalAnswers(updatedAnswers);
           setIsGradingPhase(false);
       };
 
-      executeGradingPipeline();
-  }, [questions, answers, lang, onQuotaError]);
+      runGrading();
+  }, [questions, answers, lang]);
 
+  // 2. Score Calculation (Runs only after grading is complete)
   useEffect(() => {
     if (isGradingPhase) return;
 
@@ -257,9 +125,11 @@ export const Results: React.FC<ResultsProps> = ({
         let isCorrect = false;
 
         if (ua) {
+            // Priority: If AI graded it (has isCorrect boolean), trust it.
             if (ua.isCorrect !== undefined) {
                 isCorrect = ua.isCorrect;
             } else {
+                // Fallback for Deterministic types (Standard MCQ / Tracing)
                 if (q.type === QuestionType.MCQ) {
                     if (typeof ua.answer === 'number' && ua.answer === q.correctOptionIndex) {
                         isCorrect = true;
@@ -290,6 +160,8 @@ export const Results: React.FC<ResultsProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isGradingPhase, finalAnswers, questions]);
 
+  // --- RENDERING HELPERS ---
+  
   const getGrade = (s: number) => {
       if (s >= 97) return 'Z+';
       if (s >= 93) return 'A';
@@ -347,6 +219,7 @@ export const Results: React.FC<ResultsProps> = ({
       return Array.from(topics);
   }, [wrongQuestionIds, questions]);
 
+  // Loading Screen for Grading
   if (isGradingPhase) {
       return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 animate-fade-in">
@@ -389,6 +262,7 @@ export const Results: React.FC<ResultsProps> = ({
         `}>
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gray-400 dark:via-white/20 to-transparent opacity-50"></div>
             
+            {/* Elite Badge */}
             {grade === 'Z+' && (
                 <div className="absolute top-4 right-4 animate-bounce">
                     <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow-lg border border-yellow-200">
@@ -402,6 +276,7 @@ export const Results: React.FC<ResultsProps> = ({
             </h2>
 
             <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12 mb-8">
+                {/* Grade Circle */}
                 <div className="relative w-32 h-32 md:w-40 md:h-40 flex items-center justify-center">
                     <svg className="w-full h-full transform -rotate-90">
                         <circle cx="50%" cy="50%" r="45%" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-200 dark:text-gray-800" />
@@ -420,6 +295,7 @@ export const Results: React.FC<ResultsProps> = ({
                     </div>
                 </div>
 
+                {/* Text Summary */}
                 <div className="text-left space-y-2">
                     <div className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
                         {passed ? (grade === 'Z+' ? t('perfection', lang) : t('passed', lang)) : t('critical_failure', lang)}
@@ -433,6 +309,7 @@ export const Results: React.FC<ResultsProps> = ({
                 </div>
             </div>
 
+            {/* Leaderboard Input - RESTRICTED IF F GRADE */}
             {!savedToLeaderboard && (
                 <div className="max-w-sm mx-auto flex gap-2 animate-fade-in-up relative">
                     {canPublish ? (
@@ -467,6 +344,7 @@ export const Results: React.FC<ResultsProps> = ({
             )}
         </div>
 
+        {/* TOP ACTIONS GRID (5 Columns) */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
             <button onClick={handleSaveExam} className="p-3 bg-gray-100 dark:bg-[#111] hover:bg-gray-200 dark:hover:bg-[#222] border border-gray-300 dark:border-gray-700 rounded text-gray-700 dark:text-terminal-green font-bold text-[10px] md:text-xs uppercase tracking-wider transition-colors">
                 {saveStatus || t('save', lang)}
@@ -485,6 +363,7 @@ export const Results: React.FC<ResultsProps> = ({
             </button>
         </div>
 
+        {/* WEAK POINTS SECTION (Dynamic Links) */}
         {weakTopics.length > 0 && (
             <div className="mb-8 border-2 border-red-400 dark:border-red-900 bg-red-50 dark:bg-[#1a0505] p-6 rounded-lg shadow-lg relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
@@ -529,6 +408,7 @@ export const Results: React.FC<ResultsProps> = ({
             </div>
         )}
 
+        {/* TOGGLE VIEW & LIST */}
         <div className="flex justify-between items-center mb-6 sticky top-20 z-20 bg-gray-200/95 dark:bg-[#151515]/95 backdrop-blur-md p-2 rounded border border-gray-300 dark:border-terminal-gray shadow-md">
             <span className="text-xs font-bold text-gray-500 dark:text-gray-400 pl-2">
                 {viewMode === 'ERRORS_ONLY' ? `${displayedQuestions.length} ISSUES FOUND` : `FULL REPORT (${questions.length} Q)`}
@@ -542,22 +422,99 @@ export const Results: React.FC<ResultsProps> = ({
         </div>
 
         <div className="space-y-6">
-            {displayedQuestions.map((q) => {
+            {displayedQuestions.map((q, idx) => {
+                // Find actual index in original array
                 const realIndex = questions.findIndex(orig => orig.id === q.id);
                 const ua = finalAnswers.find(a => a.questionId === q.id);
+                
+                let isCorrect = false;
+                let userAnswerDisplay = t('no_answer_provided', lang);
+                let statusClass = 'border-gray-300 dark:border-gray-700 opacity-50'; // Default skipped/neutral
+
+                if (ua) {
+                    userAnswerDisplay = String(ua.answer);
+                    if (q.type === QuestionType.MCQ && typeof ua.answer === 'number' && q.options && q.options.length > 0) {
+                        userAnswerDisplay = q.options[ua.answer] || String(ua.answer);
+                    }
+
+                    // Consolidated Score Logic
+                    if(ua.isCorrect !== undefined) {
+                        isCorrect = ua.isCorrect;
+                    } else if (q.type === QuestionType.MCQ && typeof ua.answer === 'number') {
+                        if(ua.answer === q.correctOptionIndex) isCorrect = true;
+                    } else if (q.type === QuestionType.TRACING) {
+                        if(String(ua.answer).trim().toLowerCase() === String(q.tracingOutput||"").trim().toLowerCase()) isCorrect = true;
+                    }
+                    
+                    statusClass = isCorrect 
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/10' 
+                        : 'border-red-500 bg-red-50 dark:bg-red-900/10';
+                } else {
+                    // No answer provided -> Wrong
+                    statusClass = 'border-red-500 bg-red-50 dark:bg-red-900/10';
+                }
+
                 return (
-                    <ResultItem 
-                        key={q.id} 
-                        q={q} 
-                        ua={ua} 
-                        realIndex={realIndex} 
-                        lang={lang} 
-                        viewMode={viewMode} 
-                    />
+                    <div key={q.id} className={`border-l-4 p-6 bg-white dark:bg-terminal-black shadow-md ${statusClass} transition-all`}>
+                        <div className="flex justify-between items-start mb-4">
+                            <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${isCorrect ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}`}>
+                                {isCorrect ? t('passed', lang) : t('failed', lang)}
+                            </span>
+                            <span className="text-xs font-mono text-gray-500">#{realIndex + 1} [{q.type}] {q.topic && `• ${q.topic}`}</span>
+                        </div>
+
+                        <div className="mb-4 text-gray-800 dark:text-gray-200">
+                            <MarkdownRenderer content={q.text} />
+                        </div>
+
+                        {/* Visuals in Review */}
+                        {q.graphConfig && <div className="mb-4 opacity-80 pointer-events-none scale-90 origin-left"><GraphRenderer config={q.graphConfig} /></div>}
+                        {q.diagramConfig && <div className="mb-4 opacity-80 pointer-events-none scale-90 origin-left"><DiagramRenderer code={q.diagramConfig.code} /></div>}
+                        {q.visual && <img src={`data:image/png;base64,${q.visual}`} className="max-h-32 border rounded mb-4" alt="Visual" />}
+                        {q.codeSnippet && <div className="mb-4 opacity-80 text-xs"><CodeWindow code={q.codeSnippet} /></div>}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                            <div>
+                                <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('your_input', lang)}:</h4>
+                                <div className={`font-mono p-2 rounded border bg-white dark:bg-black ${isCorrect ? 'border-green-200' : 'border-red-200'}`}>
+                                    <MarkdownRenderer content={userAnswerDisplay} />
+                                </div>
+                            </div>
+                            
+                            {/* Analysis: Show if WRONG OR if viewMode is ALL (to review correct answers) */}
+                            {(!isCorrect || viewMode === 'ALL') && (
+                                <div>
+                                    <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('analysis', lang)}:</h4>
+                                    <div className="text-gray-600 dark:text-gray-300">
+                                        {q.type === QuestionType.MCQ && q.options && q.options.length > 0 && q.correctOptionIndex !== undefined && q.options[q.correctOptionIndex] && (
+                                            <MarkdownRenderer 
+                                                content={`**Correct:** ${q.options[q.correctOptionIndex]}`} 
+                                                className="!text-green-700 dark:!text-green-500 mb-1"
+                                            />
+                                        )}
+                                        {q.type === QuestionType.TRACING && (
+                                            <MarkdownRenderer 
+                                                content={`**Expected:** ${q.tracingOutput}`} 
+                                                className="!text-green-700 dark:!text-green-500 mb-1"
+                                            />
+                                        )}
+                                        <MarkdownRenderer content={q.explanation} />
+                                        {/* Show Feedback from AI Grading if available */}
+                                        {ua?.feedback && (
+                                            <div className="mt-2 pt-2 border-t border-dashed border-gray-300 text-xs italic opacity-80">
+                                                AI Feedback: {ua.feedback}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 );
             })}
         </div>
 
+        {/* Scroll To Top Button (Fixed Bottom Left) */}
         <button 
             onClick={scrollToTop}
             className={`fixed bottom-6 left-6 z-50 p-3 bg-gray-800 text-white dark:bg-terminal-green dark:text-black rounded-full shadow-lg hover:scale-110 transition-all duration-300 ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}
