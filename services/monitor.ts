@@ -1,5 +1,5 @@
 
-export type MetricType = 'API_LATENCY' | 'STORAGE_USAGE' | 'INTERACTION' | 'RENDER_TIME';
+export type MetricType = 'API_LATENCY' | 'STORAGE_USAGE' | 'INTERACTION' | 'RENDER_TIME' | 'CACHE_UPDATE';
 
 export interface PerformanceLog {
     timestamp: number;
@@ -9,10 +9,18 @@ export interface PerformanceLog {
     details?: any;
 }
 
+export interface ApiStats {
+    total: number;
+    success: number;
+    errors: number;
+    rateLimited: number;
+}
+
 class PerformanceMonitor {
     private logs: PerformanceLog[] = [];
     private readonly MAX_LOGS = 1000;
     private readonly STORAGE_LIMIT = 5 * 1024 * 1024; // Approx 5MB for LocalStorage
+    private apiStats: ApiStats = { total: 0, success: 0, errors: 0, rateLimited: 0 };
 
     public log(type: MetricType, label: string, value?: number, details?: any) {
         this.logs.push({
@@ -26,6 +34,20 @@ class PerformanceMonitor {
         // Rotate logs if full
         if (this.logs.length > this.MAX_LOGS) {
             this.logs.shift();
+        }
+
+        // Live Stat Updates
+        if (type === 'API_LATENCY') {
+            this.apiStats.total++;
+            if (label.includes('Fail') || label.includes('Failure')) {
+                this.apiStats.errors++;
+                // Check details for 429
+                if (details?.error?.includes('429') || details?.error?.includes('Quota')) {
+                    this.apiStats.rateLimited++;
+                }
+            } else {
+                this.apiStats.success++;
+            }
         }
     }
 
@@ -54,6 +76,34 @@ class PerformanceMonitor {
         return this.logs.filter(l => l.type === 'INTERACTION').length;
     }
 
+    public getApiStats(): ApiStats {
+        return { ...this.apiStats };
+    }
+
+    public getMemoryInfo(): any {
+        // Chrome/Edge specific API
+        return (performance as any).memory || null;
+    }
+
+    public getConnectionInfo(): any {
+        return (navigator as any).connection || null;
+    }
+
+    public async measurePing(): Promise<number> {
+        const start = performance.now();
+        try {
+            // Ping a reliable CDN small file (favicon or generic endpoint)
+            // Using a no-cache header to ensure network traversal
+            await fetch('https://www.google.com/favicon.ico', { 
+                mode: 'no-cors', 
+                cache: 'no-store' 
+            });
+            return Math.round(performance.now() - start);
+        } catch (e) {
+            return -1;
+        }
+    }
+
     public getReport() {
         return {
             generatedAt: new Date().toISOString(),
@@ -61,7 +111,13 @@ class PerformanceMonitor {
             summary: {
                 avgLatency: this.getAverageApiLatency(),
                 interactionCount: this.getInteractionCount(),
-                totalLogs: this.logs.length
+                totalLogs: this.logs.length,
+                apiStats: this.apiStats
+            },
+            system: {
+                memory: this.getMemoryInfo(),
+                connection: this.getConnectionInfo(),
+                userAgent: navigator.userAgent
             },
             logs: this.logs
         };
@@ -69,6 +125,7 @@ class PerformanceMonitor {
 
     public clear() {
         this.logs = [];
+        this.apiStats = { total: 0, success: 0, errors: 0, rateLimited: 0 };
     }
 }
 
