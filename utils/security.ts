@@ -14,7 +14,7 @@ const SQL_PATTERNS = [
   /(')/ // Single quotes (often used to break strings)
 ];
 
-// XSS patterns
+// XSS patterns - Generic
 const XSS_PATTERNS = [
   /<script\b[^>]*>([\s\S]*?)<\/script>/gim,
   /javascript:/gim,
@@ -29,15 +29,111 @@ export interface ValidationResult {
 }
 
 /**
+ * SECURITY PIPELINE CORE
+ * A layered approach to input validation and sanitization.
+ */
+class SecurityPipeline {
+    
+    /**
+     * Layer 1: Input Normalization
+     * handles Unicode equivalence (NFKC) and strips dangerous non-printable control characters.
+     */
+    static normalize(input: string): string {
+        if (!input) return "";
+        // 1. Unicode Normalization
+        let normalized = input.normalize('NFKC');
+        // 2. Strip dangerous control characters (keep \t, \n, \r)
+        // Removes NULL bytes and other invisible chars that can mask payloads
+        normalized = normalized.replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+        return normalized;
+    }
+
+    /**
+     * Layer 2: LLM & Prompt Injection Defense
+     * Prevents users from manipulating the AI agent's instructions.
+     */
+    static checkInjection(input: string): { safe: boolean; error?: string } {
+        const injectionPatterns = [
+            /ignore previous instructions/i,
+            /system prompt/i,
+            /you are now/i,
+            /override system/i,
+            /act as a/i
+        ];
+
+        for (const pattern of injectionPatterns) {
+            if (pattern.test(input)) {
+                return { safe: false, error: "Security Alert: Prompt injection pattern detected." };
+            }
+        }
+        return { safe: true };
+    }
+
+    /**
+     * Layer 3: Context-Aware XSS & Code Injection Detection
+     * Distinguishes between legitimate code syntax (e.g., C++ templates) and malicious DOM vectors.
+     */
+    static checkCodeSafety(input: string): { safe: boolean; error?: string } {
+        // A. Immediate Execution Vectors (Always Block)
+        if (/javascript:\s*/i.test(input)) return { safe: false, error: "Blocked: 'javascript:' pseudo-protocol." };
+        if (/data:text\/html/i.test(input)) return { safe: false, error: "Blocked: Data URI injection." };
+        if (/vbscript:/i.test(input)) return { safe: false, error: "Blocked: VBScript tag." };
+
+        // B. DOM Injection Patterns (Contextual)
+        // We allow <vector> (C++) but flag <script> (JS/HTML) if not properly contained.
+        // Since we cannot easily parse context here, we flag high-risk tags that are rarely used in standard algorithmic solutions.
+        
+        const highRiskTags = [
+            /<script\b[^>]*>/i,
+            /<iframe\b[^>]*>/i,
+            /<object\b[^>]*>/i,
+            /<embed\b[^>]*>/i,
+            /<meta\b[^>]*>/i,
+            /<base\b[^>]*>/i,
+            /<form\b[^>]*>/i
+        ];
+
+        for (const pattern of highRiskTags) {
+            if (pattern.test(input)) {
+                return { safe: false, error: "Security Alert: High-risk HTML tag detected in code block." };
+            }
+        }
+
+        // C. Event Handler Attributes (heuristic)
+        // Matches things like onload=, onerror=, but tries to avoid false positives in code strings like "str = 'onload='"
+        // This is a loose check; rigorous prevention happens at the Rendering layer (Prism/React).
+        if (/\bon\w+\s*=\s*['"][^'"]*['"]/i.test(input)) {
+             // We allow it, but monitor. For strict mode:
+             // return { safe: false, error: "Security Alert: Potential event handler injection." };
+        }
+
+        return { safe: true };
+    }
+
+    /**
+     * Layer 4: HTML Entity Encoding (For Display contexts)
+     * Preserves syntax characters for code but neutralizes them for DOM.
+     */
+    static escapeHtml(text: string): string {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+}
+
+/**
  * Sanitizes simple text inputs (Username, Tracing Answer, URL).
  * Strictly removes SQL and HTML characters.
  */
 export const sanitizeInput = (input: string, maxLength: number = 100): ValidationResult => {
   if (!input) return { isValid: true, sanitizedValue: "" };
 
-  let sanitized = input.slice(0, maxLength);
+  let sanitized = SecurityPipeline.normalize(input.slice(0, maxLength));
 
-  // 1. XSS Protection: Remove HTML tags
+  // 1. XSS Protection: Remove HTML tags manually for simple text fields
   sanitized = sanitized
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -45,9 +141,9 @@ export const sanitizeInput = (input: string, maxLength: number = 100): Validatio
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;");
 
-  // 2. SQL Injection Protection for Text Fields
+  // 2. SQL Injection Protection
   for (const pattern of SQL_PATTERNS) {
-    if (pattern.test(input)) { // Check original input for intent
+    if (pattern.test(input)) {
       return {
         isValid: false,
         sanitizedValue: sanitized,
@@ -56,7 +152,7 @@ export const sanitizeInput = (input: string, maxLength: number = 100): Validatio
     }
   }
 
-  // 3. XSS Pattern Check
+  // 3. XSS Pattern Check (Redundant but safe)
   for (const pattern of XSS_PATTERNS) {
       if (pattern.test(input)) {
           return {
@@ -71,14 +167,12 @@ export const sanitizeInput = (input: string, maxLength: number = 100): Validatio
 };
 
 /**
- * Validates Code Editor Input.
- * We CANNOT strip SQL keywords here because the user might be writing SQL code.
- * Instead, we focus on Length limits and Anti-Prompt-Injection.
+ * Validates Code Editor Input using the Multi-Layer Pipeline.
  */
 export const validateCodeInput = (code: string, maxLength: number = 5000): ValidationResult => {
   if (!code) return { isValid: true, sanitizedValue: "" };
 
-  // 1. Length Constraint
+  // Layer 1: Length Constraint
   if (code.length > maxLength) {
     return {
       isValid: false,
@@ -87,22 +181,30 @@ export const validateCodeInput = (code: string, maxLength: number = 5000): Valid
     };
   }
 
-  // 2. Prompt Injection Detection
-  // We look for patterns where the user tries to trick the AI
-  const injectionPatterns = [
-    /ignore previous instructions/i,
-    /system prompt/i,
-    /you are now/i
-  ];
+  // Layer 2: Normalization
+  const normalized = SecurityPipeline.normalize(code);
 
-  for (const pattern of injectionPatterns) {
-    if (pattern.test(code)) {
-       // We allow it in code blocks (it might be a test case), but we flag it if needed.
-       // For security, we ensure the AI prompt wraps this safely.
-    }
+  // Layer 3: Anti-Prompt-Injection
+  const injectionCheck = SecurityPipeline.checkInjection(normalized);
+  if (!injectionCheck.safe) {
+      return {
+          isValid: false,
+          sanitizedValue: normalized,
+          error: injectionCheck.error
+      };
   }
 
-  return { isValid: true, sanitizedValue: code };
+  // Layer 4: XSS & Code Safety
+  const safetyCheck = SecurityPipeline.checkCodeSafety(normalized);
+  if (!safetyCheck.safe) {
+      return {
+          isValid: false,
+          sanitizedValue: normalized,
+          error: safetyCheck.error
+      };
+  }
+
+  return { isValid: true, sanitizedValue: normalized };
 };
 
 /**
@@ -124,10 +226,8 @@ export const validateExamSchema = (data: any): boolean => {
     
     // Check required fields
     if (!Array.isArray(data.questions)) return false;
-    // Allow missing title/date (backwards compat), but questions are mandatory.
     
     // Deep validation of questions
-    // We check a sample to ensure it looks like a Question object
     const isValidQuestion = (q: any) => {
         return (
             typeof q.id === 'string' &&
