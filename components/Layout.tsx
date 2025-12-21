@@ -276,8 +276,8 @@ export const Layout: React.FC<LayoutProps> = ({
                         <ZPlusLogo theme={theme} />
                     </div>
                     <div className="hidden sm:flex flex-col items-start leading-none">
-                        <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tighter">Z+ CORE</span>
-                        <span className="text-[9px] text-gray-500 dark:text-terminal-green font-mono tracking-widest">TERMINAL V1.5</span>
+                        <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tighter">Q&A AI GEN</span>
+                        <span className="text-[9px] text-gray-500 dark:text-terminal-green font-mono tracking-widest">FILE EXTRACTOR</span>
                     </div>
                 </button>
             </div>
