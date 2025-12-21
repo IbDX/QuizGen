@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Layout, MobileAction, SystemStatus } from './components/Layout';
 import { FileUpload } from './components/FileUpload';
 import { ExamConfig } from './components/ExamConfig';
@@ -89,7 +89,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [appState, uiLanguage]);
 
-  const confirmAndNavigate = (navigationAction: () => void) => {
+  const confirmAndNavigate = useCallback((navigationAction: () => void) => {
     if (appState === 'EXAM' || appState === 'BUILDER') {
       setConfirmModalState({
         isOpen: true,
@@ -97,23 +97,23 @@ const App: React.FC = () => {
         message: t('exit_exam_warning_body', uiLanguage),
         onConfirm: () => {
           navigationAction();
-          setConfirmModalState({ ...confirmModalState, isOpen: false });
+          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
         },
       });
     } else {
       navigationAction();
     }
-  };
+  }, [appState, uiLanguage]);
   
-  const handleCancelExit = () => {
-      setConfirmModalState({ ...confirmModalState, isOpen: false });
-  };
+  const handleCancelExit = useCallback(() => {
+      setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+  }, []);
 
-  const handleQuotaError = () => {
+  const handleQuotaError = useCallback(() => {
       setSystemStatus('QUOTA_LIMIT');
-  };
+  }, []);
 
-  const handleFilesAccepted = (files: Array<{base64: string; mime: string; name: string; hash: string}>) => {
+  const handleFilesAccepted = useCallback((files: Array<{base64: string; mime: string; name: string; hash: string}>) => {
     const uniqueBatch: typeof files = [];
     const seenHashes = new Set<string>();
     const duplicates: string[] = [];
@@ -134,9 +134,9 @@ const App: React.FC = () => {
     setUploadedFiles(uniqueBatch);
     setPreloadedExamTitle(undefined);
     setAppState('CONFIG');
-  };
+  }, []);
 
-  const handleAppendFiles = (newFiles: Array<{base64: string; mime: string; name: string; hash: string}>) => {
+  const handleAppendFiles = useCallback((newFiles: Array<{base64: string; mime: string; name: string; hash: string}>) => {
     setUploadedFiles(prev => {
       const existingHashes = new Set(prev.map(f => f.hash));
       const duplicateNames: string[] = [];
@@ -155,9 +155,9 @@ const App: React.FC = () => {
 
       return [...prev, ...uniqueNewFiles];
     });
-  };
+  }, []);
 
-  const handleRemoveFile = (indexToRemove: number) => {
+  const handleRemoveFile = useCallback((indexToRemove: number) => {
     setUploadedFiles(prev => {
       const updated = prev.filter((_, index) => index !== indexToRemove);
       if (updated.length === 0) {
@@ -165,9 +165,9 @@ const App: React.FC = () => {
       }
       return updated;
     });
-  };
+  }, []);
 
-  const handleDemoLoad = () => {
+  const handleDemoLoad = useCallback(() => {
       const content = `
 # Z+ MASTER STRESS TEST PROTOCOL (30 QUESTIONS)
 # TARGET: FULL SYSTEM DIAGNOSTIC (AR/EN BILINGUAL)
@@ -225,13 +225,13 @@ Q30. Design a Class Diagram for an "Animal" inheritance hierarchy (Cat, Dog inhe
           hash: 'DEMO_STRESS_TEST_30Q'
       };
       handleFilesAccepted([demoFile]);
-  };
+  }, [handleFilesAccepted]);
   
-  const handleStartBuilder = () => {
+  const handleStartBuilder = useCallback(() => {
       setAppState('BUILDER');
-  };
+  }, []);
   
-  const handleBuilderExamGenerated = (generatedQuestions: Question[], builderSettings: Partial<ExamSettings>, title?: string) => {
+  const handleBuilderExamGenerated = useCallback((generatedQuestions: Question[], builderSettings: Partial<ExamSettings>, title?: string) => {
       setQuestions(generatedQuestions);
       setSettings({
           timeLimitMinutes: builderSettings.timeLimitMinutes || 0,
@@ -241,9 +241,9 @@ Q30. Design a Class Diagram for an "Animal" inheritance hierarchy (Cat, Dog inhe
       });
       if (title) setPreloadedExamTitle(title);
       setAppState('EXAM');
-  };
+  }, []);
 
-  const handleStartExam = async (examSettings: ExamSettings) => {
+  const handleStartExam = useCallback(async (examSettings: ExamSettings) => {
     setSettings(examSettings);
     setSystemStatus('ONLINE'); 
 
@@ -300,16 +300,16 @@ Q30. Design a Class Diagram for an "Animal" inheritance hierarchy (Cat, Dog inhe
       }
       setAppState('CONFIG');
     }
-  };
+  }, [preloadedExamTitle, uploadedFiles, uiLanguage, handleQuotaError]);
 
-  const handleExamComplete = (answers: UserAnswer[]) => {
+  const handleExamComplete = useCallback((answers: UserAnswer[]) => {
     setUserAnswers(answers);
     const title = preloadedExamTitle || `Auto-Saved Exam ${new Date().toLocaleTimeString()}`;
     saveToHistory(questions, title);
     setAppState('RESULTS');
-  };
+  }, [preloadedExamTitle, questions]);
 
-  const handleRestart = () => {
+  const handleRestart = useCallback(() => {
     setAppState('UPLOAD');
     setUploadedFiles([]);
     setQuestions([]);
@@ -319,23 +319,23 @@ Q30. Design a Class Diagram for an "Animal" inheritance hierarchy (Cat, Dog inhe
     setIsSettingsOpen(false);
     setPreloadedExamTitle(undefined);
     setSystemStatus('ONLINE');
-  };
+  }, []);
 
-  const handleRetake = () => {
+  const handleRetake = useCallback(() => {
     setUserAnswers([]);
     setAppState('EXAM');
-  };
+  }, []);
   
-  const handleLoadSavedExam = (exam: SavedExam) => {
+  const handleLoadSavedExam = useCallback((exam: SavedExam) => {
       setQuestions(exam.questions);
       setPreloadedExamTitle(exam.title);
       setUploadedFiles([]);
       setUserAnswers([]);
       setIsLibraryOpen(false);
       setAppState('CONFIG');
-  };
+  }, []);
 
-  const handleRemediation = async (wrongIds: string[]) => {
+  const handleRemediation = useCallback(async (wrongIds: string[]) => {
     setAppState('GENERATING');
     setSystemStatus('ONLINE');
     setLoadingMsg(uiLanguage === 'ar' ? 'تحليل نقاط الضعف...' : 'ANALYZING FAILURE POINTS... GENERATING TACTICAL REMEDIATION EXAM...');
@@ -359,9 +359,9 @@ Q30. Design a Class Diagram for an "Animal" inheritance hierarchy (Cat, Dog inhe
        alert('Failed to generate remediation exam.');
        setAppState('RESULTS');
     }
-  };
+  }, [questions, uiLanguage, handleQuotaError]);
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = useCallback(() => {
      let correctCount = 0;
      const calculatedAnswers = questions.map(q => {
         const ua = userAnswers.find(a => a.questionId === q.id);
@@ -391,19 +391,19 @@ Q30. Design a Class Diagram for an "Animal" inheritance hierarchy (Cat, Dog inhe
         return 'F';
      };
      generateExamPDF(questions, score, getGrade(score), "User");
-  };
+  }, [questions, userAnswers]);
   
-  const handleToggleLibrary = () => {
+  const handleToggleLibrary = useCallback(() => {
       if (!isLibraryOpen) setIsSettingsOpen(false); // Close settings if opening lib
       setIsLibraryOpen(prev => !prev);
-  };
+  }, [isLibraryOpen]);
 
-  const handleToggleSettings = () => {
+  const handleToggleSettings = useCallback(() => {
       if (!isSettingsOpen) setIsLibraryOpen(false); // Close lib if opening settings
       setIsSettingsOpen(prev => !prev);
-  };
+  }, [isSettingsOpen]);
 
-  const getMobileActions = (): MobileAction[] => {
+  const getMobileActions = useCallback((): MobileAction[] => {
       if (appState === 'UPLOAD') {
           return [
               { label: "AI EXAM BUILDER", onClick: handleStartBuilder, variant: 'primary' },
@@ -441,7 +441,7 @@ Q30. Design a Class Diagram for an "Animal" inheritance hierarchy (Cat, Dog inhe
           return actions;
       }
       return [];
-  };
+  }, [appState, uiLanguage, handleStartBuilder, handleDemoLoad, confirmAndNavigate, handleRestart, questions, userAnswers, handleDownloadPDF, handleRetake, handleRemediation]);
 
   return (
     <Layout 
@@ -459,7 +459,6 @@ Q30. Design a Class Diagram for an "Animal" inheritance hierarchy (Cat, Dog inhe
       onSetUiLanguage={setUiLanguage}
       forceStaticHeader={appState === 'UPLOAD'}
       systemStatus={systemStatus}
-      // Pass Visual Props
       theme={theme}
       autoHideHeader={autoHideHeader}
       enableBackgroundAnim={enableBackgroundAnim}
