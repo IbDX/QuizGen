@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 
 interface DiagramRendererProps {
@@ -16,108 +15,42 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
     const [svg, setSvg] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     
-    // State for zoom and pan
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStartRef = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
     const viewportRef = useRef<HTMLDivElement>(null);
 
-    // Heuristic function to clean common LLM Mermaid mistakes
     const cleanMermaidCode = (raw: string): string => {
         if (!raw) return "";
         let cleaned = raw.trim();
-
-        // 1. Remove markdown code blocks (allow spaces/case insensitivity)
-        cleaned = cleaned.replace(/^```\s*mermaid\s*$/gim, '').replace(/^```\s*$/gim, '').trim(); 
         cleaned = cleaned.replace(/```mermaid/gi, '').replace(/```/g, '').trim();
 
-        // 2. Locate start of diagram
-        const diagramTypes = ['classDiagram', 'graph', 'sequenceDiagram', 'erDiagram', 'stateDiagram', 'gantt', 'pie', 'flowchart', 'mindmap', 'logicDiagram'];
-        let startIndex = -1;
-        
-        for (const type of diagramTypes) {
-            const match = new RegExp(`(^|\\n)\\s*${type}\\b`, 'i').exec(cleaned);
-            if (match) {
-                const keywordIndex = match.index + match[1].length;
-                if (startIndex === -1 || keywordIndex < startIndex) {
-                    startIndex = keywordIndex;
-                }
-            }
+        if (!/^(graph|flowchart|sequenceDiagram|classDiagram|erDiagram|stateDiagram|gantt|pie|mindmap)/i.test(cleaned)) {
+            cleaned = `graph LR\n${cleaned}`;
         }
 
-        if (startIndex !== -1) {
-            cleaned = cleaned.substring(startIndex).trim();
-        }
+        const classDefs = `
+  classDef logic fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+  classDef power fill:#ffebee,stroke:#c62828,stroke-width:3px,color:#b71c1c;
+  classDef memory fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#1b5e20;
+  classDef mux fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+  classDef decoder fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c;
+  classDef passive fill:#fafafa,stroke:#424242,stroke-width:1px,color:#212121;
+        `;
 
-        // NEW: Fix invalid diagram types BEFORE specific parsing
-        cleaned = cleaned.replace(/^\s*logicDiagram/i, 'graph TD');
+        const lines = cleaned.split('\n');
+        const enrichedLines = lines.map(line => {
+            if (/AND|OR|XOR|NOT|NAND|NOR|Gate/i.test(line)) line += ':::logic';
+            if (/MUX|DEMUX|Multiplexer/i.test(line)) line += ':::mux';
+            if (/Decoder|Encoder|3:8|2:4/i.test(line)) line += ':::decoder';
+            if (/Reg|RAM|ROM|PC|Stack|Cache|Memory/i.test(line)) line += ':::memory';
+            if (/Battery|BATT|VCC|Source|Vdd|Vss/i.test(line)) line += ':::power';
+            if (/Resistor|Capacitor|Inductor|R\d|C\d|L\d/i.test(line)) line += ':::passive';
+            return line;
+        });
 
-        // 3. Fix specific Class Diagram issues
-        if (/^classDiagram/i.test(cleaned)) {
-             // Replace 'package' with 'namespace'
-             cleaned = cleaned.replace(/\bpackage\b/g, 'namespace');
-
-             // Fix: "interface Name {" -> "class Name { <<interface>>"
-             cleaned = cleaned.replace(/interface\s+(\w+)\s*\{/g, 'class $1 {\n<<interface>>\n');
-             
-             // Fix: "interface Name" (standalone definition)
-             cleaned = cleaned.replace(/^\s*interface\s+(\w+)\s*$/gm, 'class $1 {\n<<interface>>\n}');
-
-             // Fix: "abstract class Name {" -> "class Name { <<abstract>>"
-             cleaned = cleaned.replace(/^\s*abstract\s+class\s+(\w+)\s*\{/gm, 'class $1 {\n<<abstract>>\n');
-             cleaned = cleaned.replace(/^\s*abstract\s+class\s+(\w+)\s*$/gm, 'class $1 {\n<<abstract>>\n}');
-             
-             // Fix: "class Name : member" -> "Name : member"
-             cleaned = cleaned.replace(/^\s*class\s+(\w+)\s*:/gm, '$1 :');
-
-             // Fix: Ensure newlines between '}' and next block
-             cleaned = cleaned.replace(/\}\s*(class|namespace|Note)/gi, '}\n$1');
-             
-             // Fix: Ensure newline after opening brace if followed by member
-             cleaned = cleaned.replace(/\{\s*([+\-#])/g, '{\n$1');
-
-             // Fix: "Namespace.Class" -> "Namespace_Class" to prevent DOT errors in relationships
-             cleaned = cleaned.replace(/([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)/g, '$1_$2');
-        }
-
-        // 4. Fix specific Flowchart/Graph issues
-        if (/^(graph|flowchart)/i.test(cleaned)) {
-            // Fix: Quote labels with parentheses (e.g. A[Node (Text)]) -> A["Node (Text)"] to prevent "Expecting 'SQE' got 'PS'" error
-            cleaned = cleaned.replace(/\[([^\]]*?\(.*?\)[^\]]*?)\]/g, (match, content) => {
-                const trimmed = content.trim();
-                // If already quoted, assume it's fine
-                if (trimmed.startsWith('"') && trimmed.endsWith('"')) return match;
-                // Double quotes inside text need escaping if we wrap in double quotes, 
-                // but simpler to swap to single quotes or just escape.
-                // Here we replace internal double quotes with single quotes for safety.
-                const safeContent = content.replace(/"/g, "'");
-                return `["${safeContent}"]`;
-            });
-        }
-
-        // 5. Fix specific ER Diagram issues
-        if (/^erDiagram/i.test(cleaned)) {
-            // Fix: "PK attributeName" -> "string attributeName PK"
-            cleaned = cleaned.replace(/^\s*PK\s+(\w+)/gm, '  string $1 PK');
-            
-            // Fix: ENUM('a','b') or VARCHAR(255) -> string
-            cleaned = cleaned.replace(/\b(VARCHAR|ENUM|SET|TEXT|DATE|DATETIME|TIMESTAMP|INT|INTEGER|FLOAT|DOUBLE|DECIMAL|BOOL|BOOLEAN)\s*\([^)]*\)/gi, 'string');
-            
-            // Fix: VARCHAR_14, ENUM_M_F, etc. -> string/int
-            cleaned = cleaned.replace(/\b(VARCHAR|CHAR|ENUM|INT)_\w+/gi, (match, p1) => {
-                if (p1.toUpperCase() === 'INT') return 'int';
-                return 'string';
-            });
-        }
-
-        // 6. Fix: `end` is a reserved keyword in flowcharts. Renaming class 'end' to 'endStyle' to prevent parsing errors.
-        if (/\bclassDef end\b/i.test(cleaned)) {
-            cleaned = cleaned.replace(/\bclassDef end\b/gi, 'classDef endStyle');
-            cleaned = cleaned.replace(/:::end\b/gi, ':::endStyle');
-        }
-
-        return cleaned;
+        return enrichedLines.join('\n') + '\n' + classDefs;
     };
 
     useEffect(() => {
@@ -129,148 +62,114 @@ export const DiagramRenderer: React.FC<DiagramRendererProps> = ({ code, classNam
                 
                 window.mermaid.initialize({ 
                     startOnLoad: false, 
-                    theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default',
+                    theme: document.documentElement.classList.contains('dark') ? 'dark' : 'neutral',
                     securityLevel: 'loose',
-                    logLevel: 'error',
+                    flowchart: {
+                        curve: 'stepBefore',
+                        padding: 30,
+                        nodeSpacing: 60,
+                        rankSpacing: 60,
+                        useMaxWidth: false
+                    }
                 });
 
                 const safeCode = cleanMermaidCode(code);
+                const { svg: renderedSvg } = await window.mermaid.render(id, safeCode);
                 
-                if (!safeCode) {
-                    throw new Error("Empty diagram code after cleanup.");
-                }
+                const styledSvg = renderedSvg.replace('<style>', `
+                    <style>
+                        .node rect, .node polygon, .node circle, .node ellipse, .node path {
+                            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.15));
+                        }
+                        /* Custom symbols for electronics */
+                        .passive rect { rx: 0; ry: 0; }
+                        .power circle { stroke-dasharray: 4; }
+                        svg { 
+                           background-image: radial-gradient(#666 0.4px, transparent 0.4px);
+                           background-size: 25px 25px;
+                           background-color: transparent;
+                        }
+                        .edgePath path { stroke-width: 2px !important; }
+                        .dark .edgePath path { stroke: #00ff41 !important; }
+                        .dark .node rect { fill: #0a0a0a !important; stroke: #00ff41 !important; }
+                        .dark .node .label { color: #00ff41 !important; }
+                `);
 
-                const { svg } = await window.mermaid.render(id, safeCode);
-                setSvg(svg);
+                setSvg(styledSvg);
                 setError(null);
-                handleReset(); // Reset view when code changes
             } catch (err: any) {
-                console.warn("Mermaid Render Warning:", err);
-                setError(err.message || "Syntax error in diagram definition.");
+                setError(err.message || "Diagram syntax error.");
             }
         };
 
         renderDiagram();
     }, [code]);
 
-    // --- Zoom and Pan handlers ---
-    const handleZoomIn = () => setScale(s => Math.min(s * 1.25, 4));
-    const handleZoomOut = () => setScale(s => Math.max(s / 1.25, 0.2));
-    const handleReset = () => {
-        setScale(1);
-        setPosition({ x: 0, y: 0 });
-    };
+    const handleZoomIn = () => setScale(s => Math.min(s * 1.2, 5));
+    const handleZoomOut = () => setScale(s => Math.max(s / 1.2, 0.2));
+    const handleReset = () => { setScale(1); setPosition({ x: 0, y: 0 }); };
 
     const handleMouseDown = (e: React.MouseEvent) => {
-        e.preventDefault();
         setIsDragging(true);
-        dragStartRef.current = {
-            startX: e.clientX,
-            startY: e.clientY,
-            posX: position.x,
-            posY: position.y,
-        };
-        if(viewportRef.current) viewportRef.current.style.cursor = 'grabbing';
+        dragStartRef.current = { startX: e.clientX, startY: e.clientY, posX: position.x, posY: position.y };
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!isDragging) return;
-        e.preventDefault();
         const dx = e.clientX - dragStartRef.current.startX;
         const dy = e.clientY - dragStartRef.current.startY;
-        setPosition({
-            x: dragStartRef.current.posX + dx,
-            y: dragStartRef.current.posY + dy,
-        });
-    };
-
-    const handleMouseUpOrLeave = () => {
-        setIsDragging(false);
-        if(viewportRef.current) viewportRef.current.style.cursor = 'grab';
-    };
-    
-    const handleWheel = (e: React.WheelEvent) => {
-        // Only zoom if Ctrl key is pressed. This prevents accidental zooming while scrolling the page.
-        if (e.ctrlKey) {
-            e.preventDefault();
-            if (e.deltaY < 0) {
-                handleZoomIn();
-            } else {
-                handleZoomOut();
-            }
-        }
-        // If Ctrl is not pressed, the event is not prevented, allowing normal page scroll.
+        setPosition({ x: dragStartRef.current.posX + dx, y: dragStartRef.current.posY + dy });
     };
 
     if (error) {
         return (
-            <div className={`p-4 border border-red-500 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs font-mono rounded ${className}`}>
-                <div className="font-bold mb-2 flex items-center gap-2">
-                    <span>⚠️</span> DIAGRAM RENDER ERROR
-                </div>
-                <div className="mb-2 opacity-80">{error}</div>
-                <details>
-                    <summary className="cursor-pointer font-bold opacity-70 hover:opacity-100">View Source Code</summary>
-                    <pre className="whitespace-pre-wrap mt-2 p-2 bg-black/5 dark:bg-black/30 rounded border border-black/10 dark:border-white/10 opacity-80">{code}</pre>
-                </details>
-            </div>
-        );
-    }
-
-    if (!svg) {
-        return (
-            <div className={`w-full h-48 flex items-center justify-center bg-gray-50 dark:bg-[#1a1a1a] rounded border border-dashed border-gray-300 dark:border-gray-700 ${className}`}>
-                <div className="text-xs text-gray-400 animate-pulse flex flex-col items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                    Generating Diagram...
-                </div>
+            <div className={`p-4 border border-red-500 bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 text-xs font-mono rounded ${className}`}>
+                <div className="font-bold mb-1 uppercase tracking-tighter">Diagram Protocol Error</div>
+                <pre className="whitespace-pre-wrap opacity-80">{code}</pre>
             </div>
         );
     }
 
     return (
-        <div 
-            className={`relative w-full overflow-hidden bg-gray-100 dark:bg-[#111] p-0 rounded border border-gray-300 dark:border-gray-700 flex justify-center items-center ${className}`}
-            style={{ minHeight: '250px' }}
-        >
-            {/* Controls & Hint */}
-            <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-1 pointer-events-none">
-                <div className="flex items-center gap-1 bg-white/80 dark:bg-black/80 border border-gray-300 dark:border-gray-700 rounded-md p-1 backdrop-blur-sm shadow-md pointer-events-auto">
-                    <button onClick={handleZoomIn} title="Zoom In" className="w-7 h-7 flex items-center justify-center text-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">+</button>
-                    <button onClick={handleZoomOut} title="Zoom Out" className="w-7 h-7 flex items-center justify-center text-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">-</button>
-                    <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1"></div>
-                    <button onClick={handleReset} title="Reset View" className="w-7 h-7 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5M4 4l16 16" /></svg>
-                    </button>
+        <div className={`relative w-full border-2 border-gray-300 dark:border-terminal-green/30 rounded-xl overflow-hidden bg-gray-50 dark:bg-[#080808] shadow-2xl ${className}`} style={{ minHeight: '400px' }}>
+            <div className="absolute top-0 left-0 w-full h-10 bg-white/60 dark:bg-black/40 backdrop-blur-lg border-b dark:border-terminal-green/20 flex items-center justify-between px-4 z-10">
+                <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-terminal-green shadow-[0_0_8px_#00ff41]"></div>
+                    <span className="text-[10px] font-bold font-mono text-gray-500 dark:text-terminal-green uppercase tracking-widest">Visual Analysis Core</span>
                 </div>
-                <div className="text-[9px] font-mono text-gray-500 dark:text-gray-400 bg-white/70 dark:bg-black/70 px-1.5 py-0.5 rounded-sm backdrop-blur-sm shadow">
-                    Ctrl + Scroll to Zoom
+                <div className="flex gap-2">
+                    <button onClick={handleZoomIn} className="w-7 h-7 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-terminal-green/10 rounded-full text-gray-500 dark:text-terminal-green transition-all">+</button>
+                    <button onClick={handleZoomOut} className="w-7 h-7 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-terminal-green/10 rounded-full text-gray-500 dark:text-terminal-green transition-all">-</button>
+                    <button onClick={handleReset} className="px-2 h-7 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-terminal-green/10 rounded text-gray-500 dark:text-terminal-green text-[9px] font-bold">RESET</button>
                 </div>
             </div>
 
-            {/* Viewport */}
             <div
                 ref={viewportRef}
-                className="w-full h-full cursor-grab"
+                className="w-full h-full cursor-grab active:cursor-grabbing"
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUpOrLeave}
-                onMouseLeave={handleMouseUpOrLeave}
-                onWheel={handleWheel}
+                onMouseUp={() => setIsDragging(false)}
+                onMouseLeave={() => setIsDragging(false)}
             >
                 <div
                     style={{
                         transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                        transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                        transition: isDragging ? 'none' : 'transform 0.15s cubic-bezier(0,0,0.2,1)',
                         transformOrigin: 'center center',
                         width: '100%',
                         height: '100%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        paddingTop: '40px'
                     }}
                     dangerouslySetInnerHTML={{ __html: svg }}
                 />
+            </div>
+            
+            <div className="absolute bottom-3 right-4 text-[9px] font-bold font-mono text-gray-400 dark:text-terminal-green/40 pointer-events-none uppercase tracking-widest">
+                Schematic v2.4 // Active
             </div>
         </div>
     );
