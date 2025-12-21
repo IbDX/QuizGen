@@ -2,7 +2,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Question, ExamSettings, QuestionFormatPreference, OutputLanguage, UILanguage, ExamMode } from "../types";
 
-// Exporting ChatMessage interface to resolve missing member error in ExamBuilder.tsx
 export interface ChatMessage {
     role: 'user' | 'model';
     text: string;
@@ -10,42 +9,83 @@ export interface ChatMessage {
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const DIAGRAM_PROTOCOL = `
-**SCHEMATIC & ARCHITECTURE PROTOCOL (STRICT):**
-If a question involves hardware, logic, or circuits, you MUST provide a 'diagramConfig' using Mermaid.js syntax.
-USE THESE UNIQUE SHAPES:
-- Logic Gates (AND, OR, XOR, etc.): {{GateName}} [Hexagon]
-- Multiplexers (MUX/DEMUX): [/Label/] or [\\Label\\] [Trapezoid]
-- Registers/Memory (PC, RAM, Stack): [(Label)] [Cylinder]
-- Decoders/Encoders: [[Label]] [Subroutine shape]
-- Power/Battery: ((Label)) [Circle]
-- Ground: GND[⏚ Ground]
-- Passives (Resistor, Capacitor): [Label] with clear naming (R1, C1).
+/**
+ * PLATFORM CAPABILITY MAP:
+ * This tells the AI exactly what the UI can render so it creates 
+ * questions that leverage our dynamic components.
+ */
+const TECHNICAL_RENDERING_PROTOCOL = `
+**Z+ PLATFORM RENDERING CAPABILITIES (V2.8):**
+Your goal is to use the most interactive modality for every concept:
 
-LAYOUT: Use 'graph LR' for logic/electronics, 'graph TD' for system architecture.
+1. DYNAMIC MATH GRAPHS (Use 'graphConfig'):
+   - Use for: Calculus, Physics trajectories, Signal processing.
+   - Format: functions: ["sin(x)", "x^2 + 2x"]. Range/Domain: [-10, 10].
+   - Benefit: Renders an interactive D3 coordinate system.
+
+2. LOGIC & HARDWARE SCHEMATICS (Use 'diagramConfig'):
+   - Use for: Logic Gates, Circuits, UML, System Design.
+   - Syntax: Mermaid v10.
+   - Standard IDs: Use G1, G2, R1, C1 (No spaces).
+   - Standard Labels: ALWAYS wrap in double quotes: G1["AND Gate"].
+   - Circuit Components: Use Battery, Resistor, Capacitor, GND, ALU, MUX in labels to trigger custom hardware styling.
+
+3. MATHEMATICAL NOTATION:
+   - Use for: All formulas, variables, and equations.
+   - Format: Strict LaTeX wrapped in $ ... $ for inline or $$ ... $$ for blocks.
+   - Arabic Context: Even in Arabic mode, keep LaTeX symbols in LTR.
+
+4. INTERACTIVE CODE:
+   - Use for: Programming challenges and Trace logic.
+   - Rule: If you provide 'codeSnippet', DO NOT repeat the code inside 'text'.
 `;
 
+const getQuestionSchema = () => ({
+    type: Type.OBJECT,
+    properties: {
+        id: { type: Type.STRING },
+        type: { type: Type.STRING },
+        topic: { type: Type.STRING },
+        text: { type: Type.STRING },
+        codeSnippet: { type: Type.STRING, nullable: true },
+        options: { type: Type.ARRAY, items: { type: Type.STRING }, nullable: true },
+        correctOptionIndex: { type: Type.NUMBER, nullable: true },
+        tracingOutput: { type: Type.STRING, nullable: true },
+        expectedOutput: { type: Type.STRING, nullable: true },
+        explanation: { type: Type.STRING },
+        graphConfig: {
+            type: Type.OBJECT,
+            nullable: true,
+            properties: {
+                title: { type: Type.STRING },
+                functions: { type: Type.ARRAY, items: { type: Type.STRING } },
+                domain: { type: Type.ARRAY, items: { type: Type.NUMBER }, nullable: true },
+                range: { type: Type.ARRAY, items: { type: Type.NUMBER }, nullable: true }
+            }
+        },
+        diagramConfig: {
+            type: Type.OBJECT,
+            nullable: true,
+            properties: {
+                type: { type: Type.STRING },
+                code: { type: Type.STRING }
+            }
+        }
+    },
+    required: ["id", "topic", "type", "text", "explanation"]
+});
+
 const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: OutputLanguage): string => {
-    let langContext = "Output language: English.";
-    if (outputLang === 'ar') langContext = "Output language: Arabic (technical terms in English).";
+    let langContext = "Output: English.";
+    if (outputLang === 'ar') langContext = "Output: Arabic (Keep technical terms, LaTeX, and Diagram IDs in English/LTR).";
     else if (outputLang === 'auto') langContext = "Match source document language.";
 
     return `
-You are the Z+ Core Intelligence. Your mission is to generate high-fidelity technical assessments.
-
-PHASE 1: EXTRACTION
-- Parse documents for logic, math, and code.
-- Wrap all Physics/Math units in LaTeX: $12\,V$, $500\,\Omega$, $10\,\mu F$.
-
-PHASE 2: VISUAL REPRESENTATION
-${DIAGRAM_PROTOCOL}
-- If you find a 2D math function, use 'graphConfig'.
-
-PHASE 3: BATCH GENERATION
-- Format Preference: ${preference}.
-- Always include ID, topic, type, text, explanation.
-- For Tracing/Coding, provide 'expectedOutput'.
-
+You are the Z+ Core Intelligence. 
+1. EXTRACTION: Identify every single question. For the Diagnostic Demo, generate 30 diverse technical questions.
+2. RENDERING: ${TECHNICAL_RENDERING_PROTOCOL}
+3. FORMAT: ${preference}. If MCQ, provide 4 options. If Tracing, provide 'tracingOutput'. 
+4. DE-DUPLICATION: Never include the code from 'codeSnippet' inside the 'text' property.
 ${langContext}`;
 };
 
@@ -55,55 +95,18 @@ export const generateExam = async (
     outputLanguage: OutputLanguage,
     instructions?: string
 ): Promise<Question[]> => {
-    const systemInstruction = getSystemInstruction(preference, outputLanguage);
-    // Explicitly typing parts as any[] to fix inference issue where 'text' property was rejected on push
     const parts: any[] = files.map(f => ({ inlineData: { data: f.base64, mimeType: f.mimeType } }));
-    parts.push({ text: `Generate exam. Constraints: ${instructions || "None"}` });
+    parts.push({ text: `Generate a high-fidelity technical exam. Leverage the platform capabilities (Graphs, Diagrams). Constraints: ${instructions || "None"}` });
 
     const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
         contents: { parts },
         config: {
-            systemInstruction,
+            systemInstruction: getSystemInstruction(preference, outputLanguage),
             responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.ARRAY,
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        id: { type: Type.STRING },
-                        type: { type: Type.STRING },
-                        topic: { type: Type.STRING },
-                        text: { type: Type.STRING },
-                        codeSnippet: { type: Type.STRING, nullable: true },
-                        options: { type: Type.ARRAY, items: { type: Type.STRING }, nullable: true },
-                        correctOptionIndex: { type: Type.NUMBER, nullable: true },
-                        tracingOutput: { type: Type.STRING, nullable: true },
-                        expectedOutput: { type: Type.STRING, nullable: true },
-                        explanation: { type: Type.STRING },
-                        graphConfig: {
-                            type: Type.OBJECT,
-                            nullable: true,
-                            properties: {
-                                title: { type: Type.STRING },
-                                functions: { type: Type.ARRAY, items: { type: Type.STRING } }
-                            }
-                        },
-                        diagramConfig: {
-                            type: Type.OBJECT,
-                            nullable: true,
-                            properties: {
-                                type: { type: Type.STRING },
-                                code: { type: Type.STRING }
-                            }
-                        }
-                    },
-                    required: ["id", "topic", "type", "text", "explanation"]
-                }
-            }
+            responseSchema: { type: Type.ARRAY, items: getQuestionSchema() }
         }
     });
-
     try { return JSON.parse(response.text || "[]"); } catch (e) { return []; }
 };
 
@@ -112,13 +115,9 @@ export const sendExamBuilderMessage = async (history: ChatMessage[], message: st
         model: 'gemini-3-flash-preview',
         contents: [...history.map(m => ({ role: m.role, parts: [{ text: m.text }] })), { role: 'user', parts: [{ text: message }] }] as any,
         config: {
-            systemInstruction: `You are the Z+ Exam Architect. Discuss technical exam design.
-            CAPABILITIES: 
-            - Logic Diagrams (MUX, Decoders, Registers, ALU).
-            - Electronic Circuits (Batteries, Capacitors, Gates).
-            - Coding/Tracing.
-            
-            ALWAYS offer to include these diagrams if relevant.
+            systemInstruction: `You are the Z+ Exam Architect. 
+            Negotiate technical exams. You are aware of our platform's ability to render Dynamic Graphs, Logic Circuits, and Interactive Code.
+            Propose interesting visual questions. 
             Append ||SUGGESTIONS|| ["Option 1", "Option 2"] for quick replies.`
         }
     });
@@ -130,9 +129,9 @@ export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promi
         model: 'gemini-3-pro-preview',
         contents: history.map(m => ({ role: m.role, parts: [{ text: m.text }] })) as any,
         config: {
-            systemInstruction: `Final Generation Mode. Compile the discussed requirements into a full JSON object.
-            ${DIAGRAM_PROTOCOL}
-            Ensure math uses $ delimiters. Return title, settings, and questions array.`,
+            systemInstruction: `Final Compilation. Compile all discussed technical content into structured JSON.
+            ${TECHNICAL_RENDERING_PROTOCOL}
+            MANDATORY: Ensure code snippets are not repeated in question text.`,
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
@@ -145,30 +144,7 @@ export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promi
                             mode: { type: Type.STRING }
                         }
                     },
-                    questions: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                id: { type: Type.STRING },
-                                type: { type: Type.STRING },
-                                topic: { type: Type.STRING },
-                                text: { type: Type.STRING },
-                                explanation: { type: Type.STRING },
-                                options: { type: Type.ARRAY, items: { type: Type.STRING }, nullable: true },
-                                correctOptionIndex: { type: Type.NUMBER, nullable: true },
-                                diagramConfig: {
-                                    type: Type.OBJECT,
-                                    nullable: true,
-                                    properties: {
-                                        type: { type: Type.STRING },
-                                        code: { type: Type.STRING }
-                                    }
-                                }
-                            },
-                            required: ["id", "type", "topic", "text", "explanation"]
-                        }
-                    }
+                    questions: { type: Type.ARRAY, items: getQuestionSchema() }
                 },
                 required: ["title", "questions"]
             }
@@ -180,33 +156,33 @@ export const generateExamFromBuilderChat = async (history: ChatMessage[]): Promi
 export const gradeCodingAnswer = async (q: Question, answer: string, lang: string) => {
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Q: ${q.text}\nSolution: ${q.explanation}\nUser: ${answer}`,
+        contents: `Q: ${q.text}\nSolution: ${q.explanation}\nUser Submission: ${answer}`,
         config: {
-            systemInstruction: `Grade user code. Lang: ${lang}. Return JSON {isCorrect: bool, feedback: string}`,
+            systemInstruction: `Grade this code in ${lang}. Provide technical feedback. Return JSON {isCorrect: bool, feedback: string}`,
             responseMimeType: "application/json"
         }
     });
-    return JSON.parse(response.text || '{"isCorrect":false,"feedback":"Error"}');
+    return JSON.parse(response.text || '{"isCorrect":false,"feedback":"Grading Error"}');
 };
 
 export const gradeShortAnswer = async (q: Question, answer: string, lang: string) => {
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Q: ${q.text}\nContext: ${q.explanation}\nUser: ${answer}`,
+        contents: `Q: ${q.text}\nContext: ${q.explanation}\nUser Input: ${answer}`,
         config: {
-            systemInstruction: `Grade text answer. Lang: ${lang}. Return JSON {isCorrect: bool, feedback: string}`,
+            systemInstruction: `Grade this text response in ${lang}. Return JSON {isCorrect: bool, feedback: string}`,
             responseMimeType: "application/json"
         }
     });
-    return JSON.parse(response.text || '{"isCorrect":false,"feedback":"Error"}');
+    return JSON.parse(response.text || '{"isCorrect":false,"feedback":"Grading Error"}');
 };
 
 export const generateLoadingTips = async (files: any[], lang: string) => {
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: "Generate 5 technical study tips.",
+        contents: "Generate 5 technical study tips related to these documents.",
         config: {
-            systemInstruction: `Lang: ${lang}. Return JSON string array.`,
+            systemInstruction: `Return JSON string array in ${lang}. Use Markdown.`,
             responseMimeType: "application/json"
         }
     });
@@ -217,7 +193,7 @@ export const getAiHelperResponse = async (msg: string, lang: string) => {
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: msg,
-        config: { systemInstruction: `You are Z+ Support. Lang: ${lang}.` }
+        config: { systemInstruction: `Z+ Support Agent. Help with platform features: Graphs, Diagrams, Modes. Lang: ${lang}.` }
     });
     return response.text || "";
 };
@@ -226,10 +202,11 @@ export const generateExamFromWrongAnswers = async (questions: Question[], wrongI
     const wrongOnes = questions.filter(q => wrongIds.includes(q.id));
     const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
-        contents: `Failed questions: ${JSON.stringify(wrongOnes)}. Generate 5 new remediation questions.`,
+        contents: `Failed Concepts: ${JSON.stringify(wrongOnes)}. Generate 5 new remediation questions.`,
         config: {
-            systemInstruction: `Remediation Expert. Use standard JSON schema. ${DIAGRAM_PROTOCOL}`,
-            responseMimeType: "application/json"
+            systemInstruction: `Remediation Expert. Use technical visuals. ${TECHNICAL_RENDERING_PROTOCOL}`,
+            responseMimeType: "application/json",
+            responseSchema: { type: Type.ARRAY, items: getQuestionSchema() }
         }
     });
     return JSON.parse(response.text || "[]");

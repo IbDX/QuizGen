@@ -169,57 +169,60 @@ const App: React.FC = () => {
 
   const handleDemoLoad = () => {
       const content = `
-# Z+ SYSTEM DIAGNOSTIC EVALUATION
-# TARGET: MULTI-DISCIPLINARY ANALYSIS
+# Z+ MASTER STRESS TEST PROTOCOL (30 QUESTIONS)
+# TARGET: FULL SYSTEM DIAGNOSTIC (AR/EN BILINGUAL)
 
-## SECTION 1: C++ (TRACING)
-Q1. Determine the exact output of the following pointer arithmetic code.
-\`\`\`cpp
-#include <iostream>
-using namespace std;
-int main() {
-    int arr[] = {10, 20, 30};
-    int *p = arr;
-    p++;
-    cout << *p << " " << p[-1];
-    return 0;
-}
-\`\`\`
-
-## SECTION 2: JAVASCRIPT (MCQ)
-Q2. What is the result of the following loose equality check?
+## SECTION 1: ADVANCED PROGRAMMING & DATA STRUCTURES
+Q1. Implement a function in C++ to reverse a Linked List.
+Q2. Visualize the memory layout of a doubly linked list using a diagram.
+Q3. (AR) ما هي مخرجات الكود التالي في JavaScript؟ 
 \`\`\`javascript
-console.log(0 == '0');
+let x = [1, 2]; let y = x; y.push(3); console.log(x.length);
 \`\`\`
-A. true
-B. false
-C. undefined
-D. NaN
+Q4. Design a Sequence Diagram for an OAuth2 Authentication flow.
+Q5. Identify the Time Complexity of Merge Sort in the worst case.
 
-## SECTION 3: PYTHON (CODING)
-Q3. Write a Python function \`merge_dicts(d1, d2)\` that merges two dictionaries. If a key appears in both, sum their values.
-Example: d1={'a':10}, d2={'a':5, 'b':2} -> result={'a':15, 'b':2}
+## SECTION 2: DIGITAL LOGIC & COMPUTER ARCHITECTURE
+Q6. Draw a Logic Gate circuit for the boolean expression: $Y = (A \cdot B) + \overline{C}$.
+Q7. Explain the function of a 4-to-1 Multiplexer (MUX).
+Q8. Visualize a D-Flip Flop circuit with Clock and Data inputs.
+Q9. (AR) صمم مخططاً هيكلياً لمعالج ALU بسيط يحتوي على مدخلين ومخرج واحد.
+Q10. What is the difference between Von Neumann and Harvard architecture?
 
-## SECTION 4: MATHEMATICS (GRAPH VISUALIZATION)
-Q4. Visualize the intersection of a parabola and a line.
-Plot the functions:
-1. $f(x) = x^2 - 2$
-2. $g(x) = x + 1$
-Determine the visual intersection points in the domain [-3, 3].
+## SECTION 3: MATHEMATICS & CALCULUS (GRAPH STRESS)
+Q11. Plot the function $f(x) = \sin(x) \cdot e^{-0.1x}$ for $x \in [-10, 10]$.
+Q12. Visualize the intersection of $y = x^2$ and $y = 4$.
+Q13. Solve the integral: $\int_{0}^{\pi} \cos(x) dx$.
+Q14. (AR) ارسم الدالة التربيعية $y = x^2 - 4$ وحدد نقاط التقاطع مع المحور السيني.
+Q15. Solve for $x$: $2^{x+1} = 16$.
 
-## SECTION 5: SOFTWARE ENGINEERING (ARCHITECTURE DIAGRAM)
-Q5. Design a "Authentication System" flow using a Sequence Diagram.
-- User sends credentials to LoginController.
-- LoginController validates with AuthService.
-- AuthService checks Database.
-- Database returns Result.
+## SECTION 4: ELECTRICAL ENGINEERING
+Q16. Calculate total resistance $R_{total}$ for 3 resistors ($10\Omega, 20\Omega, 30\Omega$) in parallel.
+Q17. Draw a schematic of a Bridge Rectifier using 4 diodes.
+Q18. Explain Ohm's Law and its relationship with Power ($P=VI$).
+Q19. (AR) احسب الجهد الكهربائي عبر مقاومة $5\Omega$ إذا كان التيار $2A$.
+Q20. Draw a schematic of a simple RC Circuit (Resistor + Capacitor).
+
+## SECTION 5: PHYSICS (FORCES & THERMODYNAMICS)
+Q21. Calculate the Resultant Force of two vectors: $F1=5N$ North and $F2=5N$ East.
+Q22. Visualize the path of a projectile launched at $45^\circ$.
+Q23. Explain the Second Law of Thermodynamics (Entropy).
+Q24. (AR) احسب تسارع جسم كتلته $10kg$ تؤثر عليه قوة $50N$.
+Q25. Visualize the refraction of light through a glass prism.
+
+## SECTION 6: DATABASE & SYSTEM DESIGN
+Q26. Design an Entity-Relationship (ER) diagram for a "Library System" (Books, Authors, Users).
+Q27. Write a SQL query to find the second highest salary from an "Employees" table.
+Q28. Explain the difference between SQL and NoSQL databases (CAP Theorem).
+Q29. (AR) ارسم مخطط حالة (State Diagram) لنظام طلبات طعام (Pending -> Cooking -> Delivered).
+Q30. Design a Class Diagram for an "Animal" inheritance hierarchy (Cat, Dog inherit from Animal).
       `;
-      const base64 = btoa(content);
+      const base64 = btoa(unescape(encodeURIComponent(content))); // Proper Unicode Base64
       const demoFile = {
           base64: base64,
           mime: 'text/plain',
-          name: 'diagnostic_demo.txt',
-          hash: 'DEMO_HASH_V2_MULTI'
+          name: 'master_diagnostic_v3.txt',
+          hash: 'DEMO_STRESS_TEST_30Q'
       };
       handleFilesAccepted([demoFile]);
   };
@@ -591,7 +594,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
               questions={questions} 
               settings={settings} 
               onComplete={handleExamComplete} 
-              isFullWidth={isFullWidth}
+              isFullWidth={isFullWidth} 
               lang={uiLanguage}
             />
           )}
