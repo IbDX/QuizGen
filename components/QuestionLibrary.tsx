@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Question, QuestionType, SavedExam, UILanguage } from '../types';
 import { getLibrary, removeQuestion, getSavedExams, removeExam, importSavedExam, triggerExamDownload, getHistory } from '../services/library';
@@ -15,7 +14,7 @@ interface QuestionLibraryProps {
     lang?: UILanguage;
 }
 
-export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, onLoadExam, lang = 'en' }) => {
+export const QuestionLibrary: React.FC<QuestionLibraryProps> = ({ isFullWidth, onLoadExam, lang = 'en' as UILanguage }) => {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [exams, setExams] = useState<SavedExam[]>([]);
     const [history, setHistory] = useState<SavedExam[]>([]);

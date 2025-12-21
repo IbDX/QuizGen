@@ -22,7 +22,7 @@ export enum ExamMode {
 
 export type OutputLanguage = 'en' | 'ar' | 'auto';
 export type UILanguage = 'en' | 'ar';
-export type ThemeOption = 'light' | 'dark' | 'palestine';
+export type ThemeOption = 'light' | 'dark' | 'palestine' | 'cyberpunk' | 'synthwave';
 
 export interface GraphConfig {
   title?: string;
@@ -81,6 +81,32 @@ export interface SavedExam {
   title: string;
   date: string;
   questions: Question[];
+}
+
+export interface Badge {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    rarity: 'common' | 'rare' | 'epic' | 'legendary';
+    unlockedAt?: string;
+}
+
+export interface UserProfile {
+    username: string;
+    avatar: string;
+    xp: number;
+    level: number;
+    currentStreak: number;
+    lastExamDate: string; // ISO date
+    stats: {
+        totalExams: number;
+        totalQuestions: number;
+        correctAnswers: number;
+        perfectScores: number;
+    };
+    badges: Badge[];
+    unlockedThemes: ThemeOption[];
 }
 
 export type AppState = 

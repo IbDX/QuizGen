@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -52,7 +53,11 @@
         },
         options: {
           ignoreHtmlClass: 'tex2jax_ignore',
-          processHtmlClass: 'tex2jax_process'
+          processHtmlClass: 'tex2jax_process',
+          enableMenu: false, // Disable context menu
+          renderActions: {
+            assistiveMml: [] // DISABLE ASSISTIVE MATHML to prevent visual artifacts
+          }
         },
         startup: {
           typeset: false // We will call typesetPromise manually
@@ -146,15 +151,23 @@
         background: var(--color-term-green);
       }
       
-      /* MathJax Overrides - CRITICAL FOR RTL FIX */
+      /* MathJax Overrides - CRITICAL FOR RTL FIX & VISUAL ARTIFACTS */
       mjx-container {
         display: inline-block !important;
         margin: 0 !important;
         direction: ltr !important; /* Force math to always be LTR */
         text-align: left !important;
-        unicode-bidi: isolate !important; /* Isolate math from RTL context to prevent sentence scrambling */
+        unicode-bidi: isolate !important; /* Isolate math from RTL context */
+        outline: none !important; /* Remove potential focus outlines */
       }
-      .katex-wrapper { /* Keep class name for compatibility with old CSS ref if any */
+      mjx-container svg {
+        display: block; /* Fix vertical alignment issues */
+        overflow: visible; /* Allow glyphs to extend if needed */
+      }
+      mjx-assistive-mathml {
+        display: none !important; /* Hard hide to prevent line artifacts */
+      }
+      .katex-wrapper { /* Keep class name for compatibility */
         display: inline-block;
       }
     </style>
@@ -179,3 +192,4 @@
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
+    

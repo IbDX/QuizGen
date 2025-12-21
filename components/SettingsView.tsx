@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ThemeOption, UILanguage } from '../types';
+import { ThemeOption, UILanguage, UserProfile } from '../types';
 import { t } from '../utils/translations';
 import { PerformanceDashboard } from './PerformanceDashboard';
 
@@ -22,6 +22,7 @@ interface SettingsViewProps {
     useCustomCursor: boolean;
     setUseCustomCursor: (b: boolean) => void;
     onClose: () => void;
+    userProfile?: UserProfile; // Added for lock check
 }
 
 const FONT_OPTIONS = [
@@ -41,9 +42,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     autoHideHeader, setAutoHideHeader,
     enableBackgroundAnim, setEnableBackgroundAnim,
     useCustomCursor, setUseCustomCursor,
-    onClose
+    onClose,
+    userProfile
 }) => {
     const [showDiagnostics, setShowDiagnostics] = useState(false);
+
+    const ThemeButton = ({ id, label, locked, lvl }: { id: ThemeOption, label: string, locked: boolean, lvl: number }) => (
+        <button 
+            onClick={() => !locked && setTheme(id)} 
+            disabled={locked}
+            className={`p-3 border rounded text-[10px] font-bold transition-all shadow-sm relative overflow-hidden group
+                ${locked ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-black border-gray-300 dark:border-gray-800' : ''}
+                ${theme === id 
+                    ? 'border-terminal-green bg-terminal-gray text-terminal-green ring-1 ring-terminal-green' 
+                    : !locked ? 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500 hover:border-gray-400' : ''}
+            `}
+        >
+            {label}
+            {locked && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-[9px] backdrop-blur-[1px]">
+                    🔒 LVL {lvl}
+                </div>
+            )}
+        </button>
+    );
 
     return (
         <div className={`mx-auto transition-all duration-300 animate-fade-in ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>
@@ -79,12 +101,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         
                         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Theme */}
-                            <div>
+                            <div className="md:col-span-2">
                                 <label className="block text-xs font-bold mb-3 text-gray-700 dark:text-gray-300 uppercase tracking-wide">{t('ui_theme', uiLanguage)}</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                        <button onClick={() => setTheme('light')} className={`p-3 border rounded text-[10px] font-bold transition-all shadow-sm ${theme === 'light' ? 'border-blue-500 bg-blue-50 text-blue-800 ring-1 ring-blue-500' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>LIGHT</button>
-                                        <button onClick={() => setTheme('dark')} className={`p-3 border rounded text-[10px] font-bold transition-all shadow-sm ${theme === 'dark' ? 'border-terminal-green bg-terminal-gray text-terminal-green ring-1 ring-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>TERMINAL</button>
-                                        <button onClick={() => setTheme('palestine')} className={`p-3 border rounded text-[10px] font-bold transition-all shadow-sm ${theme === 'palestine' ? 'border-terminal-green bg-[#0b0f0c] text-white ring-1 ring-terminal-green' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-terminal-black text-gray-500'}`}>PALESTINE</button>
+                                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                                    <ThemeButton id="light" label="LIGHT" locked={false} lvl={0} />
+                                    <ThemeButton id="dark" label="TERMINAL" locked={false} lvl={0} />
+                                    <ThemeButton id="palestine" label="PALESTINE" locked={false} lvl={0} />
+                                    <ThemeButton 
+                                        id="cyberpunk" 
+                                        label="CYBERPUNK" 
+                                        locked={!userProfile?.unlockedThemes.includes('cyberpunk')} 
+                                        lvl={3} 
+                                    />
+                                    <ThemeButton 
+                                        id="synthwave" 
+                                        label="SYNTHWAVE" 
+                                        locked={!userProfile?.unlockedThemes.includes('synthwave')} 
+                                        lvl={5} 
+                                    />
                                 </div>
                             </div>
 

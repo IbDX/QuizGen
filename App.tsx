@@ -12,12 +12,14 @@ import { QuestionLibrary } from './components/QuestionLibrary';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ConfirmModal } from './components/ConfirmModal'; 
 import { SettingsView } from './components/SettingsView';
-import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference, UILanguage, SavedExam, ThemeOption } from './types';
+import { ProfileModal } from './components/GamificationUI';
+import { AppState, Question, ExamSettings, UserAnswer, QuestionType, ExamMode, QuestionFormatPreference, UILanguage, SavedExam, ThemeOption, UserProfile } from './types';
 import { generateExam, generateExamFromWrongAnswers } from './services/gemini';
 import { generateExamPDF } from './utils/pdfGenerator';
 import { t } from './utils/translations';
 import { saveToHistory } from './services/library';
 import { monitor } from './services/monitor';
+import { gamification } from './services/gamification';
 
 const FONT_OPTIONS = [
     { name: 'Fira Code', value: "'Fira Code', monospace" },
@@ -31,6 +33,7 @@ const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('UPLOAD');
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   
   const [uploadedFiles, setUploadedFiles] = useState<Array<{base64: string; mime: string; name: string; hash: string}>>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -53,6 +56,9 @@ const App: React.FC = () => {
 
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
   const [systemStatus, setSystemStatus] = useState<SystemStatus>('ONLINE');
+  
+  // Gamification State
+  const [userProfile, setUserProfile] = useState<UserProfile>(gamification.getProfile());
 
   const [confirmModalState, setConfirmModalState] = useState({
     isOpen: false,
@@ -74,9 +80,11 @@ const App: React.FC = () => {
 
   // Effect: Apply Theme Classes
   useEffect(() => {
-    document.documentElement.classList.remove('dark', 'theme-palestine');
+    document.documentElement.classList.remove('dark', 'theme-palestine', 'theme-cyberpunk', 'theme-synthwave');
     if (theme === 'dark') document.documentElement.classList.add('dark');
     else if (theme === 'palestine') document.documentElement.classList.add('dark', 'theme-palestine');
+    else if (theme === 'cyberpunk') document.documentElement.classList.add('dark', 'theme-cyberpunk');
+    else if (theme === 'synthwave') document.documentElement.classList.add('dark', 'theme-synthwave');
   }, [theme]);
 
   // Effect: Apply Font Settings
@@ -399,7 +407,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
         if (s >= 60) return 'D-';
         return 'F';
      };
-     generateExamPDF(questions, score, getGrade(score), "User");
+     generateExamPDF(questions, score, getGrade(score), userProfile.username);
   };
   
   const handleToggleLibrary = () => {
@@ -468,11 +476,14 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
       onSetUiLanguage={setUiLanguage}
       forceStaticHeader={appState === 'UPLOAD'}
       systemStatus={systemStatus}
-      // Pass Visual Props
+      // Visual Props
       theme={theme}
       autoHideHeader={autoHideHeader}
       enableBackgroundAnim={enableBackgroundAnim}
       useCustomCursor={useCustomCursor}
+      // Gamification Props
+      userProfile={userProfile}
+      onOpenProfile={() => setIsProfileOpen(true)}
     >
       <ConfirmModal 
         isOpen={confirmModalState.isOpen}
@@ -482,6 +493,14 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
         onCancel={handleCancelExit}
         lang={uiLanguage}
       />
+
+      {isProfileOpen && (
+          <ProfileModal 
+            profile={userProfile} 
+            onClose={() => setIsProfileOpen(false)} 
+            onUpdate={setUserProfile}
+          />
+      )}
 
       {duplicateFiles.length > 0 && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
@@ -539,6 +558,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
               useCustomCursor={useCustomCursor}
               setUseCustomCursor={setUseCustomCursor}
               onClose={() => setIsSettingsOpen(false)}
+              userProfile={userProfile}
           />
       )}
 
@@ -620,6 +640,8 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
               autoHideFooter={autoHideFooter}
               lang={uiLanguage}
               onQuotaError={handleQuotaError}
+              userProfile={userProfile}
+              onUpdateProfile={setUserProfile}
             />
           )}
       </div>

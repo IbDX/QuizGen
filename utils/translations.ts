@@ -1,7 +1,9 @@
 
+import { UILanguage } from '../types';
+
 export const translations = {
     en: {
-        // Layout & Settings
+        // ... existing translations ...
         "home": "HOME",
         "library": "LIBRARY",
         "settings": "SETTINGS",
@@ -148,10 +150,20 @@ export const translations = {
         // AI Helper
         "ai_helper_title": "SYSTEM SUPPORT",
         "ai_helper_placeholder": "Ask about using Z+...",
-        "ai_helper_welcome": "Greetings, Agent. I am the Z+ System Support Unit. I can assist with troubleshooting, explaining features (like Modes or Badges), or guiding you through the upload process. How may I assist?"
+        "ai_helper_welcome": "Greetings, Agent. I am the Z+ System Support Unit. I can assist with troubleshooting, explaining features (like Modes or Badges), or guiding you through the upload process. How may I assist?",
+
+        // Error Handling
+        "err_network_title": "NETWORK ERROR",
+        "err_network_msg": "Unable to reach the Neural Core. Please check your internet connection.",
+        "err_quota_title": "QUOTA EXCEEDED",
+        "err_quota_msg": "System capacity reached (429). Please wait a moment before retrying.",
+        "err_format_title": "DATA CORRUPTION",
+        "err_format_msg": "Received malformed data from the model. Retrying generation...",
+        "err_unknown_title": "SYSTEM ERROR",
+        "err_unknown_msg": "An unexpected error occurred. Diagnostics logged."
     },
     ar: {
-        // Layout & Settings
+        // ... existing translations ...
         "home": "الرئيسية",
         "library": "المكتبة",
         "settings": "الإعدادات",
@@ -298,17 +310,27 @@ export const translations = {
         // AI Helper
         "ai_helper_title": "دعم النظام",
         "ai_helper_placeholder": "اسأل عن كيفية استخدام Z+...",
-        "ai_helper_welcome": "تحياتي أيها العميل. أنا وحدة دعم نظام Z+. يمكنني المساعدة في حل المشكلات، شرح الميزات (مثل الأوضاع أو الشارات)، أو إرشادك خلال عملية الرفع. كيف يمكنني المساعدة؟"
+        "ai_helper_welcome": "تحياتي أيها العميل. أنا وحدة دعم نظام Z+. يمكنني المساعدة في حل المشكلات، شرح الميزات (مثل الأوضاع أو الشارات)، أو إرشادك خلال عملية الرفع. كيف يمكنني المساعدة؟",
+
+        // Error Handling
+        "err_network_title": "خطأ في الشبكة",
+        "err_network_msg": "تعذر الوصول إلى النواة العصبية. يرجى التحقق من الاتصال.",
+        "err_quota_title": "تجاوز الحصة",
+        "err_quota_msg": "تم الوصول إلى سعة النظام (429). يرجى الانتظار لحظة قبل إعادة المحاولة.",
+        "err_format_title": "تلف البيانات",
+        "err_format_msg": "تم استلام بيانات تالفة من النموذج. جاري إعادة المحاولة...",
+        "err_unknown_title": "خطأ في النظام",
+        "err_unknown_msg": "حدث خطأ غير متوقع. تم تسجيل التشخيص."
     }
 };
 
-export type TranslationKey = keyof typeof translations['en'];
-
-export const t = (key: TranslationKey, lang: string): string => {
-    return translations[lang === 'ar' ? 'ar' : 'en'][key] || translations['en'][key] || key;
+export const t = (key: string, lang: UILanguage = 'en'): string => {
+    const langData = translations[lang] || translations['en'];
+    return (langData as any)[key] || key;
 };
 
-const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
 export const toArabicNumerals = (num: number | string): string => {
-  return String(num).replace(/[0-9]/g, (digit) => arabicNumerals[parseInt(digit)]);
+    const str = String(num);
+    const id = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    return str.replace(/[0-9]/g, (w) => id[+w]);
 };

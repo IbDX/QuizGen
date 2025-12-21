@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Question, UserAnswer, QuestionType, UILanguage, LeaderboardEntry } from '../types';
+import { Question, UserAnswer, QuestionType, UILanguage, LeaderboardEntry, UserProfile } from '../types';
 import { t } from '../utils/translations';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeWindow } from './CodeWindow';
@@ -8,6 +8,8 @@ import { GraphRenderer } from './GraphRenderer';
 import { DiagramRenderer } from './DiagramRenderer';
 import { saveFullExam, triggerExamDownload } from '../services/library';
 import { gradeCodingAnswer, gradeShortAnswer } from '../services/gemini';
+import { gamification } from '../services/gamification';
+import { LevelUpOverlay } from './LevelUpOverlay';
 
 interface ResultsProps {
     questions: Question[];
@@ -20,10 +22,96 @@ interface ResultsProps {
     autoHideFooter: boolean;
     lang: UILanguage;
     onQuotaError: () => void;
+    userProfile?: UserProfile;
+    onUpdateProfile?: (p: UserProfile) => void;
 }
 
+// OPTIMIZATION: Memoized Result Item
+const ResultItem = React.memo(({ q, ua, lang, realIndex, viewMode }: { q: Question, ua?: UserAnswer, lang: UILanguage, realIndex: number, viewMode: 'ERRORS_ONLY' | 'ALL' }) => {
+    let isCorrect = false;
+    let userAnswerDisplay = t('no_answer_provided', lang);
+    let statusClass = 'border-gray-300 dark:border-gray-700 opacity-50'; 
+
+    if (ua) {
+        userAnswerDisplay = String(ua.answer);
+        if (q.type === QuestionType.MCQ && typeof ua.answer === 'number' && q.options && q.options.length > 0) {
+            userAnswerDisplay = q.options[ua.answer] || String(ua.answer);
+        }
+
+        if(ua.isCorrect !== undefined) {
+            isCorrect = ua.isCorrect;
+        } else if (q.type === QuestionType.MCQ && typeof ua.answer === 'number') {
+            if(ua.answer === q.correctOptionIndex) isCorrect = true;
+        } else if (q.type === QuestionType.TRACING) {
+            if(String(ua.answer).trim().toLowerCase() === String(q.tracingOutput||"").trim().toLowerCase()) isCorrect = true;
+        }
+        
+        statusClass = isCorrect 
+            ? 'border-green-500 bg-green-50 dark:bg-green-900/10' 
+            : 'border-red-500 bg-red-50 dark:bg-red-900/10';
+    } else {
+        statusClass = 'border-red-500 bg-red-50 dark:bg-red-900/10';
+    }
+
+    return (
+        <div className={`border-l-4 p-6 bg-white dark:bg-terminal-black shadow-md ${statusClass} transition-all`}>
+            <div className="flex justify-between items-start mb-4">
+                <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${isCorrect ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}`}>
+                    {isCorrect ? t('passed', lang) : t('failed', lang)}
+                </span>
+                <span className="text-xs font-mono text-gray-500">#{realIndex + 1} [{q.type}] {q.topic && `• ${q.topic}`}</span>
+            </div>
+
+            <div className="mb-4 text-gray-800 dark:text-gray-200">
+                <MarkdownRenderer content={q.text} />
+            </div>
+
+            {q.graphConfig && <div className="mb-4 opacity-80 pointer-events-none scale-90 origin-left"><GraphRenderer config={q.graphConfig} /></div>}
+            {q.diagramConfig && <div className="mb-4 opacity-80 pointer-events-none scale-90 origin-left"><DiagramRenderer code={q.diagramConfig.code} /></div>}
+            {q.visual && <img src={`data:image/png;base64,${q.visual}`} className="max-h-32 border rounded mb-4" alt="Visual" />}
+            {q.codeSnippet && <div className="mb-4 opacity-80 text-xs"><CodeWindow code={q.codeSnippet} /></div>}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                <div>
+                    <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('your_input', lang)}:</h4>
+                    <div className={`font-mono p-2 rounded border bg-white dark:bg-black ${isCorrect ? 'border-green-200' : 'border-red-200'}`}>
+                        <MarkdownRenderer content={userAnswerDisplay} />
+                    </div>
+                </div>
+                
+                {(!isCorrect || viewMode === 'ALL') && (
+                    <div>
+                        <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('analysis', lang)}:</h4>
+                        <div className="text-gray-600 dark:text-gray-300">
+                            {q.type === QuestionType.MCQ && q.options && q.options.length > 0 && q.correctOptionIndex !== undefined && q.options[q.correctOptionIndex] && (
+                                <MarkdownRenderer 
+                                    content={`**Correct:** ${q.options[q.correctOptionIndex]}`} 
+                                    className="!text-green-700 dark:!text-green-500 mb-1"
+                                />
+                            )}
+                            {q.type === QuestionType.TRACING && (
+                                <MarkdownRenderer 
+                                    content={`**Expected:** ${q.tracingOutput}`} 
+                                    className="!text-green-700 dark:!text-green-500 mb-1"
+                                />
+                            )}
+                            <MarkdownRenderer content={q.explanation} />
+                            {ua?.feedback && (
+                                <div className="mt-2 pt-2 border-t border-dashed border-gray-300 text-xs italic opacity-80">
+                                    AI Feedback: {ua.feedback}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+});
+
 export const Results: React.FC<ResultsProps> = ({ 
-    questions, answers, onRestart, onRetake, onGenerateRemediation, onDownloadPDF, isFullWidth, autoHideFooter, lang, onQuotaError 
+    questions, answers, onRestart, onRetake, onGenerateRemediation, onDownloadPDF, isFullWidth, autoHideFooter, lang, onQuotaError,
+    userProfile, onUpdateProfile
 }) => {
   // Grading State
   const [isGradingPhase, setIsGradingPhase] = useState(true);
@@ -34,12 +122,16 @@ export const Results: React.FC<ResultsProps> = ({
   const [score, setScore] = useState(0);
   const [isElite, setIsElite] = useState(false);
   const [viewMode, setViewMode] = useState<'ERRORS_ONLY' | 'ALL'>('ERRORS_ONLY'); 
-  const [agentName, setAgentName] = useState('');
   const [savedToLeaderboard, setSavedToLeaderboard] = useState(false);
   const [wrongQuestionIds, setWrongQuestionIds] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
+  // Gamification Reward State
+  const [rewards, setRewards] = useState<any>(null);
+  const [showRewards, setShowRewards] = useState(false);
+  const [processedRewards, setProcessedRewards] = useState(false);
+
   // Helper to determine if a question requires AI grading
   const isSubjectiveQuestion = (q: Question) => {
       // 1. Coding is always subjective
@@ -155,6 +247,15 @@ export const Results: React.FC<ResultsProps> = ({
         setViewMode('ALL');
     }
 
+    // 3. Process Gamification (Once per load)
+    if (!processedRewards && onUpdateProfile) {
+        const result = gamification.processExamResult(calculatedScore, questions.length, correctCount);
+        onUpdateProfile(result.profile);
+        setRewards(result);
+        setShowRewards(true);
+        setProcessedRewards(true);
+    }
+
     const handleScroll = () => setShowScrollTop(window.scrollY > 300);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -183,7 +284,7 @@ export const Results: React.FC<ResultsProps> = ({
   const canPublish = grade !== 'F';
 
   const handleSaveScore = () => {
-      if (!agentName.trim() || !canPublish) return;
+      const agentName = userProfile?.username || "AGENT";
       const newEntry: LeaderboardEntry = {
           name: agentName.slice(0, 10).toUpperCase(),
           score: score,
@@ -252,6 +353,18 @@ export const Results: React.FC<ResultsProps> = ({
   return (
     <div className={`mx-auto transition-all duration-300 animate-fade-in pb-12 ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>
         
+        {/* REWARDS OVERLAY */}
+        {showRewards && rewards && (
+            <LevelUpOverlay 
+                xpGained={rewards.xpGained}
+                streakBonus={rewards.streakBonus}
+                leveledUp={rewards.leveledUp}
+                newLevel={rewards.profile.level}
+                newBadges={rewards.newBadges}
+                onClose={() => setShowRewards(false)}
+            />
+        )}
+
         {/* HERO SECTION */}
         <div className={`
             relative overflow-hidden rounded-lg shadow-2xl p-8 md:p-12 mb-8 text-center border-b-8
@@ -260,9 +373,9 @@ export const Results: React.FC<ResultsProps> = ({
                 : 'bg-gradient-to-br from-white to-gray-100 dark:from-terminal-black dark:to-[#1a0a0a] border-red-500'
             }
         `}>
+            {/* ... Hero Content ... */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gray-400 dark:via-white/20 to-transparent opacity-50"></div>
             
-            {/* Elite Badge */}
             {grade === 'Z+' && (
                 <div className="absolute top-4 right-4 animate-bounce">
                     <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow-lg border border-yellow-200">
@@ -309,27 +422,16 @@ export const Results: React.FC<ResultsProps> = ({
                 </div>
             </div>
 
-            {/* Leaderboard Input - RESTRICTED IF F GRADE */}
+            {/* Leaderboard Input */}
             {!savedToLeaderboard && (
-                <div className="max-w-sm mx-auto flex gap-2 animate-fade-in-up relative">
+                <div className="max-w-sm mx-auto flex gap-2 animate-fade-in-up relative justify-center">
                     {canPublish ? (
-                        <>
-                            <input 
-                                type="text" 
-                                value={agentName}
-                                onChange={(e) => setAgentName(e.target.value)}
-                                maxLength={10}
-                                placeholder={t('enter_agent_name', lang)}
-                                className="flex-grow bg-white dark:bg-black border border-gray-300 dark:border-terminal-green p-3 text-center font-mono uppercase rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-terminal-green text-gray-800 dark:text-terminal-light"
-                            />
-                            <button 
-                                onClick={handleSaveScore}
-                                disabled={!agentName.trim()}
-                                className="bg-blue-600 dark:bg-terminal-green text-white dark:text-black font-bold px-6 rounded hover:opacity-90 disabled:opacity-50 transition-all uppercase text-sm"
-                            >
-                                {t('publish', lang)}
-                            </button>
-                        </>
+                        <button 
+                            onClick={handleSaveScore}
+                            className="bg-blue-600 dark:bg-terminal-green text-white dark:text-black font-bold px-6 py-3 rounded hover:opacity-90 disabled:opacity-50 transition-all uppercase text-sm shadow-lg w-full"
+                        >
+                            {t('publish', lang)}
+                        </button>
                     ) : (
                         <div className="w-full p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 font-bold text-xs uppercase tracking-wider rounded">
                             🚫 {t('score_too_low', lang)}
@@ -422,95 +524,11 @@ export const Results: React.FC<ResultsProps> = ({
         </div>
 
         <div className="space-y-6">
-            {displayedQuestions.map((q, idx) => {
-                // Find actual index in original array
+            {displayedQuestions.map((q) => {
                 const realIndex = questions.findIndex(orig => orig.id === q.id);
                 const ua = finalAnswers.find(a => a.questionId === q.id);
                 
-                let isCorrect = false;
-                let userAnswerDisplay = t('no_answer_provided', lang);
-                let statusClass = 'border-gray-300 dark:border-gray-700 opacity-50'; // Default skipped/neutral
-
-                if (ua) {
-                    userAnswerDisplay = String(ua.answer);
-                    if (q.type === QuestionType.MCQ && typeof ua.answer === 'number' && q.options && q.options.length > 0) {
-                        userAnswerDisplay = q.options[ua.answer] || String(ua.answer);
-                    }
-
-                    // Consolidated Score Logic
-                    if(ua.isCorrect !== undefined) {
-                        isCorrect = ua.isCorrect;
-                    } else if (q.type === QuestionType.MCQ && typeof ua.answer === 'number') {
-                        if(ua.answer === q.correctOptionIndex) isCorrect = true;
-                    } else if (q.type === QuestionType.TRACING) {
-                        if(String(ua.answer).trim().toLowerCase() === String(q.tracingOutput||"").trim().toLowerCase()) isCorrect = true;
-                    }
-                    
-                    statusClass = isCorrect 
-                        ? 'border-green-500 bg-green-50 dark:bg-green-900/10' 
-                        : 'border-red-500 bg-red-50 dark:bg-red-900/10';
-                } else {
-                    // No answer provided -> Wrong
-                    statusClass = 'border-red-500 bg-red-50 dark:bg-red-900/10';
-                }
-
-                return (
-                    <div key={q.id} className={`border-l-4 p-6 bg-white dark:bg-terminal-black shadow-md ${statusClass} transition-all`}>
-                        <div className="flex justify-between items-start mb-4">
-                            <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${isCorrect ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}`}>
-                                {isCorrect ? t('passed', lang) : t('failed', lang)}
-                            </span>
-                            <span className="text-xs font-mono text-gray-500">#{realIndex + 1} [{q.type}] {q.topic && `• ${q.topic}`}</span>
-                        </div>
-
-                        <div className="mb-4 text-gray-800 dark:text-gray-200">
-                            <MarkdownRenderer content={q.text} />
-                        </div>
-
-                        {/* Visuals in Review */}
-                        {q.graphConfig && <div className="mb-4 opacity-80 pointer-events-none scale-90 origin-left"><GraphRenderer config={q.graphConfig} /></div>}
-                        {q.diagramConfig && <div className="mb-4 opacity-80 pointer-events-none scale-90 origin-left"><DiagramRenderer code={q.diagramConfig.code} /></div>}
-                        {q.visual && <img src={`data:image/png;base64,${q.visual}`} className="max-h-32 border rounded mb-4" alt="Visual" />}
-                        {q.codeSnippet && <div className="mb-4 opacity-80 text-xs"><CodeWindow code={q.codeSnippet} /></div>}
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                            <div>
-                                <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('your_input', lang)}:</h4>
-                                <div className={`font-mono p-2 rounded border bg-white dark:bg-black ${isCorrect ? 'border-green-200' : 'border-red-200'}`}>
-                                    <MarkdownRenderer content={userAnswerDisplay} />
-                                </div>
-                            </div>
-                            
-                            {/* Analysis: Show if WRONG OR if viewMode is ALL (to review correct answers) */}
-                            {(!isCorrect || viewMode === 'ALL') && (
-                                <div>
-                                    <h4 className="font-bold text-gray-500 text-xs uppercase mb-1">{t('analysis', lang)}:</h4>
-                                    <div className="text-gray-600 dark:text-gray-300">
-                                        {q.type === QuestionType.MCQ && q.options && q.options.length > 0 && q.correctOptionIndex !== undefined && q.options[q.correctOptionIndex] && (
-                                            <MarkdownRenderer 
-                                                content={`**Correct:** ${q.options[q.correctOptionIndex]}`} 
-                                                className="!text-green-700 dark:!text-green-500 mb-1"
-                                            />
-                                        )}
-                                        {q.type === QuestionType.TRACING && (
-                                            <MarkdownRenderer 
-                                                content={`**Expected:** ${q.tracingOutput}`} 
-                                                className="!text-green-700 dark:!text-green-500 mb-1"
-                                            />
-                                        )}
-                                        <MarkdownRenderer content={q.explanation} />
-                                        {/* Show Feedback from AI Grading if available */}
-                                        {ua?.feedback && (
-                                            <div className="mt-2 pt-2 border-t border-dashed border-gray-300 text-xs italic opacity-80">
-                                                AI Feedback: {ua.feedback}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
+                return <ResultItem key={q.id} q={q} ua={ua} lang={lang} realIndex={realIndex} viewMode={viewMode} />;
             })}
         </div>
 

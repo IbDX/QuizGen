@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { validateFile, fileToBase64, urlToBase64, validateBatchSize } from '../utils/fileValidation';
 import { scanFileWithVirusTotal } from '../utils/virusTotal';
@@ -21,7 +20,7 @@ interface ProcessingLog {
     error?: string;
 }
 
-export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadDemo, onStartBuilder, isFullWidth, lang = 'en', isActive }) => {
+export const FileUpload: React.FC<FileUploadProps> = ({ onFilesAccepted, onLoadDemo, onStartBuilder, isFullWidth, lang = 'en' as UILanguage, isActive }) => {
   const [logs, setLogs] = useState<ProcessingLog[]>([]);
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);

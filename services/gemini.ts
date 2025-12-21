@@ -1,6 +1,6 @@
 
 // Fix: Added missing exported functions and types required by components.
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { Question, QuestionType, QuestionFormatPreference, OutputLanguage, UILanguage, ExamMode } from "../types";
 import { monitor } from "./monitor";
 
@@ -9,10 +9,12 @@ export interface ChatMessage {
   text: string;
 }
 
-// Helper for delay
+// --- ERROR HANDLING & UTILS ---
+
+// Safe delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper to detect 429/Quota errors
+// Detect Quota (429) errors
 const isRateLimitError = (error: any): boolean => {
     if (!error) return false;
     const msg = (error.message || error.toString()).toLowerCase();
@@ -22,19 +24,56 @@ const isRateLimitError = (error: any): boolean => {
     return false;
 };
 
-// Helper to generate schema based on preference
+// Clean raw LLM output to extract JSON
+const cleanJson = (text: string): string => {
+    let clean = text.trim();
+    // Remove markdown code blocks if present
+    if (clean.startsWith('```')) {
+        clean = clean.replace(/^```(json)?/, '').replace(/```$/, '');
+    }
+    return clean.trim();
+};
+
+// Retry wrapper with exponential backoff for 5xx errors (not 429)
+async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, initialDelay = 1000): Promise<T> {
+    let currentDelay = initialDelay;
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await fn();
+        } catch (error: any) {
+            // STOP immediately on Quota errors or Auth errors
+            if (isRateLimitError(error) || error.status === 401 || error.status === 400) {
+                throw error;
+            }
+            
+            // Retry only on likely transient errors (500, 503, Network Errors)
+            const isTransient = error.status >= 500 || error.message?.includes('fetch') || error.message?.includes('network');
+            
+            if (i === retries - 1 || !isTransient) throw error;
+            
+            console.warn(`API Attempt ${i + 1} failed. Retrying in ${currentDelay}ms...`, error);
+            await delay(currentDelay);
+            currentDelay *= 2; // Exponential backoff
+        }
+    }
+    throw new Error("Max retries exceeded");
+}
+
+// --- SCHEMAS ---
+
 const getQuestionSchema = (preference?: QuestionFormatPreference) => {
-  let allowedDescription = "One of: 'MCQ', 'TRACING', 'CODING'";
-  if (preference === QuestionFormatPreference.MCQ) allowedDescription = "MUST be 'MCQ'.";
-  else if (preference === QuestionFormatPreference.TRACING) allowedDescription = "MUST be 'TRACING'.";
-  else if (preference === QuestionFormatPreference.CODING) allowedDescription = "MUST be 'CODING'.";
-  else if (preference === QuestionFormatPreference.SHORT_ANSWER) allowedDescription = "MUST be 'MCQ' with empty options [].";
+  let allowedTypes = ["MCQ", "TRACING", "CODING", "SHORT_ANSWER"];
+  
+  if (preference === QuestionFormatPreference.MCQ) allowedTypes = ["MCQ"];
+  else if (preference === QuestionFormatPreference.TRACING) allowedTypes = ["TRACING"];
+  else if (preference === QuestionFormatPreference.CODING) allowedTypes = ["CODING"];
+  else if (preference === QuestionFormatPreference.SHORT_ANSWER) allowedTypes = ["MCQ"]; 
 
   return {
     type: Type.OBJECT,
     properties: {
       id: { type: Type.STRING },
-      type: { type: Type.STRING, description: allowedDescription },
+      type: { type: Type.STRING, enum: allowedTypes },
       topic: { type: Type.STRING },
       text: { type: Type.STRING },
       codeSnippet: { type: Type.STRING, nullable: true },
@@ -80,9 +119,8 @@ const gradingSchema = {
   required: ["isCorrect", "feedback"]
 };
 
-/**
- * Client-side helper to crop images or PDF pages based on AI bounds
- */
+// --- CLIENT PROCESSING HELPERS ---
+
 const cropImage = async (
   base64: string, 
   mimeType: string, 
@@ -90,6 +128,9 @@ const cropImage = async (
   pageNumber: number = 1
 ): Promise<string | undefined> => {
   const [ymin, xmin, ymax, xmax] = bounds;
+  // Safety check for bounds
+  if (typeof ymin !== 'number' || typeof xmin !== 'number' || typeof ymax !== 'number' || typeof xmax !== 'number') return undefined;
+
   const norm = (val: number) => Math.max(0, Math.min(1, val / 1000));
   const nYmin = norm(ymin);
   const nXmin = norm(xmin);
@@ -166,6 +207,22 @@ const processVisuals = async (questions: any[], files: {base64: string, mimeType
     return processed;
 };
 
+// Validate structure and filter out broken questions
+const validateAndFilterQuestions = (rawQuestions: any[]): Question[] => {
+    if (!Array.isArray(rawQuestions)) return [];
+    
+    return rawQuestions.filter(q => {
+        return (
+            q && 
+            typeof q.id === 'string' &&
+            typeof q.text === 'string' && 
+            q.text.length > 5 && // Minimal length check
+            typeof q.type === 'string' &&
+            typeof q.explanation === 'string'
+        );
+    });
+};
+
 const deduplicateQuestions = (questions: Question[]): Question[] => {
   if (!Array.isArray(questions)) return [];
   const uniqueQuestions: Question[] = [];
@@ -182,11 +239,12 @@ const deduplicateQuestions = (questions: Question[]): Question[] => {
 };
 
 const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: OutputLanguage): string => {
-    let langInstruction = outputLang === 'ar' ? "LANGUAGE: ARABIC questions, English code." : "LANGUAGE: ENGLISH.";
-    return `${langInstruction} Role: Exam Builder. Extract all questions from provided documents. Use LaTeX for units $12\\,V$. Remove answers from text. Use graphConfig/diagramConfig for visuals.`;
+    const lang = outputLang === 'ar' ? "ARABIC questions, English code" : "ENGLISH";
+    return `Role: Exam Builder. Lang: ${lang}. Extract questions. Units: LaTeX $V$. No answers in text. Detect visuals/graphs.`;
 };
 
-// Main generation function
+// --- CORE GENERATION FUNCTIONS ---
+
 export const generateExam = async (
     files: { base64: string, mimeType: string }[], 
     preference: QuestionFormatPreference = QuestionFormatPreference.MIXED,
@@ -202,8 +260,8 @@ export const generateExam = async (
   }));
   parts.push({ text: `Extract questions. ${instructions || ''}` });
 
-  try {
-    const response = await ai.models.generateContent({
+  // WRAPPER: callWithRetry logic
+  const apiCall = () => ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: { parts },
       config: {
@@ -212,18 +270,45 @@ export const generateExam = async (
         responseSchema: { type: Type.ARRAY, items: getQuestionSchema(preference) },
         temperature: 0.2 
       }
-    });
-    const questions = JSON.parse(response.text || '[]');
-    const visualEnriched = await processVisuals(questions, files);
+  });
+
+  try {
+    const response = await callWithRetry<GenerateContentResponse>(apiCall);
+    
+    // GUARD: Parsing with Clean Logic
+    let rawData;
+    try {
+        const cleanedText = cleanJson(response.text || '');
+        rawData = JSON.parse(cleanedText || '[]');
+    } catch (parseError) {
+        console.error("JSON Parse Error", parseError);
+        // Fallback: If strict JSON fails, try to repair or just return empty
+        throw new Error("MALFORMED_RESPONSE");
+    }
+
+    // GUARD: Validate structure (Partial Data Recovery)
+    const validQuestions = validateAndFilterQuestions(rawData);
+    
+    if (validQuestions.length === 0 && rawData.length > 0) {
+        throw new Error("DATA_INTEGRITY_FAIL: Questions generated but format invalid.");
+    }
+
+    const visualEnriched = await processVisuals(validQuestions, files);
+    const finalQuestions = deduplicateQuestions(visualEnriched);
     
     const duration = performance.now() - startTime;
-    monitor.log('API_LATENCY', 'generateExam - Success', duration, { questionCount: questions.length });
+    monitor.log('API_LATENCY', 'generateExam - Success', duration, { questionCount: finalQuestions.length });
     
-    return deduplicateQuestions(visualEnriched);
-  } catch (error) {
+    return finalQuestions;
+
+  } catch (error: any) {
     const duration = performance.now() - startTime;
-    monitor.log('API_LATENCY', 'generateExam - Failure', duration, { error: (error as any).message });
+    monitor.log('API_LATENCY', 'generateExam - Failure', duration, { error: error.message });
+    
+    // Bubble up specifically known errors
     if (isRateLimitError(error)) throw new Error("429_RATE_LIMIT");
+    if (error.message === "MALFORMED_RESPONSE") throw new Error("MALFORMED_RESPONSE");
+    
     throw error;
   }
 };
@@ -232,19 +317,20 @@ export const generateExam = async (
 export const gradeCodingAnswer = async (q: Question, answer: string, lang: string) => {
     const startTime = performance.now();
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const apiCall = () => ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: `Q: ${q.text}\nSol: ${q.explanation}\nUser: ${answer}`,
+        config: {
+            systemInstruction: `Grade code. Lang: ${lang}. JSON {isCorrect, feedback}.`,
+            responseMimeType: "application/json",
+            responseSchema: gradingSchema
+        }
+    });
+
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: `Question: ${q.text}\nCorrect Solution: ${q.explanation}\nUser Answer: ${answer}`,
-            config: {
-                systemInstruction: `Grade the user code. Language: ${lang}. Return JSON with isCorrect and feedback.`,
-                responseMimeType: "application/json",
-                responseSchema: gradingSchema
-            }
-        });
-        const duration = performance.now() - startTime;
-        monitor.log('API_LATENCY', 'gradeCoding', duration);
-        return JSON.parse(response.text || '{"isCorrect":false,"feedback":"Error"}');
+        const response = await callWithRetry<GenerateContentResponse>(apiCall);
+        return JSON.parse(cleanJson(response.text || '{"isCorrect":false,"feedback":"Error"}'));
     } catch (e) {
         monitor.log('API_LATENCY', 'gradeCoding - Fail', performance.now() - startTime);
         throw e;
@@ -254,19 +340,20 @@ export const gradeCodingAnswer = async (q: Question, answer: string, lang: strin
 export const gradeShortAnswer = async (q: Question, answer: string, lang: string) => {
     const startTime = performance.now();
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const apiCall = () => ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Q: ${q.text}\nExp: ${q.explanation}\nUser: ${answer}`,
+        config: {
+            systemInstruction: `Grade answer. Lang: ${lang}. JSON {isCorrect, feedback}.`,
+            responseMimeType: "application/json",
+            responseSchema: gradingSchema
+        }
+    });
+
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Question: ${q.text}\nExplanation: ${q.explanation}\nUser Answer: ${answer}`,
-            config: {
-                systemInstruction: `Grade the answer. Language: ${lang}. Return JSON with isCorrect and feedback.`,
-                responseMimeType: "application/json",
-                responseSchema: gradingSchema
-            }
-        });
-        const duration = performance.now() - startTime;
-        monitor.log('API_LATENCY', 'gradeShortAnswer', duration);
-        return JSON.parse(response.text || '{"isCorrect":false,"feedback":"Error"}');
+        const response = await callWithRetry<GenerateContentResponse>(apiCall);
+        return JSON.parse(cleanJson(response.text || '{"isCorrect":false,"feedback":"Error"}'));
     } catch (e) {
         monitor.log('API_LATENCY', 'gradeShortAnswer - Fail', performance.now() - startTime);
         throw e;
@@ -278,41 +365,42 @@ export const generateExamFromWrongAnswers = async (questions: Question[], wrongI
     const startTime = performance.now();
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const targets = questions.filter(q => wrongIds.includes(q.id));
+    
+    const apiCall = () => ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: `Generate 5 remediation questions from: ${JSON.stringify(targets)}`,
+        config: {
+            systemInstruction: "Create similar questions.",
+            responseMimeType: "application/json",
+            responseSchema: { type: Type.ARRAY, items: getQuestionSchema() }
+        }
+    });
+
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: `Generate 5 new remediation questions based on these failed topics: ${JSON.stringify(targets)}`,
-            config: {
-                systemInstruction: "Generate new similar questions for remediation.",
-                responseMimeType: "application/json",
-                responseSchema: { type: Type.ARRAY, items: getQuestionSchema() }
-            }
-        });
-        const duration = performance.now() - startTime;
-        monitor.log('API_LATENCY', 'remediation', duration);
-        return JSON.parse(response.text || '[]');
+        const response = await callWithRetry<GenerateContentResponse>(apiCall);
+        return JSON.parse(cleanJson(response.text || '[]'));
     } catch (e) {
         monitor.log('API_LATENCY', 'remediation - Fail', performance.now() - startTime);
         throw e;
     }
 };
 
-// Tips
+// Tips - Short request, low retry priority
 export const generateLoadingTips = async (files: {base64: string, mimeType: string}[], lang: UILanguage) => {
     const startTime = performance.now();
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
-        const response = await ai.models.generateContent({
+        const response = (await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: "Generate 5 short technical tips based on these files.",
+            contents: "Generate 5 short technical tips from files.",
             config: {
-                systemInstruction: `Language: ${lang}. Return a JSON array of strings.`,
+                systemInstruction: `Lang: ${lang}. Return JSON array of strings.`,
                 responseMimeType: "application/json",
                 responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
             }
-        });
+        })) as GenerateContentResponse;
         monitor.log('API_LATENCY', 'tips', performance.now() - startTime);
-        return JSON.parse(response.text || '[]');
+        return JSON.parse(cleanJson(response.text || '[]'));
     } catch (e) { return []; }
 };
 
@@ -321,11 +409,11 @@ export const getAiHelperResponse = async (input: string, lang: UILanguage) => {
     const startTime = performance.now();
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
-        const response = await ai.models.generateContent({
+        const response = (await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: input,
-            config: { systemInstruction: `You are Z+ System Support. Language: ${lang}.` }
-        });
+            config: { systemInstruction: `System Support. Lang: ${lang}. Short helpful answers.` }
+        })) as GenerateContentResponse;
         monitor.log('API_LATENCY', 'helper', performance.now() - startTime);
         return response.text || "";
     } catch (e) { return "Error contacting support."; }
@@ -335,14 +423,18 @@ export const getAiHelperResponse = async (input: string, lang: UILanguage) => {
 export const sendExamBuilderMessage = async (messages: ChatMessage[], input: string) => {
     const startTime = performance.now();
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    // Chat is sensitive to latency, 1 retry max
+    const apiCall = () => ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: [...messages.map(m => ({ role: m.role, parts: [{ text: m.text }] })), { role: 'user', parts: [{ text: input }] }],
+        config: { 
+            systemInstruction: "Exam Builder Agent. Append ||SUGGESTIONS|| [\"opt1\"] to reply." 
+        }
+    });
+
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: [...messages.map(m => ({ role: m.role, parts: [{ text: m.text }] })), { role: 'user', parts: [{ text: input }] }],
-            config: { 
-                systemInstruction: "You are an Exam Builder Agent. Discuss requirements. Append ||SUGGESTIONS|| [\"opt1\", \"opt2\"] to your message for quick replies." 
-            }
-        });
+        const response = await callWithRetry<GenerateContentResponse>(apiCall, 1);
         monitor.log('API_LATENCY', 'builderChat', performance.now() - startTime);
         return response.text || "";
     } catch (e) {
@@ -355,33 +447,36 @@ export const sendExamBuilderMessage = async (messages: ChatMessage[], input: str
 export const generateExamFromBuilderChat = async (messages: ChatMessage[]) => {
     const startTime = performance.now();
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: messages.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
-            config: {
-                systemInstruction: "Generate the final exam JSON based on the conversation.",
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        title: { type: Type.STRING },
-                        settings: {
-                            type: Type.OBJECT,
-                            properties: {
-                                timeLimitMinutes: { type: Type.INTEGER },
-                                mode: { type: Type.STRING }
-                            }
-                        },
-                        questions: { type: Type.ARRAY, items: getQuestionSchema() }
+    
+    const apiCall = () => ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: messages.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
+        config: {
+            systemInstruction: "Generate final exam JSON.",
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING },
+                    settings: {
+                        type: Type.OBJECT,
+                        properties: {
+                            timeLimitMinutes: { type: Type.INTEGER },
+                            mode: { type: Type.STRING }
+                        }
                     },
-                    required: ["title", "questions"]
-                }
+                    questions: { type: Type.ARRAY, items: getQuestionSchema() }
+                },
+                required: ["title", "questions"]
             }
-        });
+        }
+    });
+
+    try {
+        const response = await callWithRetry<GenerateContentResponse>(apiCall);
         const duration = performance.now() - startTime;
         monitor.log('API_LATENCY', 'builderCompile', duration);
-        const data = JSON.parse(response.text || '{"title":"Error","questions":[]}');
+        const data = JSON.parse(cleanJson(response.text || '{"title":"Error","questions":[]}'));
         return {
             questions: data.questions,
             settings: data.settings || { timeLimitMinutes: 0, mode: ExamMode.ONE_WAY },

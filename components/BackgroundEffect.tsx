@@ -6,7 +6,11 @@ interface BackgroundEffectProps {
   theme: ThemeOption;
 }
 
-export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => {
+const fontSize = 14;
+const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+const charArray = chars.split('');
+
+export const BackgroundEffect: React.FC<BackgroundEffectProps> = React.memo(({ theme }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -17,12 +21,6 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
     if (!ctx) return;
 
     let animationFrameId: number;
-
-    // Configuration
-    const fontSize = 14;
-    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
-    const charArray = chars.split('');
-    
     let columns = 0;
     let drops: number[] = [];
 
@@ -35,14 +33,12 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
     };
 
     const draw = () => {
-      const isDark = theme === 'dark';
-      const isPalestine = theme === 'palestine';
       const isLight = theme === 'light';
+      const isPalestine = theme === 'palestine';
 
       if (isLight) {
           ctx.fillStyle = 'rgba(243, 244, 246, 0.1)';
       } else if (isPalestine) {
-          // Professional deep background trail (Deep Charcoal)
           ctx.fillStyle = 'rgba(11, 15, 12, 0.1)'; 
       } else {
           ctx.fillStyle = 'rgba(5, 5, 5, 0.05)';
@@ -105,4 +101,4 @@ export const BackgroundEffect: React.FC<BackgroundEffectProps> = ({ theme }) => 
       className="fixed inset-0 w-full h-full -z-0 pointer-events-none transition-opacity duration-1000 opacity-40 dark:opacity-30"
     />
   );
-};
+});
