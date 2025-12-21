@@ -1,9 +1,8 @@
-
 # 01. Architecture & Technology Stack
 
 ## 🏗️ System Overview
 
-**Z+ Terminal Exam Gen** is a high-performance **Client-Side Single Page Application (SPA)** built with React 19. It is designed to be "Serverless" in the sense that it relies on the client's browser for processing and Google's Gemini API for intelligence, without an intermediate backend database for session storage.
+**Z+ Terminal Exam Gen** is a high-performance **Client-Side Single Page Application (SPA)** built with **React 19**. It functions as a "Serverless" application, relying on the client's browser for processing and the **Google Gemini 3 API** for intelligence, without an intermediate backend database for session storage.
 
 ### Core Philosophy
 1.  **Stateless Logic:** The backend (Gemini) provides intelligence on demand; the state is held transiently in the React Client.
@@ -19,15 +18,18 @@ terminal-exam-gen/
 ├── components/          # UI Components
 │   ├── AiHelper.tsx     # Floating Support Bot
 │   ├── CodeWindow.tsx   # PrismJS Wrapper
+│   ├── ConfirmModal.tsx # Action Confirmation Dialog
 │   ├── ExamBuilder.tsx  # Chat Interface
+│   ├── ExamConfig.tsx   # Setup & File Management
 │   ├── ExamRunner.tsx   # Core Testing Engine
 │   ├── Results.tsx      # Grading Engine & Dashboard
+│   ├── SettingsView.tsx # Global Preferences (Theme, Lang)
 │   └── ...
 ├── services/            # Business Logic & API Calls
-│   ├── gemini.ts        # Gemini API Integration (Prompts & Schema)
+│   ├── gemini.ts        # Gemini 3.0 Integration (Prompts & Schema)
 │   └── library.ts       # LocalStorage Wrapper
 ├── utils/               # Helper Functions
-│   ├── fileValidation.ts # Magic Byte detection
+│   ├── fileValidation.ts # Magic Byte detection & Size Limits (15MB)
 │   ├── pdfGenerator.ts   # pdfMake configuration
 │   ├── security.ts       # Input sanitization
 │   └── virusTotal.ts     # Security scanning
@@ -84,10 +86,11 @@ stateDiagram-v2
 
 ### Component Hierarchy & Data Flow
 
-*   **App.tsx (Root):** Holds the "Truth" (`questions`, `userAnswers`, `uploadedFiles`).
+*   **App.tsx (Root):** Holds the "Truth" (`questions`, `userAnswers`, `uploadedFiles`, `systemStatus`).
 *   **Props Drilling:** Data is passed down to:
     *   `ExamRunner`: Receives `questions`, manages local `currentIndex` and `timer`.
     *   `Results`: Receives `userAnswers`, manages the **Post-Exam Grading Phase**, calculates final scores, and triggers `gemini.ts` for deep evaluation of coding questions.
+    *   `SettingsView`: Manages global UI preferences (Theme, Language, Font).
 
 ---
 
@@ -95,12 +98,13 @@ stateDiagram-v2
 
 ### 1. Frontend Framework
 *   **React 19:** Utilizes the latest concurrent features.
-    *   **Hooks:** Extensive use of `useRef` for scrolling/focus management and `useEffect` for lifecycle events (timers, external script loading).
-    *   **Memoization:** `React.memo` is used in `MarkdownRenderer` to prevent expensive MathJax re-rendering on every timer tick.
+    *   **Hooks:** Extensive use of `useRef` for scrolling/focus management and `useEffect` for lifecycle events.
+    *   **Memoization:** `React.memo` is used in `MarkdownRenderer` to prevent expensive MathJax re-rendering.
 
 ### 2. AI Integration
 *   **Google GenAI SDK (`@google/genai`):**
-    *   **Model:** `gemini-2.5-flash` (Chosen for speed and low latency).
+    *   **Generation Model:** `gemini-3-pro-preview` (Used for heavy lifting: Image Analysis, JSON Generation).
+    *   **Chat/Grading Model:** `gemini-3-flash-preview` (Used for latency-sensitive tasks: Chat, Grading, Tips).
     *   **Features Used:** `generateContent`, `responseSchema` (JSON enforcement), and `systemInstruction`.
 
 ### 3. Rendering Engine

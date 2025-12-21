@@ -1,4 +1,3 @@
-
 # 05. Grading Logic
 
 Grading in Z+ is a hybrid system designed for both speed and depth. It utilizes **Deterministic Grading** for objective questions and **Asynchronous AI Grading** for subjective questions to maintain a smooth user experience.
@@ -48,6 +47,7 @@ Used for **CODING** and **SHORT_ANSWER**. Since these require an API call to Gem
     *   The `Results.tsx` component mounts a "Loading/Grading" overlay.
     *   It filters for questions that are (1) Subjective and (2) Not yet graded.
     *   It iterates through them, calling `gemini.gradeCodingAnswer` or `gemini.gradeShortAnswer`.
+    *   **Model:** `gemini-3-flash-preview` is used here for its speed and low latency.
     *   **Visual Feedback:** A progress bar shows "Analyzing Submission 1 of X...".
     *   **Optimization:** Empty answers are failed locally to save API quota.
 
@@ -55,7 +55,7 @@ Used for **CODING** and **SHORT_ANSWER**. Since these require an API call to Gem
 1.  **During Exam:** The user clicks "Check Answer".
 2.  **UI Locking:** The `ExamRunner` immediately sets `isGrading = true`.
     *   **CRITICAL:** Navigation buttons (Next/Prev) and the Answer Input are **DISABLED**. This prevents race conditions where a user might move to the next question while the previous one is still being graded, causing state mismatches.
-3.  **API Call:** The single answer is sent to Gemini.
+3.  **API Call:** The single answer is sent to Gemini (`gemini-3-flash-preview`).
 4.  **Feedback:** The result is displayed immediately, and the UI is unlocked.
 
 ---
@@ -99,5 +99,5 @@ When grading is complete, the system performs an aggregated analysis.
     *   Dynamic links are generated for YouTube and Google Search based on the topic and the user's language.
 3.  **Remediation Loop:**
     *   The user can click **"Remediate"**.
-    *   The app sends the *IDs* of the failed questions to `generateExamFromWrongAnswers`.
+    *   The app sends the *IDs* of the failed questions to `generateExamFromWrongAnswers` (using `gemini-3-pro-preview` for better question synthesis).
     *   Gemini generates **new** questions testing the *same concepts* but with different values/contexts.
