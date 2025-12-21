@@ -21,8 +21,13 @@ class PerformanceMonitor {
     private readonly MAX_LOGS = 1000;
     private readonly STORAGE_LIMIT = 5 * 1024 * 1024; // Approx 5MB for LocalStorage
     private apiStats: ApiStats = { total: 0, success: 0, errors: 0, rateLimited: 0 };
+    
+    // Default: INTERACTION is OFF
+    private enabledTypes: Set<MetricType> = new Set(['API_LATENCY', 'STORAGE_USAGE', 'RENDER_TIME', 'CACHE_UPDATE']);
 
     public log(type: MetricType, label: string, value?: number, details?: any) {
+        if (!this.enabledTypes.has(type)) return;
+
         this.logs.push({
             timestamp: Date.now(),
             type,
@@ -48,6 +53,14 @@ class PerformanceMonitor {
             } else {
                 this.apiStats.success++;
             }
+        }
+    }
+
+    public toggleLogType(type: MetricType) {
+        if (this.enabledTypes.has(type)) {
+            this.enabledTypes.delete(type);
+        } else {
+            this.enabledTypes.add(type);
         }
     }
 
@@ -119,7 +132,10 @@ class PerformanceMonitor {
                 connection: this.getConnectionInfo(),
                 userAgent: navigator.userAgent
             },
-            logs: this.logs
+            logs: this.logs,
+            config: {
+                enabledTypes: Array.from(this.enabledTypes)
+            }
         };
     }
 

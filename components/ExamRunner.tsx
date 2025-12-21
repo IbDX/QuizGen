@@ -153,8 +153,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ questions, settings, onC
 
   const handleFinish = () => {
     if (inputError || isGrading) return;
-    // Add confirmation for mobile users to prevent accidental submit
-    if (window.confirm(t('exit_exam_warning_body', lang))) {
+    // Fix: Use submit-specific message instead of generic exit warning
+    if (window.confirm(t('submit_confirm_msg', lang))) {
         onComplete(Array.from(answers.values()));
     }
   };
