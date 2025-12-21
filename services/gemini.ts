@@ -89,7 +89,7 @@ const getSystemInstruction = (preference: QuestionFormatPreference, outputLang: 
 
     return `
 You are the Z+ Core Intelligence. 
-1. EXTRACTION: Identify every single question. For the Diagnostic Demo, generate 30 diverse technical questions.
+1. EXTRACTION: Analyze the provided images/PDFs. Extract questions directly from the content. If the content is study material (not an exam), generate high-quality questions based on the key concepts found in the text.
 2. RENDERING: ${TECHNICAL_RENDERING_PROTOCOL}
 3. FORMAT: ${preference}. If MCQ, provide 4 options. If Tracing, provide 'tracingOutput'. 
 4. DE-DUPLICATION: Never include the code from 'codeSnippet' inside the 'text' property.
@@ -136,7 +136,7 @@ export const generateExam = async (
     instructions?: string
 ): Promise<Question[]> => {
     const parts: any[] = files.map(f => ({ inlineData: { data: f.base64, mimeType: f.mimeType } }));
-    parts.push({ text: `Generate a high-fidelity technical exam. Leverage the platform capabilities (Graphs, Diagrams). Constraints: ${instructions || "None"}` });
+    parts.push({ text: `Generate a high-fidelity technical exam based on these files. Leverage the platform capabilities (Graphs, Diagrams). Constraints: ${instructions || "None"}` });
 
     const response = await safeGenerate(async () => {
         return await ai.models.generateContent({
