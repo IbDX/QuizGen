@@ -559,6 +559,7 @@ Q5. Design a "Authentication System" flow using a Sequence Diagram.
               setUseCustomCursor={setUseCustomCursor}
               onClose={() => setIsSettingsOpen(false)}
               userProfile={userProfile}
+              onUpdateProfile={setUserProfile}
           />
       )}
 

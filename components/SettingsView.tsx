@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { ThemeOption, UILanguage, UserProfile } from '../types';
 import { t } from '../utils/translations';
 import { PerformanceDashboard } from './PerformanceDashboard';
+import { calculateSHA512 } from '../utils/crypto';
+import { gamification } from '../services/gamification';
 
 interface SettingsViewProps {
     isFullWidth: boolean;
@@ -22,7 +24,8 @@ interface SettingsViewProps {
     useCustomCursor: boolean;
     setUseCustomCursor: (b: boolean) => void;
     onClose: () => void;
-    userProfile?: UserProfile; // Added for lock check
+    userProfile?: UserProfile; 
+    onUpdateProfile?: (profile: UserProfile) => void;
 }
 
 const FONT_OPTIONS = [
@@ -43,9 +46,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     enableBackgroundAnim, setEnableBackgroundAnim,
     useCustomCursor, setUseCustomCursor,
     onClose,
-    userProfile
+    userProfile,
+    onUpdateProfile
 }) => {
     const [showDiagnostics, setShowDiagnostics] = useState(false);
+    const [showHackerInput, setShowHackerInput] = useState(false);
+    const [hackerPwd, setHackerPwd] = useState('');
+
+    const handleHackerAttempt = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const hash = await calculateSHA512(hackerPwd);
+        // SHA-512 for target password
+        if (hash === "279eb4d9c63c178468b783a62a56080cbf1c6cfb6ae3cbf21ae596bea2790857fed3fc6ab503e70baf51f0f384ae3e93b024aa4363067f86418e40edf51fad88") {
+            const newProfile = gamification.unlockEverything();
+            if (onUpdateProfile) onUpdateProfile(newProfile);
+            alert("ACCESS GRANTED. SYSTEM LEVEL: MAX. ALL BADGES UNLOCKED.");
+            setShowHackerInput(false);
+            setHackerPwd('');
+        } else {
+            alert("ACCESS DENIED.");
+            setHackerPwd('');
+        }
+    };
 
     const ThemeButton = ({ id, label, locked, lvl }: { id: ThemeOption, label: string, locked: boolean, lvl: number }) => (
         <button 
@@ -70,6 +92,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     return (
         <div className={`mx-auto transition-all duration-300 animate-fade-in ${isFullWidth ? 'max-w-none w-full' : 'max-w-4xl'}`}>
             {showDiagnostics && <PerformanceDashboard onClose={() => setShowDiagnostics(false)} />}
+            
+            {showHackerInput && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
+                    <form onSubmit={handleHackerAttempt} className="bg-black border-2 border-red-500 w-full max-w-sm p-6 shadow-[0_0_50px_rgba(255,0,0,0.5)] rounded">
+                        <h3 className="text-red-500 font-bold font-mono text-xl mb-4 tracking-widest text-center animate-pulse">ROOT ACCESS REQUIRED</h3>
+                        <input 
+                            type="password" 
+                            value={hackerPwd}
+                            onChange={(e) => setHackerPwd(e.target.value)}
+                            placeholder="ENTER PASSPHRASE"
+                            className="w-full bg-[#111] border border-red-800 text-red-500 p-3 mb-4 font-mono text-center outline-none focus:border-red-500"
+                            autoFocus
+                        />
+                        <div className="flex gap-2">
+                            <button type="button" onClick={() => setShowHackerInput(false)} className="flex-1 py-2 bg-gray-800 text-gray-400 hover:bg-gray-700 font-mono text-xs">CANCEL</button>
+                            <button type="submit" className="flex-1 py-2 bg-red-900 text-red-200 hover:bg-red-800 font-mono text-xs font-bold">AUTHENTICATE</button>
+                        </div>
+                    </form>
+                </div>
+            )}
             
             <div className="bg-white dark:bg-terminal-black border-2 border-gray-300 dark:border-terminal-green shadow-xl p-0 relative overflow-hidden flex flex-col rounded-lg">
                 
@@ -231,6 +273,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     <span className="text-[10px] text-gray-500">View API latency, storage quota, and interactions</span>
                                 </div>
                                 <span className="text-gray-400 dark:text-terminal-green">📊</span>
+                            </button>
+
+                            <button
+                                onClick={() => setShowHackerInput(true)}
+                                className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-[#150505] rounded border border-gray-300 dark:border-terminal-green/30 hover:bg-gray-100 dark:hover:bg-terminal-green/10 hover:border-terminal-green transition-all group text-left"
+                            >
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-gray-800 dark:text-terminal-green">HACKER</span>
+                                    <span className="text-[10px] text-gray-500">Access advanced developer override tools</span>
+                                </div>
+                                <span className="text-gray-400 dark:text-terminal-green">👾</span>
                             </button>
 
                             <a 
