@@ -42,12 +42,18 @@ An advanced, terminal-themed AI examination platform that parses documents to cr
     -   **Smart Import:** Detects duplicate exams and validates JSON schema integrity.
 
 ### 5. Advanced UI/UX
--   **Reliability & Quota Management:** The system automatically detects API `429 Too Many Requests` errors (Quota Exhausted) during exam generation, chatting, or grading. It immediately transitions the global UI to a "System Offline" (Red Status) mode to prevent request spamming and informs the user clearly.
--   **Themes:** Choose between **Light**, **Terminal (Dark)**, and **Palestine** themes.
--   **Theme-Adaptive Controls:** UI elements like the Photo Fetcher and Mode Selection buttons adapt colors dynamically.
--   **Smart Navigation:** "Scroll to Top" buttons and sticky headers improve usability on long exams.
--   **AI System Agent:** A floating support bot (`AiHelper`) available to assist with platform navigation and troubleshooting.
--   **Responsive Design:** Mobile-first architecture with touch-optimized controls and auto-hiding menus.
+-   **System Diagnostics Dashboard:** A professional-grade telemetry panel (accessible via Settings) providing real-time insights:
+    -   **Live Execution Feed:** Visualizes internal system events (AI calls, renders, storage ops) with status indicators.
+    -   **Subsystem Deep Dives:** Detailed metrics for Neural Engine (Token usage), Renderer (VRAM/FPS), and Memory.
+    -   **Graphics Benchmark:** Integrated stress test to evaluate device rendering performance.
+    -   **Network Tools:** Real-time latency (Ping) monitoring.
+-   **Gamification Layer:**
+    -   **Progression:** Earn XP and level up by completing exams and maintaining daily streaks.
+    -   **Badges:** Unlock achievements like "Z+ Elite" (Perfect Score) or "Night Owl".
+    -   **Unlockable Themes:** Access exclusive visual themes (Cyberpunk, Synthwave) by reaching higher levels.
+-   **Reliability & Quota Management:** The system automatically detects API `429 Too Many Requests` errors (Quota Exhausted) and transitions to a "System Offline" mode to prevent request spamming.
+-   **Theme-Adaptive Controls:** UI elements adapt dynamically to Light, Terminal (Dark), and Palestine themes.
+-   **AI System Agent:** A floating support bot (`AiHelper`) available to assist with platform navigation.
 
 ---
 
@@ -55,11 +61,12 @@ An advanced, terminal-themed AI examination platform that parses documents to cr
 
 For a deep dive into how the system works internally, please refer to the technical documentation files:
 
-1.  [**Architecture & Stack**](technical_readme/01_architecture_stack.md) - Overview of the React state machine, routing, and tech stack.
+1.  [**Architecture & Stack**](technical_readme/01_architecture_stack.md) - Overview of the React state machine, tech stack, and file structure.
 2.  [**AI Generation Engine**](technical_readme/02_ai_generation_engine.md) - How Gemini 2.5 is prompted, schema validation, and context parsing.
 3.  [**Security & Validation**](technical_readme/03_security_validation.md) - VirusTotal integration, Magic Byte checking, library hashing, and input sanitization.
 4.  [**Rendering System**](technical_readme/04_rendering_visuals.md) - How Graphs, Diagrams (Mermaid), and Markdown/Math (LaTeX) are rendered.
 5.  [**Grading Logic**](technical_readme/05_grading_logic.md) - The hybrid grading system (Deterministic vs. Asynchronous AI evaluation).
+6.  [**System Diagnostics**](technical_readme/06_system_diagnostics.md) - Overview of the telemetry and performance monitoring subsystem.
 
 ---
 
@@ -98,9 +105,10 @@ For a deep dive into how the system works internally, please refer to the techni
 -   **Frontend:** React 19, TypeScript
 -   **Styling:** Tailwind CSS
 -   **AI Integration:** @google/genai SDK (Gemini 2.5 Flash)
--   **Rendering:** jsPDF (Reporting), html2canvas, Function Plot (Graphs)
+-   **Rendering:** jsPDF (Reporting), html2canvas, Function Plot (Graphs), Mermaid.js
 -   **Editor:** React Simple Code Editor + PrismJS
--   **Security:** VirusTotal API, Input Sanitization (SHA-256)
+-   **Security:** VirusTotal API, Input Sanitization (SHA-256/512)
+-   **Telemetry:** Custom Performance Monitor
 
 ---
 *Built with <3 by Z+ Team*
